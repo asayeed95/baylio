@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `shops` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`ownerId` int NOT NULL,\n\t`organizationId` int,\n\t`name` varchar(255) NOT NULL,\n\t`phone` varchar(32),\n\t`address` text,\n\t`city` varchar(128),\n\t`state` varchar(64),\n\t`zip` varchar(16),\n\t`timezone` varchar(64) DEFAULT 'America/New_York',\n\t`businessHours` json,\n\t`serviceCatalog` json,\n\t`isActive` boolean NOT NULL DEFAULT true,\n\t`twilioPhoneNumber` varchar(32),\n\t`twilioPhoneSid` varchar(64),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `shops_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute CREATE TABLE IF NOT EXISTS `shops` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`ownerId` int NOT NULL,\n\t`organizationId` int,\n\t`name` varchar(255) NOT NULL,\n\t`phone` varchar(32),\n\t`address` text,\n\t`city` varchar(128),\n\t`state` varchar(64),\n\t`zip` varchar(16),\n\t`timezone` varchar(64) DEFAULT 'America/New_York',\n\t`businessHours` json,\n\t`serviceCatalog` json,\n\t`isActive` boolean NOT NULL DEFAULT true,\n\t`twilioPhoneNumber` varchar(32),\n\t`twilioPhoneSid` varchar(64),\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `shops_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 117
+}
