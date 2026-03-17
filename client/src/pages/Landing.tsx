@@ -1,6 +1,8 @@
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Slider } from "@/components/ui/slider";
 import { getLoginUrl } from "@/const";
 import {
   Phone,
@@ -15,6 +17,7 @@ import {
   ArrowRight,
   Zap,
   Building2,
+  Calculator,
 } from "lucide-react";
 
 /**
@@ -125,6 +128,154 @@ const PAIN_POINTS = [
   { stat: "$28K+", label: "annual revenue lost from missed calls alone" },
 ];
 
+/**
+ * ROI Calculator Component
+ * 
+ * Interactive calculator that shows shop owners how much revenue
+ * they're losing to missed calls. Uses real industry data:
+ * - Average repair order: $466 (AAA/IBISWorld)
+ * - 62% of calls go unanswered (industry average)
+ * - 85% of callers won't call back
+ * 
+ * This is the #1 sales tool for door-to-door: pull it up on a tablet,
+ * enter the shop's numbers, and show them the money they're leaving on the table.
+ */
+function ROICalculator() {
+  const [callsPerDay, setCallsPerDay] = useState([15]);
+  const [missedPercent, setMissedPercent] = useState([40]);
+  const [avgRepairOrder, setAvgRepairOrder] = useState([466]);
+
+  const calculations = useMemo(() => {
+    const dailyCalls = callsPerDay[0];
+    const missedRate = missedPercent[0] / 100;
+    const aro = avgRepairOrder[0];
+    const conversionRate = 0.35; // 35% of answered calls convert to appointments
+
+    const dailyMissed = Math.round(dailyCalls * missedRate);
+    const monthlyMissed = dailyMissed * 22; // business days
+    const potentialBookings = Math.round(monthlyMissed * conversionRate);
+    const monthlyRevenueLost = potentialBookings * aro;
+    const annualRevenueLost = monthlyRevenueLost * 12;
+
+    // With Baylio: capture 90% of previously missed calls
+    const capturedCalls = Math.round(monthlyMissed * 0.90);
+    const newBookings = Math.round(capturedCalls * conversionRate);
+    const monthlyRecovered = newBookings * aro;
+    const annualRecovered = monthlyRecovered * 12;
+
+    // ROI: recovered revenue vs Baylio Pro cost ($349/mo)
+    const baylioCost = 349;
+    const monthlyROI = monthlyRecovered - baylioCost;
+    const roiMultiple = monthlyRecovered > 0 ? Math.round(monthlyRecovered / baylioCost) : 0;
+
+    return {
+      dailyMissed,
+      monthlyMissed,
+      monthlyRevenueLost,
+      annualRevenueLost,
+      capturedCalls,
+      newBookings,
+      monthlyRecovered,
+      annualRecovered,
+      monthlyROI,
+      roiMultiple,
+    };
+  }, [callsPerDay, missedPercent, avgRepairOrder]);
+
+  const formatCurrency = (n: number) =>
+    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+
+  return (
+    <section id="roi-calculator" className="container py-20">
+      <h2 className="text-3xl font-bold text-center mb-4">
+        <Calculator className="inline h-8 w-8 mr-2 text-primary" />
+        See How Much You're Losing
+      </h2>
+      <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+        Adjust the sliders to match your shop. The numbers speak for themselves.
+      </p>
+
+      <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
+        {/* Inputs */}
+        <Card className="border">
+          <CardHeader>
+            <CardTitle className="text-lg">Your Shop's Numbers</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-8">
+            <div>
+              <div className="flex justify-between mb-3">
+                <label className="text-sm font-medium">Calls per day</label>
+                <span className="text-sm font-bold text-primary">{callsPerDay[0]}</span>
+              </div>
+              <Slider value={callsPerDay} onValueChange={setCallsPerDay} min={5} max={60} step={1} />
+            </div>
+            <div>
+              <div className="flex justify-between mb-3">
+                <label className="text-sm font-medium">Missed call rate</label>
+                <span className="text-sm font-bold text-primary">{missedPercent[0]}%</span>
+              </div>
+              <Slider value={missedPercent} onValueChange={setMissedPercent} min={10} max={80} step={5} />
+            </div>
+            <div>
+              <div className="flex justify-between mb-3">
+                <label className="text-sm font-medium">Average repair order</label>
+                <span className="text-sm font-bold text-primary">{formatCurrency(avgRepairOrder[0])}</span>
+              </div>
+              <Slider value={avgRepairOrder} onValueChange={setAvgRepairOrder} min={100} max={1200} step={25} />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Industry average: $466 per repair order (AAA/IBISWorld). 35% call-to-appointment conversion rate.
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Results */}
+        <div className="space-y-4">
+          <Card className="border border-destructive/30 bg-destructive/5">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground mb-1">Revenue you're losing monthly</p>
+              <p className="text-3xl font-bold text-destructive">{formatCurrency(calculations.monthlyRevenueLost)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {calculations.monthlyMissed} missed calls/mo &times; 35% conversion &times; {formatCurrency(avgRepairOrder[0])} avg order
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border border-primary/30 bg-primary/5">
+            <CardContent className="pt-6">
+              <p className="text-sm text-muted-foreground mb-1">Revenue Baylio recovers monthly</p>
+              <p className="text-3xl font-bold text-primary">{formatCurrency(calculations.monthlyRecovered)}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {calculations.capturedCalls} calls captured &rarr; {calculations.newBookings} new bookings
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="border">
+            <CardContent className="pt-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Annual recovery</p>
+                  <p className="text-xl font-bold">{formatCurrency(calculations.annualRecovered)}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">ROI multiple</p>
+                  <p className="text-xl font-bold text-primary">{calculations.roiMultiple}x return</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <Button className="w-full" size="lg" onClick={() => { window.location.href = getLoginUrl(); }}>
+            Start Recovering Revenue
+            <ArrowRight className="ml-2 h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
@@ -199,6 +350,9 @@ export default function Landing() {
           </div>
         </div>
       </section>
+
+      {/* ─── ROI Calculator ─── */}
+      <ROICalculator />
 
       {/* ─── How It Works ─── */}
       <section id="how-it-works" className="container py-20">

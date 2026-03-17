@@ -66,6 +66,7 @@ export type InsertShop = typeof shops.$inferInsert;
 export const agentConfigs = mysqlTable("agent_configs", {
   id: int("id").autoincrement().primaryKey(),
   shopId: int("shopId").notNull(),
+  ownerId: int("ownerId").notNull().default(0),
   voiceId: varchar("voiceId", { length: 128 }),
   voiceName: varchar("voiceName", { length: 128 }),
   agentName: varchar("agentName", { length: 128 }).default("Baylio"),
@@ -89,6 +90,7 @@ export type InsertAgentConfig = typeof agentConfigs.$inferInsert;
 export const callLogs = mysqlTable("call_logs", {
   id: int("id").autoincrement().primaryKey(),
   shopId: int("shopId").notNull(),
+  ownerId: int("ownerId").notNull().default(0),
   twilioCallSid: varchar("twilioCallSid", { length: 128 }),
   callerPhone: varchar("callerPhone", { length: 32 }),
   callerName: varchar("callerName", { length: 255 }),
@@ -119,6 +121,7 @@ export type InsertCallLog = typeof callLogs.$inferInsert;
 export const missedCallAudits = mysqlTable("missed_call_audits", {
   id: int("id").autoincrement().primaryKey(),
   shopId: int("shopId"),
+  ownerId: int("ownerId").notNull().default(0),
   prospectName: varchar("prospectName", { length: 255 }),
   prospectEmail: varchar("prospectEmail", { length: 320 }),
   prospectPhone: varchar("prospectPhone", { length: 32 }),
@@ -166,6 +169,7 @@ export type InsertAuditCallEntry = typeof auditCallEntries.$inferInsert;
 export const subscriptions = mysqlTable("subscriptions", {
   id: int("id").autoincrement().primaryKey(),
   shopId: int("shopId").notNull(),
+  ownerId: int("ownerId").notNull().default(0),
   organizationId: int("organizationId"),
   tier: mysqlEnum("tier", ["starter", "pro", "elite"]).default("starter").notNull(),
   status: mysqlEnum("subStatus", ["active", "past_due", "canceled", "trialing"]).default("active").notNull(),
@@ -191,6 +195,7 @@ export const usageRecords = mysqlTable("usage_records", {
   id: int("id").autoincrement().primaryKey(),
   subscriptionId: int("subscriptionId").notNull(),
   shopId: int("shopId").notNull(),
+  ownerId: int("ownerId").notNull().default(0),
   callLogId: int("callLogId"),
   minutesUsed: decimal("minutesUsed", { precision: 8, scale: 2 }).notNull(),
   isOverage: boolean("isOverage").default(false).notNull(),

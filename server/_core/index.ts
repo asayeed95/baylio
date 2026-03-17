@@ -7,6 +7,9 @@ import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
+import { twilioRouter } from "../services/twilioWebhooks";
+import { validateTwilioSignature } from "../middleware/twilioValidation";
+import { stripeWebhookRouter } from "../stripe/stripeRoutes";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -31,10 +34,20 @@ async function startServer() {
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
+  // Stripe webhook MUST be registered BEFORE express.json() for signature verification
+  app.use("/api/stripe", stripeWebhookRouter);
+
   app.use(express.json({ limit: "50mb" }));
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
+
+  // Twilio webhook routes (with signature validation middleware)
+  // The validation middleware checks X-Twilio-Signature before any
+  // webhook handler runs. Uses feature flag TWILIO_VALIDATION_ENABLED
+  // for safe rollout (log-only mode when disabled).
+  app.use("/api/twilio", validateTwilioSignature, twilioRouter);
+
   // tRPC API
   app.use(
     "/api/trpc",

@@ -9,6 +9,7 @@ import {
   createMissedCallAudit,
   updateMissedCallAudit,
 } from "./db";
+import { generateScorecard, completeAudit } from "./services/auditService";
 
 export const callRouter = router({
   list: protectedProcedure
@@ -69,8 +70,8 @@ export const callRouter = router({
       prospectPhone: z.string().optional(),
       shopName: z.string().optional(),
     }))
-    .mutation(async ({ input }) => {
-      const id = await createMissedCallAudit(input);
+    .mutation(async ({ ctx, input }) => {
+      const id = await createMissedCallAudit({ ...input, ownerId: ctx.user.id });
       return { id };
     }),
 
@@ -87,5 +88,28 @@ export const callRouter = router({
     .mutation(async ({ input }) => {
       await updateMissedCallAudit(input.id, input.data as any);
       return { success: true };
+    }),
+
+  /**
+   * Generate a scorecard for a completed audit.
+   * Returns the full scorecard data with revenue ranges,
+   * peak call analysis, and recommendations.
+   */
+  generateScorecard: protectedProcedure
+    .input(z.object({ auditId: z.number() }))
+    .query(async ({ input }) => {
+      return generateScorecard(input.auditId);
+    }),
+
+  /**
+   * Complete an audit and generate the final scorecard.
+   * Transitions status to 'completed' and stores scorecard data.
+   */
+  completeAudit: protectedProcedure
+    .input(z.object({ auditId: z.number() }))
+    .mutation(async ({ input }) => {
+      const scorecard = await completeAudit(input.auditId);
+      if (!scorecard) return { success: false, error: "Audit not found" };
+      return { success: true, scorecard };
     }),
 });

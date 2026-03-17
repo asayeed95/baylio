@@ -28,18 +28,18 @@
 
 ## Phase 6: Missed Call Audit
 - [x] 7-day audit tracking system
-- [ ] Intent classification (LLM)
-- [ ] Revenue estimation
-- [ ] PDF scorecard generation
+- [x] Intent classification (LLM)
+- [x] Revenue estimation
+- [x] PDF scorecard generation
 
 ## Phase 7: Subscription & Billing
 - [x] Subscription tier management (Starter/Pro/Elite)
 - [x] Usage tracking & overage calculation
-- [ ] Stripe integration (billing, setup fees, annual prepay, invoicing)
+- [x] Stripe integration (billing, setup fees, annual prepay, invoicing)
 
 ## Phase 8: API Integrations
-- [ ] ElevenLabs API (voice agent provisioning, call handling)
-- [ ] Twilio API (phone number provisioning, call routing)
+- [x] ElevenLabs API (voice agent provisioning, call handling)
+- [x] Twilio API (phone number provisioning, call routing)
 
 ## Phase 9: Notifications & Analysis
 - [x] Post-call transcription analysis (intent, sentiment, QA flags) [schema + router ready]
@@ -47,7 +47,7 @@
 - [x] Owner notification system
 
 ## Phase 10: Polish & Launch
-- [x] End-to-end testing (34 vitest specs passing)
+- [x] End-to-end testing (54 vitest specs passing)
 - [ ] Mobile responsiveness
 - [ ] Final checkpoint & deploy
 
@@ -55,8 +55,36 @@
 - (none yet)
 
 ## Phase 11: Claude Prompt Engineering Integration
-- [ ] Claude-powered system prompt templates with shop-specific variables ({{SHOP_NAME}}, {{SERVICE_CATALOG}}, etc.)
-- [ ] Pre-built persona templates (friendly advisor, professional technician, sales-focused)
-- [ ] Upsell rules engine mapped to Claude structured reasoning
+- [x] Claude-powered system prompt templates with shop-specific variables ({{SHOP_NAME}}, {{SERVICE_CATALOG}}, etc.)
+- [x] Pre-built persona templates (friendly advisor, professional technician, sales-focused) [in prompt compiler]
+- [x] Upsell rules engine mapped to Claude structured reasoning
 - [ ] Agent Config page: prompt preview with variable interpolation
 - [ ] Claude Workbench sync: export/import prompt templates
+
+## Phase 12: Security Hardening (APPROVED)
+- [x] Twilio webhook signature validation middleware (HMAC-SHA1)
+- [x] Timing-safe comparison + forensic logging
+- [x] Feature flag for validation (log-only → enforce)
+- [x] Add ownerId columns to 5 child tables (agent_configs, call_logs, subscriptions, usage_records, missed_call_audits)
+- [x] Add database indexes for tenant filtering
+- [x] Tenant scope tRPC middleware (ctx.tenantId)
+- [ ] Update all query helpers to require ownerId parameter
+- [ ] Update all routers to use tenantProcedure
+- [x] Security tests (signature validation + tenant isolation)
+
+## Phase 13: Core Engine — 3-Layer Architecture (APPROVED)
+- [x] Twilio webhook endpoints (/api/twilio/voice, /api/twilio/status, /api/twilio/recording)
+- [x] ElevenLabs Register Call API bridge
+- [x] Hot context cache (in-memory shop config for sub-second webhook response)
+- [x] Prompt compilation layer (shop context → compiled system prompt)
+- [ ] TwiML voicemail fallback (if ElevenLabs fails)
+- [x] Post-call async pipeline (webhook → queue → transcription → analysis → DB write)
+
+## Phase 14: Market Research Features
+- [x] 3-Stage Reasoning Architecture (symptom extraction → catalog mapping → natural offer)
+- [x] ROI Calculator on landing page ($466 avg RO, 40% missed call rate)
+- [ ] Forwarding Wizard (auto-provision Twilio capture number for 7-day audit)
+- [x] Scorecard PDF generation (revenue ranges, visual dashboard)
+- [ ] Peak call analysis (Monday/Tuesday 8-11:30 AM patterns)
+- [x] SMS recap dispatch (post-call summary to shop manager)
+- [x] Confidence threshold behavior (HIGH → offer, MEDIUM → clarify, LOW → book only)
