@@ -1,0 +1,8 @@
+{
+  "query": "SELECT id, name, openId, email FROM users LIMIT 5; SELECT id, name, ownerId, twilioPhoneNumber, twilioPhoneSid FROM shops LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute SELECT id, name, openId, email FROM users LIMIT 5; SELECT id, name, ownerId, twilioPhoneNumber, twilioPhoneSid FROM shops LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "ERROR 1146 (42S02) at line 1: Table 'lrtlctkwggeqbgcon4bv83.users' doesn't exist"
+  ]
+}
