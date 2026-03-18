@@ -46,7 +46,9 @@ async function startServer() {
   // The validation middleware checks X-Twilio-Signature before any
   // webhook handler runs. Uses feature flag TWILIO_VALIDATION_ENABLED
   // for safe rollout (log-only mode when disabled).
-  app.use("/api/twilio", validateTwilioSignature, twilioRouter);
+  // In development, run in logOnly mode so test calls aren't rejected.
+  const isDev = process.env.NODE_ENV !== "production";
+  app.use("/api/twilio", validateTwilioSignature({ logOnly: isDev }), twilioRouter);
 
   // tRPC API
   app.use(

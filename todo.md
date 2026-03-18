@@ -88,3 +88,33 @@
 - [ ] Peak call analysis (Monday/Tuesday 8-11:30 AM patterns)
 - [x] SMS recap dispatch (post-call summary to shop manager)
 - [x] Confidence threshold behavior (HIGH → offer, MEDIUM → clarify, LOW → book only)
+
+## Phase 15: Documentation & Content
+- [x] Push codebase to GitHub (private repo) — github.com/asayeed95/baylio
+- [x] Update Notion workspace with all implementation progress
+- [x] Generate YouTube long-form video script using Gemini API
+- [x] Generate YouTube series structure and episode topics
+
+## Phase 16: Twilio Live Integration
+- [x] Store TWILIO_ACCOUNT_SID and TWILIO_AUTH_TOKEN as environment secrets
+- [x] Install Twilio SDK (twilio 5.13.0)
+- [x] Create twilioProvisioning.ts service (search, purchase, configure, release numbers)
+- [x] Add Twilio provisioning tRPC procedures (searchNumbers, purchaseNumber, releaseNumber, getBalance)
+- [x] Add phone number provisioning UI to ShopSettings page
+- [x] Write vitest for Twilio credential validation
+- [ ] Test live call routing end-to-end
+
+## Phase 17: Git Organization & Code Quality for Claude Code Review
+- [ ] Audit all server files for JSDoc comments
+- [ ] Audit all client files for component-level comments
+- [ ] Add README.md with architecture overview, file map, and setup instructions
+- [ ] Add ARCHITECTURE.md with system design documentation
+- [ ] Organize imports and remove dead code
+- [ ] Push clean commit to GitHub with descriptive message
+
+## Phase 18: Live Call Test Setup
+- [ ] Configure Twilio webhook for (844) 875-2441 to point at Baylio server
+- [ ] Add assignExistingNumber tRPC procedure (for manually assigning trial numbers)
+- [ ] Create test shop with ElevenLabs agent ID wired
+- [ ] Add ElevenLabs Agent ID field to Agent Config page
+- [ ] Verify end-to-end call routing works
