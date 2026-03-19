@@ -103,3 +103,31 @@
 - [x] Add phone number provisioning UI to ShopSettings page
 - [x] Write vitest for Twilio credential validation
 - [ ] Test live call routing end-to-end
+
+## Phase 17: Git Organization & Code Quality for Claude Code Review
+- [ ] Audit all server files for JSDoc comments
+- [ ] Audit all client files for component-level comments
+- [ ] Add README.md with architecture overview, file map, and setup instructions
+- [ ] Add ARCHITECTURE.md with system design documentation
+- [ ] Organize imports and remove dead code
+- [ ] Push clean commit to GitHub with descriptive message
+
+## Phase 18: Live Call Test Setup
+- [ ] Configure Twilio webhook for (844) 875-2441 to point at Baylio server
+- [ ] Add assignExistingNumber tRPC procedure (for manually assigning trial numbers)
+- [ ] Create test shop with ElevenLabs agent ID wired
+- [ ] Add ElevenLabs Agent ID field to Agent Config page
+- [ ] Verify end-to-end call routing works
+
+## Bug: Application Error on Call to (844) 875-2441
+- [ ] Diagnose and fix Twilio "application error" when calling the test number
+
+## Phase 19: Claude Code Audit Fixes (P0/P1)
+- [x] P0: Add fetch timeout to ElevenLabs Register Call API (twilioWebhooks.ts)
+- [x] P0: Fix stale estimatedRevenue check - use analysis result not DB value (postCallPipeline.ts:252)
+- [x] P0: Make usedMinutes increment atomic SQL to prevent race condition (postCallPipeline.ts:227-247)
+- [x] P0: Wire processCompletedCall() from /status webhook in twilioWebhooks.ts
+- [x] P1: Fix wrong timestamps on call logs (twilioWebhooks.ts:327-328)
+- [ ] P1: Eliminate triple DB query on cold cache (twilioWebhooks.ts:150-225) — deferred, low impact
+- [x] P1: Sanitize customSystemPrompt to prevent prompt injection (promptCompiler.ts:228)
+- [x] Scrub sensitive data (Twilio SID, ElevenLabs agent ID, phone number) from README.md
