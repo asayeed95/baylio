@@ -138,3 +138,16 @@
 - [x] Wire conversation_config_override into ElevenLabs Register Call API
 - [ ] Update promptCompiler.ts to use real persona templates from baylio-prompts
 - [ ] Archive baylio-prompts repo after merge
+
+## Phase 21: Documentation & YouTube Content
+- [ ] Create ARCHITECTURE.md with full system design, call flow diagrams, and override explanation
+- [ ] Create YouTube long-form script: "I Built an AI Sales Agent That Sells Itself"
+- [ ] Document conversation_config_override integration pattern
+- [ ] Pull Contact/FAQ pages from GitHub PR into Manus codebase
+
+## Bug: Calls disconnect within seconds on (844) 875-2441
+- [ ] Diagnose and fix call disconnection — calls drop within seconds of connecting
+
+## Bug: Live call quality issues (found during first live test)
+- [x] Fix echo/feedback loop — AI hears its own voice and responds to itself (VAD sensitivity) — set turn_eagerness to "patient" via ElevenLabs API
+- [x] Fix name mispronunciation — "Baylio" pronounced as "Balio", "Abdur" pronounced as "Abdor" — added phonetic guides to prompt
