@@ -276,3 +276,8 @@
 - [x] Rewrite promptCompiler.ts to inject Knowledge Lock, Appointment Verification, Handoff, and Reputation Protection into shop agent prompt
 - [x] All 199 tests passing after integration
 - [x] TypeScript clean (zero errors)
+
+## Phase 27: Website Credibility & Polish
+- [x] Change 1: Replace fake testimonials with credibility section ("Built for Shop Owners, by Operators Who Get It" — 3 cards: Enterprise-Grade Voice, 2-Second Answer, First 50 Shops + green CTA)
+- [x] Change 2: Expand FAQ from 6 to 14 questions (add: answer speed, robot sound, Spanish, booking, receptionist, after-hours, downtime, data security)
+- [x] Change 3: Dark hero section (bg #1A1A2E, white headline, green accent #10B981, light gray subheadline #D1D5DB)

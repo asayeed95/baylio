@@ -28,7 +28,7 @@ const FAQ_ITEMS = [
   {
     question: "How much does Baylio cost?",
     answer:
-      "Baylio offers three plans to fit shops of any size:\n\n• Starter — $199/month: Perfect for single-location shops. Includes AI call answering, appointment booking, and basic analytics.\n\n• Pro — $349/month: Our most popular plan. Adds intelligent upselling, advanced analytics, priority support, and multi-location support.\n\n• Elite — $599/month: For high-volume shops and multi-location businesses. Includes everything in Pro plus dedicated account management, custom AI training, and API access.\n\nAll plans come with a 14-day free trial — no credit card required.",
+      "Baylio offers four plans to fit shops of any size:\n\n• Pilot — $149/month: Perfect for trying Baylio risk-free. Includes 150 minutes, 1 location, after-hours coverage, and a 30-day no-commitment trial.\n\n• Starter — $199/month: For single-location shops. Includes 300 minutes, AI call answering, appointment booking, and basic analytics.\n\n• Pro — $349/month: Our most popular plan. 750 minutes, intelligent upselling, advanced analytics, custom AI voice, and SMS notifications.\n\n• Elite — $599/month: For high-volume and multi-location shops. 1,500 minutes, CRM integration, multi-location management, and priority support.\n\nAll plans come with a free trial — no credit card required.",
   },
   {
     question: "Can I customize what the AI says?",
@@ -39,6 +39,46 @@ const FAQ_ITEMS = [
     question: "How do I get started?",
     answer:
       "Getting started takes less than 10 minutes:\n\n1. Sign up for a free trial at baylio.io\n2. Add your shop's information (name, address, services, hours)\n3. Configure your AI agent's greeting and behavior\n4. Forward your shop's phone line to your Baylio number\n\nThat's it — Baylio starts answering calls immediately. Our team is also available to help you set up if you prefer a hands-on walkthrough.",
+  },
+  {
+    question: "How fast does Baylio answer calls?",
+    answer:
+      "Under 2 seconds. Every time. There's no ringing, no hold music, and no voicemail. Your customers hear a live, professional AI voice before the second ring completes. Compare that to the industry average of 4-6 rings (or no answer at all) — Baylio makes your shop feel like a premium operation from the very first interaction.",
+  },
+  {
+    question: "Does it sound like a robot?",
+    answer:
+      "Not at all. Baylio uses the latest conversational AI voice technology to sound natural, warm, and professional — like your best front-desk employee. Callers regularly don't realize they're speaking with an AI. You can also choose from multiple voice options and customize the tone, speed, and personality to match your shop's brand.",
+  },
+  {
+    question: "Can Baylio speak Spanish?",
+    answer:
+      "We are actively building multilingual support, with Spanish as the top priority. Currently, Baylio handles calls in English. Spanish language support is on our near-term roadmap, and early adopters will be the first to get access when it launches. If bilingual support is critical for your shop, let us know — it helps us prioritize.",
+  },
+  {
+    question: "Does it actually book appointments?",
+    answer:
+      "Yes — but with an important distinction. Baylio submits appointment requests, not confirmations. When a customer asks to book, the AI captures all the details (date, time, service needed, vehicle info) and says: 'I've submitted your appointment request for Tuesday at 10 AM. You'll receive a confirmation text shortly.' Your shop then gets an SMS with the details and confirms or adjusts. This protects you from double-bookings and scheduling conflicts.",
+  },
+  {
+    question: "What if I already have a receptionist?",
+    answer:
+      "Baylio isn't here to replace your staff — it's here to back them up. Most shops use Baylio for after-hours calls, overflow during busy periods, lunch breaks, and weekends. Your receptionist handles the in-person customers and complex calls; Baylio catches everything else. Our Pilot plan ($149/mo) is specifically designed for after-hours-only coverage, so you can start there and expand as needed.",
+  },
+  {
+    question: "Does Baylio work after hours and weekends?",
+    answer:
+      "That's where Baylio shines brightest. Industry data shows that 35-40% of calls to auto repair shops come outside business hours — evenings, weekends, and holidays. Without Baylio, those calls go to voicemail (and 85% of callers won't leave one). With Baylio, every after-hours call gets a live, professional response, and your next morning starts with a list of booked appointments instead of missed opportunities.",
+  },
+  {
+    question: "What if Baylio goes down?",
+    answer:
+      "Baylio is built on enterprise-grade telephony infrastructure with a 99.9% uptime SLA. But we plan for the worst: if Baylio ever experiences an outage, calls automatically route to your backup number (your shop's main line or your cell phone) within seconds. You also get a voicemail fallback as a last resort. Your customers will never hear dead air.",
+  },
+  {
+    question: "Is my customer data secure?",
+    answer:
+      "Absolutely. All call data is encrypted in transit and at rest. We never sell or share your customer information with third parties. Call recordings and transcripts are stored securely and only accessible to you through your dashboard. We follow industry-standard security practices including SOC 2-aligned controls, and you can delete any call data at any time from your account.",
   },
 ];
 

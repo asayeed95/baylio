@@ -18,6 +18,7 @@ import {
   Zap,
   Building2,
   Calculator,
+  Users,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -305,35 +306,37 @@ export default function Landing() {
         </div>
       </nav>
 
-      {/* ─── Hero ─── */}
-      <section className="container py-20 md:py-32">
-        <div className="max-w-4xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-6">
-            <Zap className="h-3 w-3 mr-1" />
-            AI-Powered Call Handling for Auto Repair Shops
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Stop Losing Customers
-            <br />
-            <span className="text-primary">To Missed Calls</span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Baylio is an AI receptionist that answers every call to your auto repair shop 24/7.
-            It books appointments, captures vehicle details, and intelligently upsells services — 
-            so you never lose another dollar to a ringing phone.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-              Start Free Trial
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button size="lg" variant="outline" className="text-base px-8">
-              Watch Demo
-            </Button>
+      {/* ─── Hero (Dark) ─── */}
+      <section className="py-20 md:py-32" style={{ backgroundColor: "#1A1A2E" }}>
+        <div className="container">
+          <div className="max-w-4xl mx-auto text-center">
+            <Badge className="mb-6 bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20">
+              <Zap className="h-3 w-3 mr-1" />
+              AI-Powered Call Handling for Auto Repair Shops
+            </Badge>
+            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight text-white">
+              Stop Losing Customers
+              <br />
+              <span style={{ color: "#10B981" }}>To Missed Calls</span>
+            </h1>
+            <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed" style={{ color: "#D1D5DB" }}>
+              Baylio is an AI receptionist that answers every call to your auto repair shop 24/7.
+              It books appointments, captures vehicle details, and intelligently upsells services — 
+              so you never lose another dollar to a ringing phone.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+                Start Free Trial
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button size="lg" variant="outline" className="text-base px-8 border-white/20 text-white hover:bg-white/10">
+                Watch Demo
+              </Button>
+            </div>
+            <p className="text-sm mt-4" style={{ color: "#9CA3AF" }}>
+              No credit card required. 14-day free trial on all plans.
+            </p>
           </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            No credit card required. 14-day free trial on all plans.
-          </p>
         </div>
       </section>
 
@@ -453,26 +456,53 @@ export default function Landing() {
         </p>
       </section>
 
-      {/* ─── Trust / Social Proof ─── */}
+      {/* ─── Credibility Section ─── */}
       <section className="border-y bg-muted/30">
         <div className="container py-16">
-          <h2 className="text-2xl font-bold text-center mb-8">Trusted by Auto Repair Shops</h2>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { quote: "We were missing 15+ calls a week. Baylio caught every single one. Our bookings went up 40% in the first month.", name: "Mike R.", shop: "Mike's Auto Care" },
-              { quote: "The upsell feature alone pays for the subscription. Customers don't mind when it's done right.", name: "Sarah T.", shop: "Precision Auto Works" },
-              { quote: "I manage 3 locations. Having one dashboard for all of them with individual AI agents is a game changer.", name: "James K.", shop: "Metro Auto Group" },
-            ].map((testimonial, i) => (
-              <Card key={i} className="border bg-card">
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground italic mb-4">"{testimonial.quote}"</p>
-                  <div>
-                    <p className="text-sm font-semibold">{testimonial.name}</p>
-                    <p className="text-xs text-muted-foreground">{testimonial.shop}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Built for Shop Owners, by Operators Who Get It</h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            We didn't build Baylio in a lab. We built it because we saw how many shops were bleeding revenue from unanswered phones.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <Card className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Enterprise-Grade Voice Infrastructure</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Built on the same telephony platform used by major contact centers. 99.9% uptime SLA. If Baylio ever goes down, calls automatically route to your backup number.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Answers in Under 2 Seconds. Every Time.</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  No ringing. No hold music. No voicemail. Your customers hear a live, professional AI voice before the second ring completes.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Be One of Our First 50 Shops</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  We are onboarding a small group of auto repair shops for hands-on launch support. Early adopters get direct access to our team, priority feature requests, and locked-in pricing.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="text-center mt-10">
+            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Apply for Early Access
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
           </div>
         </div>
       </section>
