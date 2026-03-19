@@ -220,10 +220,10 @@ Setup fee: $299 one-time (waived for annual prepay).
 
 | Service | Account |
 |---|---|
-| Twilio | AC1e3bb102056cd40cc0c483395bb6a109 (Pay-as-you-go) |
-| ElevenLabs | agent_8401kkzx0edafhbb0c56a04d1kmb (Baylio agent) |
-| Test number | (844) 875-2441 / +18448752441 |
-| GitHub | github.com/asayeed95/baylio (private) |
+| Twilio | Pay-as-you-go account (SID in env: `TWILIO_ACCOUNT_SID`) |
+| ElevenLabs | Baylio conversational AI agent (ID in env: `ELEVENLABS_AGENT_ID`) |
+| Test number | Configured in shop settings (stored in `shops.twilioPhoneNumber`) |
+| GitHub | github.com/asayeed95/baylio |
 
 ---
 

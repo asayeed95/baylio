@@ -13,7 +13,7 @@
  * (Bull, BullMQ, or n8n webhooks).
  */
 import { getDb } from "../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
 
@@ -240,23 +240,36 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
           overageCharge: overageCharge.toFixed(2),
         });
 
-        // Update subscription used minutes
+        // P0 FIX: Atomic SQL increment prevents race condition on concurrent calls
+        // Non-atomic read-modify-write would under-bill if two calls complete simultaneously
         await db
           .update(subscriptions)
-          .set({ usedMinutes: sub.usedMinutes + minutesUsed })
+          .set({ usedMinutes: sql`${subscriptions.usedMinutes} + ${minutesUsed}` })
           .where(eq(subscriptions.id, sub.id));
       }
     }
 
     // Step 4: Send notification for high-value leads
-    if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
+    // P0 FIX: Use analysis.estimatedRevenue (fresh from LLM) not call.estimatedRevenue
+    // (call object was fetched before analysis ran, so it has the stale DB value)
+    const freshRevenue = call.transcription
+      ? parseFloat(
+          (await db.select({ estimatedRevenue: callLogs.estimatedRevenue })
+            .from(callLogs)
+            .where(eq(callLogs.id, callLogId))
+            .limit(1)
+          )[0]?.estimatedRevenue?.toString() || "0"
+        )
+      : 0;
+
+    if (freshRevenue > 200) {
       await db.insert(notifications).values({
         userId: call.ownerId,
         shopId: call.shopId,
         type: "high_value_lead",
         title: "High-Value Lead Detected",
-        message: `A caller inquired about services worth an estimated $${call.estimatedRevenue}. Review the call log for details.`,
-        metadata: { callLogId, estimatedRevenue: call.estimatedRevenue },
+        message: `A caller inquired about services worth an estimated $${freshRevenue.toFixed(2)}. Review the call log for details.`,
+        metadata: { callLogId, estimatedRevenue: freshRevenue },
       });
     }
 

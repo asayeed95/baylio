@@ -121,3 +121,13 @@
 
 ## Bug: Application Error on Call to (844) 875-2441
 - [ ] Diagnose and fix Twilio "application error" when calling the test number
+
+## Phase 19: Claude Code Audit Fixes (P0/P1)
+- [ ] P0: Add fetch timeout to ElevenLabs Register Call API (twilioWebhooks.ts)
+- [ ] P0: Fix stale estimatedRevenue check - use analysis result not DB value (postCallPipeline.ts:252)
+- [ ] P0: Make usedMinutes increment atomic SQL to prevent race condition (postCallPipeline.ts:227-247)
+- [ ] P0: Wire processCompletedCall() from /status webhook in twilioWebhooks.ts
+- [ ] P1: Fix wrong timestamps on call logs (twilioWebhooks.ts:327-328)
+- [ ] P1: Eliminate triple DB query on cold cache (twilioWebhooks.ts:150-225)
+- [ ] P1: Sanitize customSystemPrompt to prevent prompt injection (promptCompiler.ts:228)
+- [ ] Scrub sensitive data (Twilio SID, ElevenLabs agent ID, phone number) from README.md

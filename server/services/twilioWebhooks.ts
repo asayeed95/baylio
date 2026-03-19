@@ -19,10 +19,14 @@
 import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
 import { compileSystemPrompt, compileGreeting, type ShopContext } from "./promptCompiler";
+import { processCompletedCall, processMissedCall } from "./postCallPipeline";
 import { getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { shops, agentConfigs } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
+
+/** Timeout for ElevenLabs Register Call API — prevents dead air on slow responses */
+const ELEVENLABS_TIMEOUT_MS = 8000;
 
 const twilioRouter = Router();
 
@@ -88,38 +92,47 @@ async function registerElevenLabsCall(
   toNumber: string,
   shopContext?: ShopContext
 ): Promise<string> {
-  const response = await fetch(
-    "https://api.elevenlabs.io/v1/convai/twilio/register-call",
-    {
-      method: "POST",
-      headers: {
-        "xi-api-key": ENV.elevenLabsApiKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        agent_id: elevenLabsAgentId,
-        from_number: fromNumber,
-        to_number: toNumber,
-        direction: "inbound",
-        conversation_initiation_client_data: {
-          dynamic_variables: {
-            caller_number: fromNumber,
-            shop_name: shopContext?.shopName || "Auto Repair Shop",
-            agent_name: shopContext?.agentName || "Baylio",
-          },
+  // P0 FIX: AbortController timeout prevents dead air if ElevenLabs is slow
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), ELEVENLABS_TIMEOUT_MS);
+
+  try {
+    const response = await fetch(
+      "https://api.elevenlabs.io/v1/convai/twilio/register-call",
+      {
+        method: "POST",
+        signal: controller.signal,
+        headers: {
+          "xi-api-key": ENV.elevenLabsApiKey,
+          "Content-Type": "application/json",
         },
-      }),
-    }
-  );
-
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(
-      `ElevenLabs Register Call failed (${response.status}): ${errorText}`
+        body: JSON.stringify({
+          agent_id: elevenLabsAgentId,
+          from_number: fromNumber,
+          to_number: toNumber,
+          direction: "inbound",
+          conversation_initiation_client_data: {
+            dynamic_variables: {
+              caller_number: fromNumber,
+              shop_name: shopContext?.shopName || "Auto Repair Shop",
+              agent_name: shopContext?.agentName || "Baylio",
+            },
+          },
+        }),
+      }
     );
-  }
 
-  return await response.text();
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `ElevenLabs Register Call failed (${response.status}): ${errorText}`
+      );
+    }
+
+    return await response.text();
+  } finally {
+    clearTimeout(timeoutId);
+  }
 }
 
 /**
@@ -314,6 +327,13 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
 
           if (shopResult.length > 0) {
             const shop = shopResult[0];
+
+            // P1 FIX: Use call start/end timestamps derived from duration
+            // Twilio sends CallDuration at call end; back-calculate start time
+            const callEndedAt = new Date();
+            const durationSecs = parseInt(CallDuration) || 0;
+            const callStartedAt = new Date(callEndedAt.getTime() - durationSecs * 1000);
+
             await db.insert(callLogs).values({
               shopId: shop.id,
               ownerId: shop.ownerId,
@@ -321,11 +341,31 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
               callerPhone: From,
               direction: "inbound",
               status: CallStatus === "completed" ? "completed" : "missed",
-              duration: parseInt(CallDuration) || 0,
+              duration: durationSecs,
               recordingUrl: RecordingUrl || null,
-              callStartedAt: new Date(),
-              callEndedAt: new Date(),
+              callStartedAt,
+              callEndedAt,
             });
+
+            // P0 FIX: Wire processCompletedCall so post-call pipeline actually runs
+            if (CallStatus === "completed") {
+              // Get the inserted call log ID
+              const newLog = await db
+                .select({ id: callLogs.id })
+                .from(callLogs)
+                .where(eq(callLogs.twilioCallSid, CallSid))
+                .limit(1);
+
+              if (newLog.length > 0) {
+                // Run post-call pipeline async — transcription, analysis, billing, notifications
+                setImmediate(() => processCompletedCall(newLog[0].id));
+              }
+            } else {
+              // P0 FIX: Wire processMissedCall for missed/busy/no-answer calls
+              setImmediate(() =>
+                processMissedCall(shop.id, shop.ownerId, From, callEndedAt)
+              );
+            }
           }
         }
       } catch (err) {
