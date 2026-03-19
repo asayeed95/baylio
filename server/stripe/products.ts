@@ -5,28 +5,65 @@
  * These are created in Stripe on first use and cached by price ID.
  * 
  * Tier structure:
+ * - Pilot: $149/mo, 150 minutes, 1 location, 1 line, after-hours only, 30-day no-commitment trial
  * - Starter: $199/mo, 300 minutes
  * - Pro: $349/mo, 750 minutes (most popular)
  * - Elite: $599/mo, 1500 minutes
  * 
  * Additional charges:
- * - Setup fee: $500-$2,000 (one-time, per location)
+ * - Setup fee: $500-$2,000 (one-time, per location) — waived for Pilot
  * - Overage: $0.15/minute beyond included
- * - Annual billing: 20% discount
+ * - Annual billing: 20% discount (not available for Pilot)
  */
 
 export interface BaylioTier {
-  id: "starter" | "pro" | "elite";
+  id: "pilot" | "starter" | "pro" | "elite";
   name: string;
   description: string;
   monthlyPrice: number; // in cents
-  annualPrice: number; // in cents (per month, billed annually)
+  annualPrice: number; // in cents (per month, billed annually) — 0 if not available
   includedMinutes: number;
   overageRate: number; // dollars per minute
   features: string[];
+  /** Maximum number of locations for this tier */
+  maxLocations: number;
+  /** Maximum number of phone lines for this tier */
+  maxLines: number;
+  /** Whether this tier is after-hours only */
+  afterHoursOnly: boolean;
+  /** Trial period in days (0 = no trial) */
+  trialDays: number;
+  /** Whether setup fee is waived for this tier */
+  setupFeeWaived: boolean;
+  /** Whether annual billing is available */
+  annualAvailable: boolean;
 }
 
 export const TIERS: Record<string, BaylioTier> = {
+  pilot: {
+    id: "pilot",
+    name: "Baylio Pilot",
+    description: "Low-friction entry point — try Baylio risk-free for 30 days",
+    monthlyPrice: 14900, // $149
+    annualPrice: 0, // Not available for Pilot
+    includedMinutes: 150,
+    overageRate: 0.15,
+    features: [
+      "AI receptionist (150 min/mo)",
+      "1 location, 1 phone line",
+      "After-hours coverage only",
+      "Call logging & transcription",
+      "SMS recaps to owner",
+      "30-day no-commitment trial",
+      "No setup fee",
+    ],
+    maxLocations: 1,
+    maxLines: 1,
+    afterHoursOnly: true,
+    trialDays: 30,
+    setupFeeWaived: true,
+    annualAvailable: false,
+  },
   starter: {
     id: "starter",
     name: "Baylio Starter",
@@ -42,6 +79,12 @@ export const TIERS: Record<string, BaylioTier> = {
       "Email notifications",
       "Business hours configuration",
     ],
+    maxLocations: 1,
+    maxLines: 1,
+    afterHoursOnly: false,
+    trialDays: 7,
+    setupFeeWaived: false,
+    annualAvailable: true,
   },
   pro: {
     id: "pro",
@@ -59,6 +102,12 @@ export const TIERS: Record<string, BaylioTier> = {
       "SMS notifications to owner",
       "Custom AI voice & persona",
     ],
+    maxLocations: 3,
+    maxLines: 3,
+    afterHoursOnly: false,
+    trialDays: 7,
+    setupFeeWaived: false,
+    annualAvailable: true,
   },
   elite: {
     id: "elite",
@@ -77,12 +126,19 @@ export const TIERS: Record<string, BaylioTier> = {
       "Priority support",
       "Weekly performance reports",
     ],
+    maxLocations: 5,
+    maxLines: 5,
+    afterHoursOnly: false,
+    trialDays: 7,
+    setupFeeWaived: false,
+    annualAvailable: true,
   },
 };
 
 /**
  * Setup fee tiers based on number of locations.
  * Multi-location operators get volume discounts.
+ * Pilot tier has setup fee waived.
  */
 export const SETUP_FEES = {
   single: 50000, // $500 for 1 location
@@ -97,4 +153,25 @@ export function getTierConfig(tierId: string): BaylioTier | undefined {
 
 export function getOverageCharge(minutes: number, rate: number = 0.15): number {
   return Math.round(minutes * rate * 100) / 100; // dollars
+}
+
+/**
+ * Check if a tier supports after-hours-only mode.
+ * Pilot tier is restricted to after-hours coverage.
+ */
+export function isAfterHoursOnly(tierId: string): boolean {
+  return TIERS[tierId]?.afterHoursOnly ?? false;
+}
+
+/**
+ * Get the setup fee for a tier (0 if waived).
+ */
+export function getSetupFee(tierId: string, locationCount: number = 1): number {
+  const tier = TIERS[tierId];
+  if (!tier || tier.setupFeeWaived) return 0;
+
+  if (locationCount <= 1) return SETUP_FEES.single;
+  if (locationCount <= 3) return SETUP_FEES.multi_3;
+  if (locationCount <= 5) return SETUP_FEES.multi_5;
+  return SETUP_FEES.enterprise;
 }

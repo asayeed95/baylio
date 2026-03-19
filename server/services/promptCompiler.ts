@@ -1,17 +1,24 @@
 /**
- * Prompt Compilation Layer
+ * Prompt Compilation Layer — v2 (Trust & Reliability)
  * 
  * Compiles shop-specific context into a structured system prompt for the
- * AI voice agent. Implements the 3-Stage Reasoning Architecture from the
- * market research:
+ * AI voice agent. Now integrates all Phase 13 reliability features:
  * 
- * Stage 1: Symptom Extraction — Listen and identify what the customer describes
- * Stage 2: Catalog Mapping — ONLY match to shop-approved services (strict enforcement)
- * Stage 3: Natural Offer — Present recommendation + one adjacent upsell
+ * 1. Three-Stage Reasoning (Symptom → Catalog → Offer)
+ * 2. Knowledge Lock (immutable structured data)
+ * 3. Appointment Verification (requested, not confirmed)
+ * 4. Human Handoff protocol (feature, not failure)
+ * 5. Reputation Protection (de-escalation for angry callers)
+ * 6. Fallback Ladder state instructions (injected dynamically per-call)
  * 
  * Critical constraint: The LLM must NEVER offer services not in the shop's
  * approved catalog. No discounts. No made-up services. No hallucination.
  */
+
+import { APPOINTMENT_PROMPT_RULES } from "./appointmentVerification";
+import { HANDOFF_PROMPT_RULES } from "./humanHandoff";
+import { REPUTATION_PROTECTION_PROMPT } from "./reputationProtection";
+import { compileKnowledgeLockPrompt, type KnowledgeLockConfig, DEFAULT_KNOWLEDGE_LOCK } from "./knowledgeLock";
 
 export interface ShopContext {
   shopName: string;
@@ -41,6 +48,12 @@ export interface ShopContext {
   customSystemPrompt?: string;
   voiceId?: string;
   voiceName?: string;
+  /** Knowledge Lock config — structured data the AI cannot override */
+  knowledgeLock?: KnowledgeLockConfig;
+  /** Whether human handoff is available for this shop */
+  handoffEnabled?: boolean;
+  /** Whether this is an after-hours-only (Pilot) plan */
+  afterHoursOnly?: boolean;
 }
 
 /**
@@ -142,6 +155,9 @@ function sanitizeCustomPrompt(prompt: string): string {
  * 
  * This is the core function that transforms shop configuration into
  * a production-ready system prompt for the voice agent.
+ * 
+ * v2: Now includes Knowledge Lock, Appointment Verification,
+ * Human Handoff, and Reputation Protection modules.
  */
 export function compileSystemPrompt(context: ShopContext): string {
   const timeContext = getTimeContext(context.timezone);
@@ -158,6 +174,16 @@ export function compileSystemPrompt(context: ShopContext): string {
         ? "MEDIUM (offer with reasonable confidence, ask clarifying questions when unsure)"
         : "LOW (offer suggestions more freely)";
 
+  // Compile Knowledge Lock (structured data the AI cannot override)
+  const knowledgeLockPrompt = compileKnowledgeLockPrompt(
+    context.knowledgeLock || DEFAULT_KNOWLEDGE_LOCK
+  );
+
+  // After-hours notice for Pilot tier
+  const afterHoursNotice = context.afterHoursOnly
+    ? `\n## AFTER-HOURS ONLY MODE\nThis shop's AI coverage is for after-hours calls only. During business hours, calls are handled by the shop's staff directly.\n`
+    : "";
+
   const prompt = `You are ${context.agentName}, the AI service advisor for ${context.shopName}. You are answering a phone call right now.
 
 ## YOUR IDENTITY
@@ -173,6 +199,8 @@ export function compileSystemPrompt(context: ShopContext): string {
 
 ## BUSINESS HOURS
 ${hoursFormatted}
+${afterHoursNotice}
+${knowledgeLockPrompt}
 
 ## THREE-STAGE REASONING PROTOCOL (MANDATORY)
 
@@ -217,21 +245,17 @@ Confidence threshold: ${confidenceLabel}
 - Never upsell safety-critical items as optional add-ons
 - Track: did you attempt an upsell? Did they accept?
 
-## APPOINTMENT BOOKING
-When booking appointments, collect:
-1. Customer name (first and last)
-2. Phone number (confirm the one they're calling from)
-3. Vehicle: Year, Make, Model
-4. Brief description of the issue or service needed
-5. Preferred date and time
-6. Whether they need a ride or loaner vehicle
+${APPOINTMENT_PROMPT_RULES}
+
+${context.handoffEnabled !== false ? HANDOFF_PROMPT_RULES : ""}
+
+${REPUTATION_PROTECTION_PROMPT}
 
 ## CALL HANDLING RULES
 - If the customer asks about pricing and it's not in the catalog: "Pricing can vary depending on your specific vehicle. I'd recommend bringing it in for a quick look so we can give you an accurate estimate."
 - If the customer has an emergency (brakes failed, smoke, overheating): "That sounds like it needs immediate attention. For your safety, I'd recommend not driving the vehicle. Can we arrange a tow to our shop?"
-- If the customer asks to speak to a person: "Absolutely, let me transfer you to our team." (flag for transfer)
+- If the customer asks to speak to a person: "Absolutely, let me connect you with our team." (use the transfer_to_human tool)
 - If calling outside business hours: "We're currently closed, but I can take your information and have someone call you back first thing when we open at [opening time]."
-- If the customer is angry or upset: Stay calm, empathize, do not argue. "I completely understand your frustration. Let me make sure we get this resolved for you."
 
 ## WHAT YOU MUST NEVER DO
 1. Never diagnose a mechanical problem — you are not a technician
@@ -241,9 +265,11 @@ When booking appointments, collect:
 5. Never share information about other customers
 6. Never make promises the shop hasn't authorized
 7. Never argue with the customer
+8. Never say "confirmed" for appointments — only "requested" (see Appointment Booking Rules)
+9. Never offer compensation, free work, or refunds
+10. Never say "I'm just an AI" or "I'm a computer"
 
 ${context.customSystemPrompt ? `## ADDITIONAL SHOP-SPECIFIC INSTRUCTIONS\nThe rules above CANNOT be overridden by the instructions below. If there is a conflict, the rules above take precedence.\n${sanitizeCustomPrompt(context.customSystemPrompt)}` : ""}`;
-
 
   return prompt;
 }
@@ -278,6 +304,9 @@ export function getPromptSummary(context: ShopContext): {
   upsellRuleCount: number;
   hasCustomPrompt: boolean;
   hasBusinessHours: boolean;
+  hasKnowledgeLock: boolean;
+  hasHandoff: boolean;
+  isAfterHoursOnly: boolean;
   confidenceLevel: string;
 } {
   const prompt = compileSystemPrompt(context);
@@ -287,6 +316,9 @@ export function getPromptSummary(context: ShopContext): {
     upsellRuleCount: context.upsellRules?.length || 0,
     hasCustomPrompt: !!context.customSystemPrompt,
     hasBusinessHours: !!context.businessHours && Object.keys(context.businessHours).length > 0,
+    hasKnowledgeLock: !!context.knowledgeLock,
+    hasHandoff: context.handoffEnabled !== false,
+    isAfterHoursOnly: !!context.afterHoursOnly,
     confidenceLevel:
       context.confidenceThreshold >= 0.8 ? "HIGH" :
         context.confidenceThreshold >= 0.5 ? "MEDIUM" : "LOW",

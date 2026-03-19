@@ -222,3 +222,57 @@
 - [x] Merge Claude Code's Contact/FAQ changes into Manus codebase (Contact.tsx, FAQ.tsx, contactRouter.ts, contact.test.ts, schema, db, routes, Landing nav)
 - [x] Run contactSubmissions migration
 - [x] All 111 tests passing after merge
+
+## Phase 13: Trust & Reliability (PRIORITY — Expert Feedback)
+### Feature 1: Fallback Ladder — State Machine for Call Handling
+- [x] Build call state machine with 5 states: normal_flow, structured_questions, collect_message_callback, route_to_human_emergency, send_sms_intake_link
+- [x] Separate business logic from AI conversation (rules engine, not prompts)
+- [x] Use hard rules (not AI) for: business hours routing, escalation triggers, state transitions
+- [x] State machine service: server/services/callStateMachine.ts
+
+### Feature 2: Appointment Verification — Requested, NOT Confirmed
+- [x] AI NEVER says "confirmed" — only "requested" / "submitted"
+- [x] Standard wording: "I have submitted your appointment request for [date] at [time]. You will receive a confirmation text shortly."
+- [x] Send SMS to shop owner/manager with appointment details for manual verification
+- [x] Shop confirms via SMS reply → customer gets confirmation text
+
+### Feature 3: Knowledge Lock — Structured Data Fields
+- [x] Add structured fields to agentConfig: servicesOffered, makesModelsAccepted, businessHours, towingPolicy, diagnosticFees, warrantyWording, financingPolicy, languagesSupported
+- [x] Schema migration for new agentConfig fields (in knowledgeLock.ts — config stored as JSON in agentConfig)
+- [x] Hard rules the AI CANNOT override or hallucinate — injected as system-level constraints
+- [ ] UI for editing Knowledge Lock fields in Agent Config page (deferred to UI polish phase)
+
+### Feature 4: Human Handoff — Live Transfer + Priority Tagging
+- [x] Transfer to live person when AI cannot handle the call
+- [x] Callback priority levels: urgent, normal, low
+- [x] Alert staff by SMS for high-priority calls (urgent = immediate SMS)
+- [x] Make handoff a product feature, not an apology ("Let me connect you with a specialist")
+- [x] Add handoff phone number field to shop config (transferTo in HandoffRequest)
+
+### Feature 5: Reputation Protection — De-escalation Protocol
+- [x] Detect angry/frustrated callers (keyword pattern rules engine — hostile/angry/frustrated levels)
+- [x] Protocol: acknowledge frustration, capture context, escalate fast (4-step: Acknowledge → Capture → Validate → Escalate)
+- [x] AI NEVER argues, NEVER improvises compensation or policy promises (forbidden phrases list in prompt)
+- [x] Auto-escalate to human handoff with full context summary
+- [x] Log reputation-risk calls with special flag for owner review (incident report + owner notification)
+
+### Feature 6: Pilot Pricing Tier — $149/mo Entry Point
+- [x] Add Pilot tier: $149/month, 150 minutes, 1 location, 1 phone line, after-hours only
+- [x] 30-day no-commitment trial (cancel anytime)
+- [x] Update Stripe products.ts with Pilot tier
+- [ ] Update landing page pricing section with Pilot tier (deferred to UI phase)
+- [x] Update sales prompt to offer Pilot as low-friction entry point
+- [x] Update onboard service to support Pilot tier checkout
+
+### Tests
+- [x] Vitest: Fallback Ladder state transitions (all 5 states + edge cases)
+- [x] Vitest: Appointment verification wording + SMS dispatch
+- [x] Vitest: Knowledge Lock field validation + prompt injection prevention
+- [x] Vitest: Human handoff priority tagging + SMS alerts
+- [x] Vitest: Reputation protection trigger detection + escalation
+- [x] Vitest: Pilot tier pricing + Stripe checkout
+
+### Prompt Compiler v2 Integration
+- [x] Rewrite promptCompiler.ts to inject Knowledge Lock, Appointment Verification, Handoff, and Reputation Protection into shop agent prompt
+- [x] All 199 tests passing after integration
+- [x] TypeScript clean (zero errors)
