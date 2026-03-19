@@ -17,14 +17,14 @@ import { Label } from "@/components/ui/label";
 import {
   Store,
   Plus,
-  Phone,
-  BarChart3,
-  Bot,
-  Settings,
+
+
+
+
   ArrowRight,
-  PhoneCall,
-  Calendar,
-  DollarSign,
+
+
+
 } from "lucide-react";
 import { useState } from "react";
 import { useLocation } from "wouter";
@@ -170,8 +170,11 @@ function DashboardContent() {
           {shops.map((shop) => (
             <Card
               key={shop.id}
-              className="cursor-pointer hover:shadow-md transition-shadow border"
+              role="link"
+              tabIndex={0}
+              className="cursor-pointer hover:shadow-md transition-shadow border focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => setLocation(`/shops/${shop.id}`)}
+              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocation(`/shops/${shop.id}`); } }}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">

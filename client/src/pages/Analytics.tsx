@@ -146,7 +146,7 @@ function AnalyticsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button variant="ghost" size="icon" aria-label="Back to shop details" onClick={() => setLocation(`/shops/${shopId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">

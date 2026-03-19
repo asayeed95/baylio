@@ -286,3 +286,16 @@
 - [x] Change 1: Hero rewrite — "$28,000+" headline, new subheadline with full value prop
 - [x] Change 2: CTA buttons — "Get My Free Missed Call Audit" + "Hear a Live Demo Call" + bottom CTA rewrite
 - [x] Change 3: Feature cards — 6 cards rewritten with revenue-focused copy
+
+## Phase 29: GitHub QA Merge + TypeScript Cleanup
+- [x] Add baylio.io to Vite allowedHosts (from Claude Code fix)
+- [x] Fix all TypeScript errors from QA merge (unused imports, type casts)
+- [x] Copy new test files from GitHub QA audit
+- [x] Add Pilot tier ($149/mo) to landing page pricing cards
+- [ ] Build lead capture form for "Get My Free Missed Call Audit" CTA
+
+## Phase 30: CRITICAL — baylio.io Domain Not Loading
+- [x] Diagnose DNS resolution for baylio.io (Namecheap URL forwarding causing redirect loop)
+- [ ] Verify Manus deployment is published and accessible
+- [ ] Fix domain configuration or guide user through Manus Settings > Domains
+- [ ] Confirm baylio.io loads correctly

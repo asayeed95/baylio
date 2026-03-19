@@ -7,16 +7,16 @@ import { getLoginUrl } from "@/const";
 import {
   Phone,
   BarChart3,
-  Bot,
+
   Calendar,
   TrendingUp,
   Shield,
   Clock,
-  DollarSign,
+
   CheckCircle2,
   ArrowRight,
   Zap,
-  Building2,
+
   Calculator,
   Users,
   MessageSquare,
@@ -76,16 +76,33 @@ const FEATURES = [
 
 const PRICING_TIERS = [
   {
+    name: "Pilot",
+    price: 149,
+    description: "Try Baylio risk-free on your after-hours calls",
+    minutes: 150,
+    badge: "30-Day Trial",
+    features: [
+      "AI receptionist (150 min/mo)",
+      "After-hours coverage only",
+      "Call logging & transcription",
+      "SMS recap after every call",
+      "Cancel anytime — no contract",
+    ],
+    cta: "Start 30-Day Trial",
+    popular: false,
+  },
+  {
     name: "Starter",
     price: 199,
     description: "For single-location shops getting started",
     minutes: 300,
+    badge: null,
     features: [
       "AI receptionist (300 min/mo)",
+      "24/7 coverage (all hours)",
       "Call logging & transcription",
       "Basic analytics dashboard",
-      "Email notifications",
-      "Business hours configuration",
+      "Email + SMS notifications",
     ],
     cta: "Start Free Trial",
     popular: false,
@@ -95,12 +112,12 @@ const PRICING_TIERS = [
     price: 349,
     description: "For busy shops that need more capacity",
     minutes: 750,
+    badge: null,
     features: [
       "Everything in Starter",
       "750 minutes per month",
       "Calendar integration",
       "Advanced analytics & trends",
-      "SMS notifications to owner",
       "Custom AI voice & persona",
     ],
     cta: "Start Free Trial",
@@ -111,6 +128,7 @@ const PRICING_TIERS = [
     price: 599,
     description: "For multi-location operators and high-volume shops",
     minutes: 1500,
+    badge: null,
     features: [
       "Everything in Pro",
       "1,500 minutes per month",
@@ -118,7 +136,6 @@ const PRICING_TIERS = [
       "CRM integration",
       "Multi-location management",
       "Priority support",
-      "Weekly performance reports",
     ],
     cta: "Contact Sales",
     popular: false,
@@ -412,14 +429,19 @@ export default function Landing() {
       <section id="pricing" className="container py-20">
         <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Choose the plan that fits your shop. All plans include a 14-day free trial. No contracts.
+          Start with the Pilot to test Baylio risk-free on your after-hours calls. Upgrade anytime.
         </p>
-        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
           {PRICING_TIERS.map((tier) => (
             <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary shadow-lg" : ""}`}>
               {tier.popular && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                   <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
+                </div>
+              )}
+              {tier.badge && (
+                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                  <Badge className="bg-emerald-500 text-white">{tier.badge}</Badge>
                 </div>
               )}
               <CardHeader className="text-center pb-4">

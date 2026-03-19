@@ -170,6 +170,7 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
     const call = callResults[0];
 
     // Step 1: Analyze transcription if available
+    let analysisRevenue = 0;
     if (call.transcription) {
       // Get shop's service catalog for context
       const shopResults = await db
@@ -179,13 +180,16 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         .limit(1);
 
       const shop = shopResults[0];
-      const catalog = ((shop?.serviceCatalog as any) || []).map((s: any) => s.name);
+      const rawCatalog = (shop?.serviceCatalog ?? []) as Array<{ name: string; category: string; price?: number; description?: string }>;
+      const catalog = rawCatalog.map((s) => s.name);
 
       const analysis = await analyzeTranscription(
         call.transcription,
         shop?.name || "Auto Repair Shop",
         catalog
       );
+
+      analysisRevenue = analysis.estimatedRevenue;
 
       // Step 2: Update call log with analysis
       await db
@@ -250,26 +254,15 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
     }
 
     // Step 4: Send notification for high-value leads
-    // P0 FIX: Use analysis.estimatedRevenue (fresh from LLM) not call.estimatedRevenue
-    // (call object was fetched before analysis ran, so it has the stale DB value)
-    const freshRevenue = call.transcription
-      ? parseFloat(
-          (await db.select({ estimatedRevenue: callLogs.estimatedRevenue })
-            .from(callLogs)
-            .where(eq(callLogs.id, callLogId))
-            .limit(1)
-          )[0]?.estimatedRevenue?.toString() || "0"
-        )
-      : 0;
-
-    if (freshRevenue > 200) {
+    // Use analysis result directly instead of re-querying the DB
+    if (analysisRevenue > 200) {
       await db.insert(notifications).values({
         userId: call.ownerId,
         shopId: call.shopId,
         type: "high_value_lead",
         title: "High-Value Lead Detected",
-        message: `A caller inquired about services worth an estimated $${freshRevenue.toFixed(2)}. Review the call log for details.`,
-        metadata: { callLogId, estimatedRevenue: freshRevenue },
+        message: `A caller inquired about services worth an estimated $${analysisRevenue.toFixed(2)}. Review the call log for details.`,
+        metadata: { callLogId, estimatedRevenue: analysisRevenue },
       });
     }
 

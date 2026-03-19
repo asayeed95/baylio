@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import {
   getSubscriptionByShop,
   createSubscription,

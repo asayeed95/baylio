@@ -430,7 +430,7 @@ describe("subscription", () => {
     const caller = appRouter.createCaller(createContext());
     await expect(
       caller.subscription.create({ shopId: 1, tier: "starter" })
-    ).rejects.toThrow("Subscription already exists");
+    ).rejects.toThrow("Subscription already exists for this shop");
   });
 
   it("subscription.changeTier upgrades the tier", async () => {

@@ -14,8 +14,8 @@ import express from "express";
 import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { subscriptions, shops, users } from "../../drizzle/schema";
-import { TIERS, SETUP_FEES, getTierConfig } from "./products";
+import { subscriptions } from "../../drizzle/schema";
+import { getTierConfig } from "./products";
 import { autoProvisionAccount, type ProvisionRequest } from "../services/autoProvisionService";
 
 const router = express.Router();
@@ -23,7 +23,7 @@ const router = express.Router();
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  return new Stripe(key, { apiVersion: "2025-03-31.basil" as any });
+  return new Stripe(key, { apiVersion: "2025-03-31.basil" as Stripe.LatestApiVersion });
 }
 
 async function getDb() {

@@ -119,7 +119,7 @@ When transferring to a live person:
  */
 export function generateTransferTwiML(
   transferTo: string,
-  callerContext: string
+  _callerContext: string
 ): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>

@@ -18,7 +18,7 @@
  * - This prevents the "made up number" objection from shop owners
  */
 import { getDb } from "../db";
-import { eq, and, gte, lte, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import {
   missedCallAudits,
   auditCallEntries,

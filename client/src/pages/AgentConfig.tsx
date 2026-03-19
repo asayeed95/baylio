@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp, Play, Pause, Check, Mic } from "lucide-react";
+import { ArrowLeft, Save, Volume2, MessageSquare, TrendingUp, Play, Pause, Check, Mic } from "lucide-react";
 import { useEffect, useState, useRef, useCallback } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";

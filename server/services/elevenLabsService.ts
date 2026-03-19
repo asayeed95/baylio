@@ -137,30 +137,29 @@ export async function updateConversationalAgent(
   try {
     const client = createClient();
 
-    const payload: Record<string, unknown> = {
-      conversation_config: {},
-    };
+    const conversationConfig: Record<string, unknown> = {};
 
     if (params.systemPrompt || params.firstMessage || params.language) {
-      (payload.conversation_config as any).agent = {};
+      const agent: Record<string, unknown> = {};
       if (params.systemPrompt) {
-        (payload.conversation_config as any).agent.prompt = {
-          prompt: params.systemPrompt,
-        };
+        agent.prompt = { prompt: params.systemPrompt };
       }
       if (params.firstMessage) {
-        (payload.conversation_config as any).agent.first_message = params.firstMessage;
+        agent.first_message = params.firstMessage;
       }
       if (params.language) {
-        (payload.conversation_config as any).agent.language = params.language;
+        agent.language = params.language;
       }
+      conversationConfig.agent = agent;
     }
 
     if (params.voiceId) {
-      (payload.conversation_config as any).tts = {
-        voice_id: params.voiceId,
-      };
+      conversationConfig.tts = { voice_id: params.voiceId };
     }
+
+    const payload: Record<string, unknown> = {
+      conversation_config: conversationConfig,
+    };
 
     if (params.name) {
       payload.name = params.name;

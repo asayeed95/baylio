@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import Stripe from "stripe";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getShopById, getSubscriptionByShop } from "../db";
 import { TIERS, SETUP_FEES, getTierConfig } from "./products";
@@ -15,7 +16,7 @@ import { TIERS, SETUP_FEES, getTierConfig } from "./products";
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  return new Stripe(key, { apiVersion: "2025-03-31.basil" as any });
+  return new Stripe(key, { apiVersion: "2025-03-31.basil" as Stripe.LatestApiVersion });
 }
 
 export const stripeRouter = router({
@@ -34,11 +35,11 @@ export const stripeRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
       }
 
       const tierConfig = getTierConfig(input.tier);
-      if (!tierConfig) throw new Error("Invalid tier");
+      if (!tierConfig) throw new TRPCError({ code: "BAD_REQUEST", message: "Invalid subscription tier" });
 
       const stripe = getStripe();
       const priceInCents =
@@ -97,7 +98,7 @@ export const stripeRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
       }
 
       const stripe = getStripe();
@@ -146,12 +147,12 @@ export const stripeRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
       }
 
       const sub = await getSubscriptionByShop(input.shopId);
       if (!sub?.stripeCustomerId) {
-        throw new Error("No active subscription found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "No active Stripe subscription found" });
       }
 
       const stripe = getStripe();

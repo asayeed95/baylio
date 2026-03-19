@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -13,7 +13,6 @@ import {
   PhoneCall,
   Calendar,
   DollarSign,
-  TrendingUp,
   Clock,
 } from "lucide-react";
 import { useLocation, useParams } from "wouter";
@@ -142,7 +141,7 @@ function ShopDetailContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation("/dashboard")}>
+        <Button variant="ghost" size="icon" aria-label="Back to dashboard" onClick={() => setLocation("/dashboard")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">

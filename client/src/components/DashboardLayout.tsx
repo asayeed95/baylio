@@ -27,7 +27,7 @@ import {
   PanelLeft,
   Phone,
   Store,
-  BarChart3,
+
   ClipboardCheck,
   CreditCard,
   Bell,

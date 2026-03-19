@@ -86,6 +86,7 @@ function generateVoicemailTwiML(shopName: string): string {
 /**
  * Generate TwiML for after-hours calls.
  */
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function generateAfterHoursTwiML(shopName: string, openTime: string): string {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -323,9 +324,9 @@ async function resolveShopContext(
       city: shop.city || "",
       state: shop.state || "",
       timezone: shop.timezone || "America/New_York",
-      businessHours: (shop.businessHours as any) || {},
-      serviceCatalog: (shop.serviceCatalog as any) || [],
-      upsellRules: (agent?.upsellRules as any) || [],
+      businessHours: (shop.businessHours ?? {}) as ShopContext["businessHours"],
+      serviceCatalog: (shop.serviceCatalog ?? []) as ShopContext["serviceCatalog"],
+      upsellRules: (agent?.upsellRules ?? []) as ShopContext["upsellRules"],
       confidenceThreshold: parseFloat(agent?.confidenceThreshold?.toString() || "0.80"),
       maxUpsellsPerCall: agent?.maxUpsellsPerCall || 1,
       greeting: agent?.greeting || "",
@@ -420,7 +421,7 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
   const startTime = Date.now();
 
   try {
-    const { To, From, CallSid, CallStatus } = req.body;
+    const { To, From, CallSid } = req.body;
 
     console.log(`[CALL] Inbound call: ${From} → ${To} (SID: ${CallSid})`);
 
@@ -644,6 +645,21 @@ twilioRouter.post("/transcription-complete", async (req: Request, res: Response)
     res.type("text/xml");
     res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   }
+});
+
+/**
+ * GET /api/twilio/health
+ * 
+ * Health check endpoint for monitoring.
+ */
+twilioRouter.get("/health", (_req: Request, res: Response) => {
+  const cacheStats = contextCache.getStats();
+  res.json({
+    status: "ok",
+    service: "baylio-twilio-bridge",
+    cache: cacheStats,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 export { twilioRouter };

@@ -1,21 +1,42 @@
-import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
+/**
+ * Database Access Layer
+ *
+ * Provides typed query helpers for all Baylio domain entities.
+ * All functions use Drizzle ORM for type-safe parameterized queries.
+ * Each function lazily initializes the DB connection on first use.
+ */
+import { and, count, desc, eq, gte, lte, sql } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
+
 import {
-  InsertUser, users,
-  shops, InsertShop,
-  organizations, InsertOrganization,
-  agentConfigs, InsertAgentConfig,
-  callLogs, InsertCallLog,
-  missedCallAudits, InsertMissedCallAudit,
-  subscriptions, InsertSubscription,
-  usageRecords, InsertUsageRecord,
-  notifications, InsertNotification,
-  contactSubmissions, InsertContactSubmission,
+  agentConfigs,
+  callLogs,
+  contactSubmissions,
+  missedCallAudits,
+  notifications,
+  organizations,
+  shops,
+  subscriptions,
+  usageRecords,
+  users,
 } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import type {
+  InsertAgentConfig,
+  InsertCallLog,
+  InsertContactSubmission,
+  InsertMissedCallAudit,
+  InsertNotification,
+  InsertOrganization,
+  InsertShop,
+  InsertSubscription,
+  InsertUsageRecord,
+  InsertUser,
+} from "../drizzle/schema";
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
+/** Get or lazily create the database connection singleton. */
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
@@ -28,6 +49,7 @@ export async function getDb() {
   return _db;
 }
 
+/** Upsert a user by openId. Creates on first sign-in, updates on subsequent. */
 export async function upsertUser(user: InsertUser): Promise<void> {
   if (!user.openId) {
     throw new Error("User openId is required for upsert");
@@ -87,6 +109,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 }
 
+/** Look up a user by their OAuth openId. Returns undefined if not found. */
 export async function getUserByOpenId(openId: string) {
   const db = await getDb();
   if (!db) {
@@ -100,6 +123,8 @@ export async function getUserByOpenId(openId: string) {
 }
 
 // ─── Organizations ────────────────────────────────────────────────────
+
+/** Create a new organization and return its ID. */
 export async function createOrganization(data: InsertOrganization) {
   const db = await getDb();
   if (!db) return undefined;
@@ -107,6 +132,7 @@ export async function createOrganization(data: InsertOrganization) {
   return result[0].insertId;
 }
 
+/** List all organizations owned by a user. */
 export async function getOrganizationsByOwner(ownerId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -114,6 +140,8 @@ export async function getOrganizationsByOwner(ownerId: number) {
 }
 
 // ─── Shops ────────────────────────────────────────────────────────────
+
+/** Create a new shop and return its ID. */
 export async function createShop(data: InsertShop) {
   const db = await getDb();
   if (!db) return undefined;
@@ -121,12 +149,14 @@ export async function createShop(data: InsertShop) {
   return result[0].insertId;
 }
 
+/** List all shops owned by a user, newest first. */
 export async function getShopsByOwner(ownerId: number) {
   const db = await getDb();
   if (!db) return [];
   return db.select().from(shops).where(eq(shops.ownerId, ownerId)).orderBy(desc(shops.createdAt));
 }
 
+/** Get a shop by its primary key. Returns undefined if not found. */
 export async function getShopById(id: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -134,12 +164,14 @@ export async function getShopById(id: number) {
   return result[0];
 }
 
+/** Update a shop's fields by ID. */
 export async function updateShop(id: number, data: Partial<InsertShop>) {
   const db = await getDb();
   if (!db) return;
   await db.update(shops).set(data).where(eq(shops.id, id));
 }
 
+/** Delete a shop by ID. */
 export async function deleteShop(id: number) {
   const db = await getDb();
   if (!db) return;
@@ -147,6 +179,8 @@ export async function deleteShop(id: number) {
 }
 
 // ─── Agent Configs ────────────────────────────────────────────────────
+
+/** Get the AI agent configuration for a shop. */
 export async function getAgentConfigByShop(shopId: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -154,6 +188,7 @@ export async function getAgentConfigByShop(shopId: number) {
   return result[0];
 }
 
+/** Insert or update the agent config for a shop. */
 export async function upsertAgentConfig(data: InsertAgentConfig) {
   const db = await getDb();
   if (!db) return undefined;
@@ -167,6 +202,8 @@ export async function upsertAgentConfig(data: InsertAgentConfig) {
 }
 
 // ─── Call Logs ────────────────────────────────────────────────────────
+
+/** Create a call log entry and return its ID. */
 export async function createCallLog(data: InsertCallLog) {
   const db = await getDb();
   if (!db) return undefined;
@@ -174,6 +211,7 @@ export async function createCallLog(data: InsertCallLog) {
   return result[0].insertId;
 }
 
+/** Fetch call logs for a shop with pagination and optional filters. */
 export async function getCallLogsByShop(
   shopId: number,
   opts?: { limit?: number; offset?: number; startDate?: Date; endDate?: Date; status?: string }
@@ -183,7 +221,7 @@ export async function getCallLogsByShop(
   const conditions = [eq(callLogs.shopId, shopId)];
   if (opts?.startDate) conditions.push(gte(callLogs.callStartedAt, opts.startDate));
   if (opts?.endDate) conditions.push(lte(callLogs.callStartedAt, opts.endDate));
-  if (opts?.status) conditions.push(eq(callLogs.status, opts.status as any));
+  if (opts?.status) conditions.push(eq(callLogs.status, opts.status as typeof callLogs.status.enumValues[number]));
   return db.select().from(callLogs)
     .where(and(...conditions))
     .orderBy(desc(callLogs.createdAt))
@@ -191,6 +229,7 @@ export async function getCallLogsByShop(
     .offset(opts?.offset ?? 0);
 }
 
+/** Get total call count for a shop (used for pagination). */
 export async function getCallLogCountByShop(shopId: number) {
   const db = await getDb();
   if (!db) return 0;
@@ -199,6 +238,8 @@ export async function getCallLogCountByShop(shopId: number) {
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────
+
+/** Aggregate analytics (calls, revenue, appointments) for a shop with optional date range. */
 export async function getShopAnalytics(shopId: number, startDate?: Date, endDate?: Date) {
   const db = await getDb();
   if (!db) return null;
@@ -219,6 +260,8 @@ export async function getShopAnalytics(shopId: number, startDate?: Date, endDate
 }
 
 // ─── Missed Call Audits ───────────────────────────────────────────────
+
+/** Create a missed call audit record. */
 export async function createMissedCallAudit(data: InsertMissedCallAudit) {
   const db = await getDb();
   if (!db) return undefined;
@@ -226,6 +269,7 @@ export async function createMissedCallAudit(data: InsertMissedCallAudit) {
   return result[0].insertId;
 }
 
+/** List missed call audits, optionally filtered by shop. */
 export async function getMissedCallAudits(shopId?: number) {
   const db = await getDb();
   if (!db) return [];
@@ -235,6 +279,7 @@ export async function getMissedCallAudits(shopId?: number) {
   return db.select().from(missedCallAudits).orderBy(desc(missedCallAudits.createdAt));
 }
 
+/** Update a missed call audit's fields. */
 export async function updateMissedCallAudit(id: number, data: Partial<InsertMissedCallAudit>) {
   const db = await getDb();
   if (!db) return;
@@ -242,6 +287,8 @@ export async function updateMissedCallAudit(id: number, data: Partial<InsertMiss
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────
+
+/** Get the active subscription for a shop. */
 export async function getSubscriptionByShop(shopId: number) {
   const db = await getDb();
   if (!db) return undefined;
@@ -249,6 +296,7 @@ export async function getSubscriptionByShop(shopId: number) {
   return result[0];
 }
 
+/** Create a new subscription and return its ID. */
 export async function createSubscription(data: InsertSubscription) {
   const db = await getDb();
   if (!db) return undefined;
@@ -256,6 +304,7 @@ export async function createSubscription(data: InsertSubscription) {
   return result[0].insertId;
 }
 
+/** Update a subscription's fields. */
 export async function updateSubscription(id: number, data: Partial<InsertSubscription>) {
   const db = await getDb();
   if (!db) return;
@@ -263,6 +312,8 @@ export async function updateSubscription(id: number, data: Partial<InsertSubscri
 }
 
 // ─── Usage Records ────────────────────────────────────────────────────
+
+/** Record a usage entry for billing. */
 export async function createUsageRecord(data: InsertUsageRecord) {
   const db = await getDb();
   if (!db) return undefined;
@@ -270,6 +321,7 @@ export async function createUsageRecord(data: InsertUsageRecord) {
   return result[0].insertId;
 }
 
+/** Get usage records for a subscription, newest first. */
 export async function getUsageBySubscription(subscriptionId: number) {
   const db = await getDb();
   if (!db) return [];
@@ -277,6 +329,8 @@ export async function getUsageBySubscription(subscriptionId: number) {
 }
 
 // ─── Notifications ────────────────────────────────────────────────────
+
+/** Create a new notification for a user. */
 export async function createNotification(data: InsertNotification) {
   const db = await getDb();
   if (!db) return undefined;
@@ -284,6 +338,7 @@ export async function createNotification(data: InsertNotification) {
   return result[0].insertId;
 }
 
+/** Fetch notifications for a user, with optional unread-only filter. */
 export async function getNotificationsByUser(userId: number, unreadOnly = false) {
   const db = await getDb();
   if (!db) return [];
@@ -292,12 +347,14 @@ export async function getNotificationsByUser(userId: number, unreadOnly = false)
   return db.select().from(notifications).where(and(...conditions)).orderBy(desc(notifications.createdAt)).limit(50);
 }
 
+/** Mark a single notification as read. */
 export async function markNotificationRead(id: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
 }
 
+/** Mark all notifications for a user as read. */
 export async function markAllNotificationsRead(userId: number) {
   const db = await getDb();
   if (!db) return;
@@ -305,6 +362,8 @@ export async function markAllNotificationsRead(userId: number) {
 }
 
 // ─── Contact Submissions ─────────────────────────────────────────────
+
+/** Save a public contact form submission. */
 export async function createContactSubmission(data: InsertContactSubmission) {
   const db = await getDb();
   if (!db) {
