@@ -11,4 +11,6 @@ export const ENV = {
   twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
   twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
   twilioValidationEnabled: process.env.TWILIO_VALIDATION_ENABLED !== "false",
+  // ElevenLabs
+  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
 };

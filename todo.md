@@ -118,3 +118,6 @@
 - [ ] Create test shop with ElevenLabs agent ID wired
 - [ ] Add ElevenLabs Agent ID field to Agent Config page
 - [ ] Verify end-to-end call routing works
+
+## Bug: Application Error on Call to (844) 875-2441
+- [ ] Diagnose and fix Twilio "application error" when calling the test number

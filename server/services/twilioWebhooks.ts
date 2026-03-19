@@ -4,13 +4,17 @@
  * Layer 1: Real-Time Call Path
  * 
  * Flow: Inbound Twilio Call → Tenant Resolver → Hot Context Cache → 
- *       ElevenLabs Agent Execution → TwiML Response
+ *       ElevenLabs Register Call API → TwiML Response
  * 
  * Critical constraints:
  * - NO database writes during live call
  * - NO heavy processing during live call
- * - Sub-second response time for TwiML
+ * - Sub-2-second response time for TwiML
  * - Graceful fallback to voicemail if ElevenLabs fails
+ * 
+ * The Register Call API authenticates with ElevenLabs server-side,
+ * then returns TwiML with an authenticated WebSocket URL.
+ * This is the correct integration pattern per ElevenLabs docs.
  */
 import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
@@ -18,6 +22,7 @@ import { compileSystemPrompt, compileGreeting, type ShopContext } from "./prompt
 import { getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { shops, agentConfigs } from "../../drizzle/schema";
+import { ENV } from "../_core/env";
 
 const twilioRouter = Router();
 
@@ -67,23 +72,54 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
 }
 
 /**
- * Generate TwiML to connect to ElevenLabs via WebSocket.
- * Uses the ElevenLabs Conversational AI Register Call API.
+ * Register a call with ElevenLabs and get authenticated TwiML.
+ * 
+ * This calls the ElevenLabs Register Call API which:
+ * 1. Authenticates using our API key (server-side, never exposed)
+ * 2. Creates a conversation session
+ * 3. Returns TwiML with an authenticated WebSocket URL
+ * 
+ * This is the correct approach per ElevenLabs docs:
+ * https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/register-call
  */
-function generateElevenLabsConnectTwiML(
+async function registerElevenLabsCall(
   elevenLabsAgentId: string,
-  shopId: number,
-  callSid: string
-): string {
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${escapeXml(elevenLabsAgentId)}">
-      <Parameter name="shop_id" value="${shopId}" />
-      <Parameter name="call_sid" value="${escapeXml(callSid)}" />
-    </Stream>
-  </Connect>
-</Response>`;
+  fromNumber: string,
+  toNumber: string,
+  shopContext?: ShopContext
+): Promise<string> {
+  const response = await fetch(
+    "https://api.elevenlabs.io/v1/convai/twilio/register-call",
+    {
+      method: "POST",
+      headers: {
+        "xi-api-key": ENV.elevenLabsApiKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        agent_id: elevenLabsAgentId,
+        from_number: fromNumber,
+        to_number: toNumber,
+        direction: "inbound",
+        conversation_initiation_client_data: {
+          dynamic_variables: {
+            caller_number: fromNumber,
+            shop_name: shopContext?.shopName || "Auto Repair Shop",
+            agent_name: shopContext?.agentName || "Baylio",
+          },
+        },
+      }),
+    }
+  );
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `ElevenLabs Register Call failed (${response.status}): ${errorText}`
+    );
+  }
+
+  return await response.text();
 }
 
 /**
@@ -225,11 +261,20 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       return res.send(generateVoicemailTwiML(context.shopName));
     }
 
-    // Step 3: Connect to ElevenLabs via WebSocket stream
-    console.log(`[CALL] Routing to ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (${Date.now() - startTime}ms)`);
+    // Step 3: Register call with ElevenLabs (authenticated server-side)
+    console.log(`[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId}...`);
+
+    const twiml = await registerElevenLabsCall(
+      elevenLabsAgentId,
+      From,
+      To,
+      context
+    );
+
+    console.log(`[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`);
 
     res.type("text/xml");
-    return res.send(generateElevenLabsConnectTwiML(elevenLabsAgentId, shopId, CallSid));
+    return res.send(twiml);
   } catch (error) {
     console.error("[CALL] Error handling inbound call:", error);
     // CRITICAL: Always return valid TwiML, never let the call drop
