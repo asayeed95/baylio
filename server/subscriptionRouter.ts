@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
   getSubscriptionByShop,
@@ -87,12 +88,12 @@ export const subscriptionRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
       }
       // Check if subscription already exists
       const existing = await getSubscriptionByShop(input.shopId);
       if (existing) {
-        throw new Error("Subscription already exists for this shop. Use upgrade instead.");
+        throw new TRPCError({ code: "CONFLICT", message: "Subscription already exists for this shop. Use changeTier instead." });
       }
       const config = TIER_CONFIG[input.tier];
       const now = new Date();
@@ -125,11 +126,11 @@ export const subscriptionRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
       }
       const sub = await getSubscriptionByShop(input.shopId);
       if (!sub) {
-        throw new Error("No active subscription found");
+        throw new TRPCError({ code: "NOT_FOUND", message: "No active subscription found" });
       }
       const config = TIER_CONFIG[input.newTier];
       await updateSubscription(sub.id, {

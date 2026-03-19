@@ -19,7 +19,7 @@ export const callRouter = router({
       offset: z.number().min(0).default(0),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
-      status: z.string().optional(),
+      status: z.enum(["completed", "missed", "voicemail", "transferred", "failed"]).optional(),
     }))
     .query(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
@@ -64,11 +64,11 @@ export const callRouter = router({
 
   createAudit: protectedProcedure
     .input(z.object({
-      shopId: z.number().optional(),
-      prospectName: z.string().optional(),
-      prospectEmail: z.string().optional(),
-      prospectPhone: z.string().optional(),
-      shopName: z.string().optional(),
+      shopId: z.number().min(1).optional(),
+      prospectName: z.string().max(255).optional(),
+      prospectEmail: z.string().email().max(320).optional(),
+      prospectPhone: z.string().max(32).optional(),
+      shopName: z.string().max(255).optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const id = await createMissedCallAudit({ ...input, ownerId: ctx.user.id });
