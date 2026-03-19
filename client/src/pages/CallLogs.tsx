@@ -128,7 +128,7 @@ function CallLogsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button variant="ghost" size="icon" aria-label="Back to shop details" onClick={() => setLocation(`/shops/${shopId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -201,8 +201,11 @@ function CallLogsContent() {
                 {filteredCalls.map((call) => (
                   <TableRow
                     key={call.id}
-                    className="cursor-pointer"
+                    tabIndex={0}
+                    role="button"
+                    className="cursor-pointer focus-visible:ring-2 focus-visible:ring-ring"
                     onClick={() => setSelectedCall(call)}
+                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCall(call); } }}
                   >
                     <TableCell>
                       <div>
