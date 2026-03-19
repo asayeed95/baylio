@@ -77,7 +77,7 @@
 - [x] ElevenLabs Register Call API bridge
 - [x] Hot context cache (in-memory shop config for sub-second webhook response)
 - [x] Prompt compilation layer (shop context → compiled system prompt)
-- [ ] TwiML voicemail fallback (if ElevenLabs fails)
+- [x] TwiML voicemail fallback (if ElevenLabs fails)
 - [x] Post-call async pipeline (webhook → queue → transcription → analysis → DB write)
 
 ## Phase 14: Market Research Features
@@ -120,7 +120,7 @@
 - [ ] Verify end-to-end call routing works
 
 ## Bug: Application Error on Call to (844) 875-2441
-- [ ] Diagnose and fix Twilio "application error" when calling the test number
+- [x] Diagnose and fix Twilio "application error" when calling the test number (root cause: no conversation_config_override, now wired)
 
 ## Phase 19: Claude Code Audit Fixes (P0/P1)
 - [x] P0: Add fetch timeout to ElevenLabs Register Call API (twilioWebhooks.ts)
@@ -131,3 +131,10 @@
 - [ ] P1: Eliminate triple DB query on cold cache (twilioWebhooks.ts:150-225) — deferred, low impact
 - [x] P1: Sanitize customSystemPrompt to prevent prompt injection (promptCompiler.ts:228)
 - [x] Scrub sensitive data (Twilio SID, ElevenLabs agent ID, phone number) from README.md
+
+## Phase 20: Merge baylio-prompts + Sales AI Agent
+- [x] Copy 12 persona templates from baylio-prompts into server/services/prompts/
+- [x] Create Baylio Sales AI agent prompt (13th persona)
+- [x] Wire conversation_config_override into ElevenLabs Register Call API
+- [ ] Update promptCompiler.ts to use real persona templates from baylio-prompts
+- [ ] Archive baylio-prompts repo after merge

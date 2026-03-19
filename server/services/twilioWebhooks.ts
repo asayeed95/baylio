@@ -24,11 +24,40 @@ import { getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { shops, agentConfigs } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
+import { baylioSalesAgentPrompt } from "./prompts/baylioSalesAgent";
 
 /** Timeout for ElevenLabs Register Call API — prevents dead air on slow responses */
 const ELEVENLABS_TIMEOUT_MS = 8000;
 
 const twilioRouter = Router();
+
+// ─── Types ─────────────────────────────────────────────────────────
+
+/**
+ * conversation_config_override structure for ElevenLabs Register Call API.
+ * Allows per-call customization of system prompt, first message, voice, etc.
+ * 
+ * IMPORTANT: Overrides must be enabled in the ElevenLabs dashboard
+ * under Agent Settings → Security tab for each field you want to override.
+ */
+interface ConversationConfigOverride {
+  agent?: {
+    prompt?: {
+      prompt?: string;  // System prompt override
+      llm?: string;     // LLM model override (e.g., "gpt-4o")
+    };
+    first_message?: string;
+    language?: string;
+  };
+  tts?: {
+    voice_id?: string;
+    stability?: number;    // 0.0 to 1.0
+    speed?: number;        // 0.7 to 1.2
+    similarity_boost?: number; // 0.0 to 1.0
+  };
+}
+
+// ─── TwiML Generators ──────────────────────────────────────────────
 
 /**
  * Generate TwiML for voicemail fallback.
@@ -76,6 +105,20 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
 }
 
 /**
+ * Escape XML special characters for TwiML.
+ */
+function escapeXml(str: string): string {
+  return str
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&apos;");
+}
+
+// ─── ElevenLabs Register Call ──────────────────────────────────────
+
+/**
  * Register a call with ElevenLabs and get authenticated TwiML.
  * 
  * This calls the ElevenLabs Register Call API which:
@@ -83,20 +126,59 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
  * 2. Creates a conversation session
  * 3. Returns TwiML with an authenticated WebSocket URL
  * 
- * This is the correct approach per ElevenLabs docs:
- * https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/register-call
+ * NOW SUPPORTS conversation_config_override:
+ * - Pass a compiled system prompt per call (shop-specific or sales agent)
+ * - Override first message, voice, language per call
+ * - Eliminates dependency on generic dashboard prompt
+ * 
+ * @see https://elevenlabs.io/docs/api-reference/twilio/register-call
+ * @see https://elevenlabs.io/docs/eleven-agents/customization/personalization/overrides
  */
 async function registerElevenLabsCall(
   elevenLabsAgentId: string,
   fromNumber: string,
   toNumber: string,
-  shopContext?: ShopContext
+  options?: {
+    shopContext?: ShopContext;
+    configOverride?: ConversationConfigOverride;
+    dynamicVariables?: Record<string, string>;
+  }
 ): Promise<string> {
   // P0 FIX: AbortController timeout prevents dead air if ElevenLabs is slow
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), ELEVENLABS_TIMEOUT_MS);
 
   try {
+    // Build the request body
+    const body: Record<string, unknown> = {
+      agent_id: elevenLabsAgentId,
+      from_number: fromNumber,
+      to_number: toNumber,
+      direction: "inbound",
+    };
+
+    // Build conversation_initiation_client_data with overrides
+    const clientData: Record<string, unknown> = {};
+
+    // Add conversation_config_override if provided
+    if (options?.configOverride) {
+      clientData.conversation_config_override = options.configOverride;
+    }
+
+    // Add dynamic variables (always include caller context)
+    clientData.dynamic_variables = {
+      caller_number: fromNumber,
+      ...(options?.shopContext ? {
+        shop_name: options.shopContext.shopName,
+        agent_name: options.shopContext.agentName,
+      } : {}),
+      ...(options?.dynamicVariables || {}),
+    };
+
+    body.conversation_initiation_client_data = clientData;
+
+    console.log(`[CALL] Registering with ElevenLabs agent ${elevenLabsAgentId}, override: ${!!options?.configOverride}`);
+
     const response = await fetch(
       "https://api.elevenlabs.io/v1/convai/twilio/register-call",
       {
@@ -106,19 +188,7 @@ async function registerElevenLabsCall(
           "xi-api-key": ENV.elevenLabsApiKey,
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          agent_id: elevenLabsAgentId,
-          from_number: fromNumber,
-          to_number: toNumber,
-          direction: "inbound",
-          conversation_initiation_client_data: {
-            dynamic_variables: {
-              caller_number: fromNumber,
-              shop_name: shopContext?.shopName || "Auto Repair Shop",
-              agent_name: shopContext?.agentName || "Baylio",
-            },
-          },
-        }),
+        body: JSON.stringify(body),
       }
     );
 
@@ -135,17 +205,59 @@ async function registerElevenLabsCall(
   }
 }
 
+// ─── Routing Logic ─────────────────────────────────────────────────
+
 /**
- * Escape XML special characters for TwiML.
+ * Check if the called number is the Baylio corporate sales line.
+ * The sales line uses a special prompt (baylioSalesAgentPrompt)
+ * instead of a shop-specific prompt.
  */
-function escapeXml(str: string): string {
-  return str
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&apos;");
+function isBaylioSalesLine(toNumber: string): boolean {
+  // Normalize both numbers for comparison (strip non-digits, add +1 prefix)
+  const normalize = (n: string) => {
+    const digits = n.replace(/\D/g, "");
+    return digits.length === 10 ? `+1${digits}` : `+${digits}`;
+  };
+
+  const salesPhone = ENV.baylioSalesPhone || "+18448752441";
+  return normalize(toNumber) === normalize(salesPhone);
 }
+
+/**
+ * Handle the Baylio sales line call.
+ * Uses the baylioSalesAgentPrompt and the corporate ElevenLabs agent.
+ */
+async function handleSalesLineCall(
+  fromNumber: string,
+  toNumber: string
+): Promise<string> {
+  const agentId = ENV.elevenLabsAgentId;
+
+  if (!agentId) {
+    console.error("[SALES] No ELEVENLABS_AGENT_ID configured for sales line");
+    return generateVoicemailTwiML("Baylio");
+  }
+
+  console.log(`[SALES] Routing to Baylio Sales Agent (${agentId})`);
+
+  return registerElevenLabsCall(agentId, fromNumber, toNumber, {
+    configOverride: {
+      agent: {
+        prompt: {
+          prompt: baylioSalesAgentPrompt,
+        },
+        first_message: "Thanks for calling Baylio! I'm the AI that answers phones for auto repair shops. Are you a shop owner looking to catch more calls and book more appointments?",
+        language: "en",
+      },
+    },
+    dynamicVariables: {
+      caller_number: fromNumber,
+      call_type: "sales_inquiry",
+    },
+  });
+}
+
+// ─── Shop Context Resolution ──────────────────────────────────────
 
 /**
  * Resolve shop context from phone number.
@@ -240,6 +352,44 @@ async function resolveShopContext(
   return { shopId, context, elevenLabsAgentId };
 }
 
+/**
+ * Handle a shop-specific call with compiled system prompt override.
+ * Compiles the shop's context into a full system prompt and passes it
+ * via conversation_config_override so each call gets the right persona.
+ */
+async function handleShopCall(
+  fromNumber: string,
+  toNumber: string,
+  shopId: number,
+  context: ShopContext,
+  elevenLabsAgentId: string
+): Promise<string> {
+  // Compile the shop-specific system prompt
+  const compiledPrompt = compileSystemPrompt(context);
+  const greeting = compileGreeting(context);
+
+  console.log(`[CALL] Compiled prompt for shop ${shopId} (${context.shopName}), tokens ~${Math.ceil(compiledPrompt.length / 4)}`);
+
+  return registerElevenLabsCall(elevenLabsAgentId, fromNumber, toNumber, {
+    shopContext: context,
+    configOverride: {
+      agent: {
+        prompt: {
+          prompt: compiledPrompt,
+        },
+        first_message: greeting,
+        language: context.language || "en",
+      },
+    },
+    dynamicVariables: {
+      caller_number: fromNumber,
+      shop_name: context.shopName,
+      agent_name: context.agentName,
+      call_type: "shop_inbound",
+    },
+  });
+}
+
 // ─── Webhook Endpoints ──────────────────────────────────────────────
 
 /**
@@ -247,6 +397,11 @@ async function resolveShopContext(
  * 
  * Main inbound call webhook. Twilio hits this when a call comes in.
  * Must respond with TwiML in <2 seconds.
+ * 
+ * Routing logic:
+ * 1. If called number is Baylio sales line → route to Sales Agent
+ * 2. If called number matches a shop → route to shop-specific agent
+ * 3. Otherwise → voicemail fallback
  */
 twilioRouter.post("/voice", async (req: Request, res: Response) => {
   const startTime = Date.now();
@@ -256,7 +411,23 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
 
     console.log(`[CALL] Inbound call: ${From} → ${To} (SID: ${CallSid})`);
 
-    // Step 1: Resolve shop context from the called number
+    // ─── Route 1: Baylio Sales Line ─────────────────────────────
+    if (isBaylioSalesLine(To)) {
+      console.log(`[CALL] Sales line detected — routing to Baylio Sales Agent`);
+
+      try {
+        const twiml = await handleSalesLineCall(From, To);
+        console.log(`[CALL] Sales line registered OK (${Date.now() - startTime}ms)`);
+        res.type("text/xml");
+        return res.send(twiml);
+      } catch (error) {
+        console.error("[CALL] Sales line ElevenLabs error:", error);
+        res.type("text/xml");
+        return res.send(generateVoicemailTwiML("Baylio"));
+      }
+    }
+
+    // ─── Route 2: Shop-Specific Call ────────────────────────────
     const resolved = await resolveShopContext(To);
 
     if (!resolved) {
@@ -267,21 +438,18 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
 
     const { shopId, context, elevenLabsAgentId } = resolved;
 
-    // Step 2: Check if ElevenLabs agent is configured
+    // Check if ElevenLabs agent is configured
     if (!elevenLabsAgentId) {
       console.warn(`[CALL] No ElevenLabs agent configured for shop ${shopId}`);
       res.type("text/xml");
       return res.send(generateVoicemailTwiML(context.shopName));
     }
 
-    // Step 3: Register call with ElevenLabs (authenticated server-side)
+    // Register call with compiled prompt override
     console.log(`[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId}...`);
 
-    const twiml = await registerElevenLabsCall(
-      elevenLabsAgentId,
-      From,
-      To,
-      context
+    const twiml = await handleShopCall(
+      From, To, shopId, context, elevenLabsAgentId
     );
 
     console.log(`[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`);
@@ -318,6 +486,12 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
         const { callLogs } = await import("../../drizzle/schema");
 
         if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
+          // Skip DB logging for sales line calls (no shop to associate)
+          if (isBaylioSalesLine(To)) {
+            console.log(`[CALL-STATUS] Sales line call ${CallSid} — ${CallStatus} (no DB logging for sales calls)`);
+            return;
+          }
+
           // Look up shop by phone number
           const shopResult = await db
             .select({ id: shops.id, ownerId: shops.ownerId })
@@ -450,26 +624,13 @@ twilioRouter.post("/transcription-complete", async (req: Request, res: Response)
       });
     }
 
-    res.status(200).send("OK");
+    res.type("text/xml");
+    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   } catch (error) {
     console.error("[TRANSCRIPTION] Error:", error);
-    res.status(200).send("OK");
+    res.type("text/xml");
+    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   }
-});
-
-/**
- * GET /api/twilio/health
- * 
- * Health check endpoint for monitoring.
- */
-twilioRouter.get("/health", (_req: Request, res: Response) => {
-  const cacheStats = contextCache.getStats();
-  res.json({
-    status: "ok",
-    service: "baylio-twilio-bridge",
-    cache: cacheStats,
-    timestamp: new Date().toISOString(),
-  });
 });
 
 export { twilioRouter };

@@ -13,4 +13,7 @@ export const ENV = {
   twilioValidationEnabled: process.env.TWILIO_VALIDATION_ENABLED !== "false",
   // ElevenLabs
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
+  elevenLabsAgentId: process.env.ELEVENLABS_AGENT_ID ?? "",
+  // Baylio Sales Line
+  baylioSalesPhone: process.env.BAYLIO_SALES_PHONE ?? "+18448752441",
 };
