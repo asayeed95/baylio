@@ -39,6 +39,8 @@ export interface ShopContext {
   greeting: string;
   language: string;
   customSystemPrompt?: string;
+  voiceId?: string;
+  voiceName?: string;
 }
 
 /**

@@ -151,3 +151,18 @@
 ## Bug: Live call quality issues (found during first live test)
 - [x] Fix echo/feedback loop — AI hears its own voice and responds to itself (VAD sensitivity) — set turn_eagerness to "patient" via ElevenLabs API
 - [x] Fix name mispronunciation — "Baylio" pronounced as "Balio", "Abdur" pronounced as "Abdor" — added phonetic guides to prompt
+
+## Feature: Per-shop voice override
+- [x] Add voiceId and voiceLanguage fields to agentConfigs schema (already existed: voiceId + voiceName)
+- [x] Update twilioWebhooks to pass tts.voice_id in conversation_config_override
+- [x] Create tRPC endpoint to list available ElevenLabs voices (voiceRouter with list, getShopVoice, setShopVoice)
+- [x] Build voice picker UI in shop settings (AgentConfig.tsx with VoicePicker component)
+- [x] Write vitest tests for voice override logic (all 80 tests passing)
+
+## Feature: Human-like Sales Agent + Full Product Knowledge
+- [x] Add complete Baylio product knowledge to sales prompt (pricing, features, onboarding flow, FAQ)
+- [x] Add shop owner onboarding guidance (what happens after signup, setup steps, timeline)
+- [x] Add human speech patterns — filler words (umm, okie, yeah), natural pauses, conversational tone
+- [x] Add expressive voice instructions to prompt (enthusiasm, empathy, warmth)
+- [x] Configure ElevenLabs voice stability/similarity settings for more expressive output (stability: 0.35, similarity: 0.7)
+- [ ] Test call to verify natural-sounding conversation

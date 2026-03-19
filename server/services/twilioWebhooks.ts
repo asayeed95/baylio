@@ -331,6 +331,8 @@ async function resolveShopContext(
       greeting: agent?.greeting || "",
       language: agent?.language || "en",
       customSystemPrompt: agent?.systemPrompt || undefined,
+      voiceId: agent?.voiceId || undefined,
+      voiceName: agent?.voiceName || undefined,
     };
 
     contextCache.setShopContext(shopId, context);
@@ -370,17 +372,28 @@ async function handleShopCall(
 
   console.log(`[CALL] Compiled prompt for shop ${shopId} (${context.shopName}), tokens ~${Math.ceil(compiledPrompt.length / 4)}`);
 
+  // Build the config override with optional voice
+  const configOverride: ConversationConfigOverride = {
+    agent: {
+      prompt: {
+        prompt: compiledPrompt,
+      },
+      first_message: greeting,
+      language: context.language || "en",
+    },
+  };
+
+  // Add voice override if the shop has a custom voice configured
+  if (context.voiceId) {
+    configOverride.tts = {
+      voice_id: context.voiceId,
+    };
+    console.log(`[CALL] Using custom voice for shop ${shopId}: ${context.voiceName || context.voiceId}`);
+  }
+
   return registerElevenLabsCall(elevenLabsAgentId, fromNumber, toNumber, {
     shopContext: context,
-    configOverride: {
-      agent: {
-        prompt: {
-          prompt: compiledPrompt,
-        },
-        first_message: greeting,
-        language: context.language || "en",
-      },
-    },
+    configOverride,
     dynamicVariables: {
       caller_number: fromNumber,
       shop_name: context.shopName,
