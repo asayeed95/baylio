@@ -19,6 +19,7 @@ import {
   Building2,
   Calculator,
 } from "lucide-react";
+import { Link } from "wouter";
 
 /**
  * Landing Page — Public, sales-focused
@@ -290,6 +291,8 @@ export default function Landing() {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
+            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
@@ -502,9 +505,10 @@ export default function Landing() {
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
             <div className="flex gap-6">
+              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
+              <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Support</a>
             </div>
           </div>
         </div>

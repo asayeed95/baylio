@@ -15,6 +15,13 @@
       "when": 1773696954332,
       "tag": "0001_cold_morlocks",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1773911713822,
+      "tag": "0002_slim_onslaught",
+      "breakpoints": true
     }
   ]
 }

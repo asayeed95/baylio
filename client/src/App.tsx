@@ -14,6 +14,8 @@ import MissedCallAudit from "./pages/MissedCallAudit";
 import Subscriptions from "./pages/Subscriptions";
 import Notifications from "./pages/Notifications";
 import ShopSettings from "./pages/ShopSettings";
+import Contact from "./pages/Contact";
+import FAQ from "./pages/FAQ";
 
 /**
  * Baylio App Router
@@ -29,6 +31,8 @@ import ShopSettings from "./pages/ShopSettings";
  * /audits              → Missed call audit management
  * /subscriptions       → Subscription & billing management
  * /notifications       → Notification center
+ * /contact             → Contact page (public)
+ * /faq                 → FAQ page (public)
  */
 function Router() {
   return (
@@ -43,6 +47,8 @@ function Router() {
       <Route path="/audits" component={MissedCallAudit} />
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
+      <Route path="/contact" component={Contact} />
+      <Route path="/faq" component={FAQ} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

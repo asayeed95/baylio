@@ -216,3 +216,9 @@
 - [ ] Test Claude Code with interactive mode (ask Claude to replicate for dental)
 - [ ] Test Claude Code with auto-generate mode (provide niche JSON, verify output)
 - [ ] Document example niche configs (dental, real estate, restaurant)
+
+## Phase 26: Claude Code QA Mega-Script + GitHub Merge
+- [x] Create CLAUDE_QA_SCRIPT.md — exhaustive 12-phase QA mega-prompt for Claude Code
+- [x] Merge Claude Code's Contact/FAQ changes into Manus codebase (Contact.tsx, FAQ.tsx, contactRouter.ts, contact.test.ts, schema, db, routes, Landing nav)
+- [x] Run contactSubmissions migration
+- [x] All 111 tests passing after merge
