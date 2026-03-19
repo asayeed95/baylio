@@ -24,7 +24,7 @@ import { getDb } from "../db";
 import { eq } from "drizzle-orm";
 import { shops, agentConfigs } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
-import { baylioSalesAgentPrompt } from "./prompts/baylioSalesAgent";
+import { baylioSalesAgentPrompt, baylioSalesFirstMessage } from "./prompts/baylioSalesAgent";
 
 /** Timeout for ElevenLabs Register Call API — prevents dead air on slow responses */
 const ELEVENLABS_TIMEOUT_MS = 8000;
@@ -246,7 +246,7 @@ async function handleSalesLineCall(
         prompt: {
           prompt: baylioSalesAgentPrompt,
         },
-        first_message: "Thanks for calling Baylio! I'm the AI that answers phones for auto repair shops. Are you a shop owner looking to catch more calls and book more appointments?",
+        first_message: baylioSalesFirstMessage,
         language: "en",
       },
     },

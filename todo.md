@@ -166,3 +166,9 @@
 - [x] Add expressive voice instructions to prompt (enthusiasm, empathy, warmth)
 - [x] Configure ElevenLabs voice stability/similarity settings for more expressive output (stability: 0.35, similarity: 0.7)
 - [ ] Test call to verify natural-sounding conversation
+
+## Bug/Feature: Response latency, call disconnect, sales script
+- [x] Reduce 2-second response latency — speculative_turn=true, turn_eagerness=normal, TTS stability=0.45, speed=1.05, latency_opt=4, temperature=0.7
+- [x] Add call disconnect capability — enabled end_call built-in tool via ElevenLabs API
+- [x] Restructure prompt with proven sales script framework (SPIN selling) — 4-phase conversation flow: Situation→Problem→Implication→Need-Payoff
+- [x] AI should be able to answer ALL questions about Baylio comprehensively — full product knowledge, pricing, objection handling, onboarding flow in prompt
