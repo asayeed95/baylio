@@ -118,3 +118,6 @@
 - [ ] Create test shop with ElevenLabs agent ID wired
 - [ ] Add ElevenLabs Agent ID field to Agent Config page
 - [ ] Verify end-to-end call routing works
+
+## Bug: Application Error on Call to (XXX) XXX-XXXX
+- [ ] Diagnose and fix Twilio "application error" when calling the test number
