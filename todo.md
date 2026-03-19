@@ -172,3 +172,38 @@
 - [x] Add call disconnect capability — enabled end_call built-in tool via ElevenLabs API
 - [x] Restructure prompt with proven sales script framework (SPIN selling) — 4-phase conversation flow: Situation→Problem→Implication→Need-Payoff
 - [x] AI should be able to answer ALL questions about Baylio comprehensively — full product knowledge, pricing, objection handling, onboarding flow in prompt
+
+## Phase 22: Autonomous Sales Pipeline — Zero Human Touch
+- [x] Update sales prompt to close deals on phone (not book demos with Abdur)
+- [x] Prompt collects: shop name, owner name, email, phone when prospect says yes
+- [x] POST /api/onboard endpoint — creates Stripe Checkout Session, sends link via Twilio SMS
+- [x] Stripe webhook handler for checkout.session.completed — auto-provisions everything
+- [x] Auto-provision: create user account, shop, agentConfig in database
+- [x] Auto-provision: assign Twilio phone number to new shop
+- [x] Welcome SMS sequence after successful payment (login info, next steps)
+- [x] Vitest tests for onboard endpoint and Stripe webhook provisioning
+
+## Phase 23: Multi-Niche Replication Framework
+- [x] Extract all niche-specific content into config files (branding, copy, pricing, prompts)
+- [x] Create shared/nicheConfig.ts with typed niche configuration interface
+- [x] Move landing page copy, colors, pricing tiers into niche config
+- [x] Move AI sales prompt industry knowledge into niche config
+- [x] Move objection handling scripts into niche config
+- [x] Create NICHE_REPLICATION_GUIDE.md — step-by-step guide to clone for new niche
+- [x] Document: branding changes (logo, colors, copy, domain)
+- [x] Document: AI script changes (system prompt, objection handling, industry knowledge)
+- [x] Document: database seed data changes
+- [x] Document: Stripe product/pricing setup
+- [x] Document: Twilio number provisioning
+- [x] Document: ElevenLabs agent config
+- [x] Document: landing page content swap
+- [x] Document: environment variables needed
+- [x] Goal: someone can replicate Baylio for dentists in under 2 hours
+
+## Phase 24: Manus Skill — Baylio Development Workflow
+- [x] Read skill-creator SKILL.md for proper skill creation process
+- [x] Create baylio-ai-factory skill with SKILL.md
+- [x] Include: architecture patterns, call flow, ElevenLabs integration, Twilio provisioning
+- [x] Include: autonomous sales pipeline pattern (SPIN → collect info → Stripe SMS → auto-provision)
+- [x] Include: niche replication workflow (config swap, not code rewrite)
+- [x] Include: prompt engineering patterns for voice AI sales agents
