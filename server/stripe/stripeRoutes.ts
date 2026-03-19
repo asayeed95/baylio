@@ -15,14 +15,14 @@ import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { subscriptions, shops, users } from "../../drizzle/schema";
-import { TIERS, SETUP_FEES, getTierConfig } from "./products";
+import { getTierConfig } from "./products";
 
 const router = express.Router();
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  return new Stripe(key, { apiVersion: "2025-03-31.basil" as any });
+  return new Stripe(key, { apiVersion: "2025-03-31.basil" as Stripe.LatestApiVersion });
 }
 
 async function getDb() {
@@ -166,8 +166,10 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   if (!db) return;
 
   // Stripe v2025 API changes: subscription is now nested under parent
-  const invoiceAny = invoice as any;
-  const subscriptionId = (invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription) as string;
+  const invoiceRecord = invoice as Record<string, unknown>;
+  const parentDetails = invoiceRecord.parent as Record<string, unknown> | undefined;
+  const subDetails = parentDetails?.subscription_details as Record<string, unknown> | undefined;
+  const subscriptionId = (invoiceRecord.subscription ?? subDetails?.subscription) as string | undefined;
   if (!subscriptionId) return;
 
   // Reset usage minutes at the start of each billing period
@@ -178,8 +180,9 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
     .limit(1);
 
   if (subs.length > 0) {
-    const periodStart = invoiceAny.period_start ?? invoiceAny.period?.start;
-    const periodEnd = invoiceAny.period_end ?? invoiceAny.period?.end;
+    const periodObj = invoiceRecord.period as Record<string, number> | undefined;
+    const periodStart = (invoiceRecord.period_start ?? periodObj?.start) as number | undefined;
+    const periodEnd = (invoiceRecord.period_end ?? periodObj?.end) as number | undefined;
     await db
       .update(subscriptions)
       .set({
@@ -202,8 +205,10 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const db = await getDb();
   if (!db) return;
 
-  const invoiceAny2 = invoice as any;
-  const subscriptionId = (invoiceAny2.subscription ?? invoiceAny2.parent?.subscription_details?.subscription) as string;
+  const invoiceRecord2 = invoice as Record<string, unknown>;
+  const parentDetails2 = invoiceRecord2.parent as Record<string, unknown> | undefined;
+  const subDetails2 = parentDetails2?.subscription_details as Record<string, unknown> | undefined;
+  const subscriptionId = (invoiceRecord2.subscription ?? subDetails2?.subscription) as string | undefined;
   if (!subscriptionId) return;
 
   await db
@@ -231,8 +236,8 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
     .update(subscriptions)
     .set({
       status,
-      currentPeriodStart: new Date(((sub as any).current_period_start ?? 0) * 1000),
-      currentPeriodEnd: new Date(((sub as any).current_period_end ?? 0) * 1000),
+      currentPeriodStart: new Date(((sub as unknown as Record<string, number>).current_period_start ?? 0) * 1000),
+      currentPeriodEnd: new Date(((sub as unknown as Record<string, number>).current_period_end ?? 0) * 1000),
     })
     .where(eq(subscriptions.stripeSubscriptionId, sub.id));
 

@@ -179,7 +179,8 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         .limit(1);
 
       const shop = shopResults[0];
-      const catalog = ((shop?.serviceCatalog as any) || []).map((s: any) => s.name);
+      const rawCatalog = (shop?.serviceCatalog ?? []) as Array<{ name: string; category: string; price?: number; description?: string }>;
+      const catalog = rawCatalog.map((s) => s.name);
 
       const analysis = await analyzeTranscription(
         call.transcription,

@@ -27,7 +27,11 @@ const shopInput = z.object({
   zip: z.string().optional(),
   timezone: z.string().default("America/New_York"),
   organizationId: z.number().optional(),
-  businessHours: z.any().optional(),
+  businessHours: z.record(z.string(), z.object({
+    open: z.string(),
+    close: z.string(),
+    closed: z.boolean(),
+  })).optional(),
   serviceCatalog: z.array(z.object({
     name: z.string(),
     category: z.string(),
@@ -84,7 +88,7 @@ export const shopRouter = router({
       if (!shop || shop.ownerId !== ctx.user.id) {
         throw new Error("Shop not found or unauthorized");
       }
-      await updateShop(input.id, input.data as any);
+      await updateShop(input.id, input.data);
       return { success: true };
     }),
 
@@ -182,7 +186,7 @@ export const shopRouter = router({
       await updateShop(input.shopId, {
         twilioPhoneNumber: provisioned.phoneNumber,
         twilioPhoneSid: provisioned.sid,
-      } as any);
+      });
 
       return provisioned;
     }),
@@ -196,7 +200,7 @@ export const shopRouter = router({
         throw new Error("Shop not found or unauthorized");
       }
 
-      const phoneSid = (shop as any).twilioPhoneSid;
+      const phoneSid = shop.twilioPhoneSid;
       if (!phoneSid) {
         throw new Error("No Twilio phone number assigned to this shop");
       }
@@ -207,7 +211,7 @@ export const shopRouter = router({
       await updateShop(input.shopId, {
         twilioPhoneNumber: null,
         twilioPhoneSid: null,
-      } as any);
+      });
 
       return { success: true };
     }),

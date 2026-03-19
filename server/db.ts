@@ -183,7 +183,7 @@ export async function getCallLogsByShop(
   const conditions = [eq(callLogs.shopId, shopId)];
   if (opts?.startDate) conditions.push(gte(callLogs.callStartedAt, opts.startDate));
   if (opts?.endDate) conditions.push(lte(callLogs.callStartedAt, opts.endDate));
-  if (opts?.status) conditions.push(eq(callLogs.status, opts.status as any));
+  if (opts?.status) conditions.push(eq(callLogs.status, opts.status as typeof callLogs.status.enumValues[number]));
   return db.select().from(callLogs)
     .where(and(...conditions))
     .orderBy(desc(callLogs.createdAt))

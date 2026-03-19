@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
+import { protectedProcedure, router } from "./_core/trpc";
 import {
   getCallLogsByShop,
   getCallLogCountByShop,
@@ -82,11 +82,16 @@ export const callRouter = router({
         status: z.enum(["pending", "active", "completed", "expired"]).optional(),
         totalMissedCalls: z.number().optional(),
         estimatedLostRevenue: z.string().optional(),
-        scorecardData: z.any().optional(),
+        scorecardData: z.object({
+          callsByDayPart: z.record(z.string(), z.number()),
+          intentBreakdown: z.record(z.string(), z.number()),
+          urgencyBreakdown: z.record(z.string(), z.number()),
+          estimatedRevenueRange: z.object({ low: z.number(), high: z.number() }),
+        }).optional(),
       }),
     }))
     .mutation(async ({ input }) => {
-      await updateMissedCallAudit(input.id, input.data as any);
+      await updateMissedCallAudit(input.id, input.data);
       return { success: true };
     }),
 
