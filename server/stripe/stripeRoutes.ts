@@ -14,7 +14,7 @@ import express from "express";
 import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { subscriptions, shops, users } from "../../drizzle/schema";
+import { subscriptions } from "../../drizzle/schema";
 import { getTierConfig } from "./products";
 
 const router = express.Router();
