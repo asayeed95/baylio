@@ -7,6 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { getLoginUrl } from "@/const";
 import { Phone, Mail, ArrowRight, Send } from "lucide-react";
 import { Link } from "wouter";
+import { trpc } from "@/lib/trpc";
 
 export default function Contact() {
   const [formState, setFormState] = useState({
@@ -15,25 +16,24 @@ export default function Contact() {
     phone: "",
     message: "",
   });
-  const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  async function handleSubmit(e: React.FormEvent) {
+  const submitMutation = trpc.contact.submit.useMutation({
+    onSuccess: () => {
+      setSubmitted(true);
+      setFormState({ name: "", email: "", phone: "", message: "" });
+      setError(null);
+    },
+    onError: () => {
+      setError("Something went wrong. Please try again or email us directly.");
+    },
+  });
+
+  function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSubmitting(true);
-    try {
-      const res = await fetch("/api/contact", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formState),
-      });
-      if (res.ok) {
-        setSubmitted(true);
-        setFormState({ name: "", email: "", phone: "", message: "" });
-      }
-    } finally {
-      setSubmitting(false);
-    }
+    setError(null);
+    submitMutation.mutate(formState);
   }
 
   return (
@@ -192,8 +192,11 @@ export default function Contact() {
                       }
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={submitting}>
-                    {submitting ? "Sending…" : "Send Message"}
+                  {error && (
+                    <p className="text-sm text-destructive">{error}</p>
+                  )}
+                  <Button type="submit" className="w-full" disabled={submitMutation.isPending}>
+                    {submitMutation.isPending ? "Sending…" : "Send Message"}
                   </Button>
                 </form>
               )}

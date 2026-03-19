@@ -156,6 +156,7 @@ vi.mock("./db", () => ({
   createOrganization: vi.fn().mockResolvedValue(1),
   upsertUser: vi.fn(),
   getUserByOpenId: vi.fn(),
+  createContactSubmission: vi.fn().mockResolvedValue(1),
 }));
 
 // ─── Test Helpers ───────────────────────────────────────────────────────
