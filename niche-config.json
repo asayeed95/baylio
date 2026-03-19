@@ -1,0 +1,144 @@
+{
+  "brand": {
+    "name": "ProductName",
+    "pronunciation": "PROD-ukt-name",
+    "tagline": "AI Call Assistant for [Industry]",
+    "domain": "productname.io",
+    "supportEmail": "hello@productname.io",
+    "salesPhone": "+1XXXXXXXXXX",
+    "founderName": "YourName",
+    "founderPronunciation": "Your-name",
+    "primaryColor": "#2563eb",
+    "accentColor": "#f59e0b"
+  },
+  "industry": {
+    "vertical": "auto_repair",
+    "verticalLabel": "Auto Repair Shops",
+    "businessType": "shop",
+    "businessTypeLabel": "Shop",
+    "ownerTitle": "shop owner",
+    "customerType": "vehicle owner",
+    "avgTicketValue": 466,
+    "avgTicketLabel": "average repair order",
+    "commonServices": [
+      "Oil change",
+      "Brake pad replacement",
+      "Tire rotation",
+      "Engine diagnostics"
+    ],
+    "upsellExamples": [
+      "Brake pads → Brake flush",
+      "Oil change → Tire rotation"
+    ],
+    "competitors": [
+      "Smith.ai",
+      "Ruby",
+      "AnswerConnect"
+    ],
+    "competitorWeakness": "Generic answering services that just take messages. None built specifically for [industry]."
+  },
+  "pricing": {
+    "tiers": {
+      "starter": {
+        "name": "Starter",
+        "monthlyPrice": 19900,
+        "includedMinutes": 300,
+        "features": [
+          "AI receptionist (300 min/mo)",
+          "Call logging & transcription",
+          "Basic analytics dashboard",
+          "Email notifications",
+          "Business hours configuration"
+        ]
+      },
+      "pro": {
+        "name": "Professional",
+        "monthlyPrice": 34900,
+        "includedMinutes": 750,
+        "features": [
+          "Everything in Starter",
+          "750 minutes per month",
+          "Calendar integration",
+          "Advanced analytics & trends",
+          "SMS notifications to owner",
+          "Custom AI voice & persona"
+        ]
+      },
+      "elite": {
+        "name": "Elite",
+        "monthlyPrice": 59900,
+        "includedMinutes": 1500,
+        "features": [
+          "Everything in Pro",
+          "1,500 minutes per month",
+          "Intelligent upsell engine",
+          "CRM integration",
+          "Multi-location management",
+          "Priority support",
+          "Weekly performance reports"
+        ]
+      }
+    },
+    "setupFees": {
+      "single": 50000,
+      "multi_3": 125000,
+      "multi_5": 200000
+    },
+    "overageRate": 0.15,
+    "trialDays": 7,
+    "annualDiscount": 20
+  },
+  "salesAgent": {
+    "firstMessage": "Hey there! Thanks for calling [ProductName]. I'm the AI that answers phones for [industry] — and yeah, you're actually talking to me right now. Are you a [ownerTitle] looking to catch more calls?",
+    "situationQuestions": [
+      "Tell me about your [businessType] — how many [units] are you running?",
+      "Who's answering your phones right now?",
+      "How many calls would you say you get on a typical day?"
+    ],
+    "problemQuestions": [
+      "What happens when you're busy and the phone rings?",
+      "How often do calls end up going to voicemail?",
+      "What about after hours — those calls just go nowhere?"
+    ],
+    "implicationStatements": [
+      "If you're missing even 10 calls a week, and the average [avgTicketLabel] is around $[avgTicketValue]... that's almost $[weeklyRevenue] a week walking out the door.",
+      "A first-time caller who gets voicemail almost never calls back.",
+      "That's not just lost revenue today — that's a customer who could've been coming back for years."
+    ],
+    "needPayoffQuestions": [
+      "What if every single call was answered instantly, 24/7?",
+      "Would it help if after every call you got a text saying exactly who called and what they need?"
+    ],
+    "objections": {
+      "I already have someone answering phones": "That's great! But what happens when they're on another line, at lunch, or after 5pm? [ProductName] is backup — catches everything your team can't.",
+      "I don't trust AI": "I totally get that. And honestly... we're having this conversation right now, and I'm [ProductName]. This is the same AI that would answer your [businessType]'s phones. How's it feel so far?",
+      "Too expensive": "The [avgTicketLabel] is $[avgTicketValue]. If [ProductName] catches ONE missed call per week, that's almost $[monthlyRecovery] a month. For $199. The math speaks for itself.",
+      "Need to think about it": "Absolutely. But the free trial is zero risk — no credit card. Let me just send you the link so you have it.",
+      "Can I try it free?": "Yeah! [trialDays]-day free trial, no credit card. Let me get your info and send you the link right now."
+    },
+    "closeScript": "Here's what I'd suggest — let's get you started right now. We have a free [trialDays]-day trial, no credit card needed to start. But if you want to lock in the Starter plan at $199 a month, I can send a secure payment link straight to your phone right now. Takes like 30 seconds. Which sounds better — the free trial or jumping straight into the full plan?"
+  },
+  "receptionist": {
+    "defaultAgentName": "ProductName",
+    "defaultGreeting": "Thanks for calling {shopName}! This is [ProductName], your AI assistant. How can I help you today?",
+    "defaultLanguage": "en",
+    "defaultConfidenceThreshold": "0.80"
+  },
+  "smsTemplates": {
+    "checkoutLink": "Hey {ownerName}! 👋 Here's your [ProductName] {tierLabel} signup link:\n\n{url}\n\nTap the link to complete your signup. Once done, we'll automatically set up your AI phone agent and text you your login info.\n\n— [ProductName] AI",
+    "welcomeMessage": "🎉 Welcome to [ProductName], {ownerName}!\n\nYour AI receptionist for {shopName} is being set up right now.\n\nLog in to your dashboard:\n{appUrl}\n\nUse your email to sign in.",
+    "setupMessage": "📋 Next steps for {shopName}:\n\nYour dedicated AI phone number: {twilioNumber}\n\nTo go live, set up call forwarding from your {shopName} main line to {twilioNumber}.\n\nNeed help? Reply to this text or call [salesPhone].\n\n— The [ProductName] Team"
+  },
+  "landingPage": {
+    "heroTitle": "Never Miss Another Call",
+    "heroSubtitle": "AI-powered phone answering built specifically for [industry]. Every call answered. Every customer served. 24/7/365.",
+    "problemStatement": "The average [businessType] misses 30% of incoming calls. Each missed call is a $[avgTicketValue] [avgTicketLabel] walking out the door.",
+    "solutionStatement": "[ProductName] answers every call with an AI that knows your services, books appointments, and texts you a recap — all in real time.",
+    "socialProof": [
+      "Catches an average of 47 missed calls per month",
+      "9x ROI for the average [businessType]",
+      "$[avgTicketValue] [avgTicketLabel] recovered per answered call"
+    ],
+    "ctaText": "Start Your Free [trialDays]-Day Trial"
+  }
+}

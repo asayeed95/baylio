@@ -207,3 +207,12 @@
 - [x] Include: autonomous sales pipeline pattern (SPIN → collect info → Stripe SMS → auto-provision)
 - [x] Include: niche replication workflow (config swap, not code rewrite)
 - [x] Include: prompt engineering patterns for voice AI sales agents
+
+## Phase 25: Claude Code Skill — Autonomous Niche Replication
+- [x] Create CLAUDE.md — instructions for Claude Code and Claude Desktop
+- [x] Create niche-config.json — template for niche input data
+- [x] Create REPLICATION_PROMPT.md — mega-prompt for Claude Code (full architecture + workflow)
+- [x] Create setup-niche.sh — shell script to configure Stripe, Twilio, ElevenLabs
+- [ ] Test Claude Code with interactive mode (ask Claude to replicate for dental)
+- [ ] Test Claude Code with auto-generate mode (provide niche JSON, verify output)
+- [ ] Document example niche configs (dental, real estate, restaurant)
