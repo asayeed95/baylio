@@ -19,6 +19,8 @@ import {
   Building2,
   Calculator,
   Users,
+  MessageSquare,
+  Globe,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -42,33 +44,33 @@ import { Link } from "wouter";
 const FEATURES = [
   {
     icon: Phone,
-    title: "24/7 AI Receptionist",
-    description: "Never miss a call again. Baylio answers every call with a natural-sounding AI voice, even after hours, weekends, and holidays.",
+    title: "Answers Every Call in Under 2 Seconds",
+    description: "Day, night, weekend, holiday — Baylio picks up before voicemail does.",
   },
   {
     icon: Calendar,
-    title: "Automatic Appointment Booking",
-    description: "The AI captures vehicle info, understands the customer's needs, and books appointments directly into your schedule.",
+    title: "Books Appointments Without You",
+    description: "Captures vehicle info, asks the right questions, schedules into your calendar.",
   },
   {
     icon: TrendingUp,
-    title: "Intelligent Upselling",
-    description: "When a customer calls about brakes, Baylio knows to suggest a fluid flush. Smart, subtle, and effective.",
+    title: "Turns Single-Service Calls into Multi-Service Visits",
+    description: "When someone calls about brakes, Baylio suggests a tire rotation or fluid check.",
+  },
+  {
+    icon: MessageSquare,
+    title: "Instant SMS Recap After Every Call",
+    description: "Caller name, what they need, what was booked. Sent to your phone instantly.",
+  },
+  {
+    icon: Globe,
+    title: "Speaks to Every Customer in Their Language",
+    description: "Handles calls in English and Spanish. Capture the Hispanic market your competitors are losing.",
   },
   {
     icon: BarChart3,
-    title: "Call Analytics Dashboard",
-    description: "See every call, every outcome, every dollar recovered. Real-time insights into your shop's phone performance.",
-  },
-  {
-    icon: Bot,
-    title: "Custom AI Persona",
-    description: "Configure your AI's voice, name, greeting, and personality. It sounds like your best employee, not a robot.",
-  },
-  {
-    icon: Building2,
-    title: "Multi-Location Support",
-    description: "Manage multiple shops from one dashboard. Each location gets its own AI agent, phone number, and analytics.",
+    title: "See Every Dollar You Have Recovered",
+    description: "Real-time call logs, booking confirmations, revenue recovered — all in one dashboard.",
   },
 ];
 
@@ -315,26 +317,24 @@ export default function Landing() {
               AI-Powered Call Handling for Auto Repair Shops
             </Badge>
             <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight text-white">
-              Stop Losing Customers
+              Your Shop Loses <span style={{ color: "#10B981" }}>$28,000+</span> a Year to Missed Calls.
               <br />
-              <span style={{ color: "#10B981" }}>To Missed Calls</span>
+              Baylio Answers Every Single One.
             </h1>
-            <p className="text-lg md:text-xl mb-8 max-w-2xl mx-auto leading-relaxed" style={{ color: "#D1D5DB" }}>
-              Baylio is an AI receptionist that answers every call to your auto repair shop 24/7.
-              It books appointments, captures vehicle details, and intelligently upsells services — 
-              so you never lose another dollar to a ringing phone.
+            <p className="text-lg md:text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: "#D1D5DB" }}>
+              Baylio is an AI phone system built for auto repair shops. It answers every call in under 2 seconds, books appointments, captures vehicle details, handles English and Spanish, and texts you a recap the moment each call ends — so you capture every repair order, even when your front desk can't pick up.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
               <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-                Start Free Trial
+                Get My Free Missed Call Audit
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
-              <Button size="lg" variant="outline" className="text-base px-8 border-white/20 text-white hover:bg-white/10">
-                Watch Demo
+              <Button size="lg" variant="outline" className="text-base px-8 border-white/20 text-white hover:bg-white/10" onClick={() => { window.location.href = "tel:+18448752441"; }}>
+                Hear a Live Demo Call
               </Button>
             </div>
             <p className="text-sm mt-4" style={{ color: "#9CA3AF" }}>
-              No credit card required. 14-day free trial on all plans.
+              No credit card. Setup in under 10 minutes. Calls live the same day.
             </p>
           </div>
         </div>
@@ -386,9 +386,9 @@ export default function Landing() {
       {/* ─── Features ─── */}
       <section id="features" className="border-y bg-muted/30">
         <div className="container py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">Everything Your Shop Needs</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">Built for Auto Repair Shops. Every Feature Earns Its Keep.</h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Built specifically for auto repair shops. Every feature is designed to capture more revenue and save you time.
+            No bloat. No gimmicks. Every feature exists to capture more revenue or save you more time.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((feature, i) => (
@@ -511,13 +511,13 @@ export default function Landing() {
       <section className="container py-20">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Stop Losing Money to Missed Calls?
+            Every Day You Wait, You're Leaving Money on the Table.
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Start your 14-day free trial today. No credit card required. Setup takes 10 minutes.
+            The average shop loses $28,000+ a year to missed calls. Baylio stops that. Start your 14-day free trial.
           </p>
           <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-            Get Started Free
+            Get My Free Missed Call Audit
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>

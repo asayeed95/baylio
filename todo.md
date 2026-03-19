@@ -281,3 +281,8 @@
 - [x] Change 1: Replace fake testimonials with credibility section ("Built for Shop Owners, by Operators Who Get It" — 3 cards: Enterprise-Grade Voice, 2-Second Answer, First 50 Shops + green CTA)
 - [x] Change 2: Expand FAQ from 6 to 14 questions (add: answer speed, robot sound, Spanish, booking, receptionist, after-hours, downtime, data security)
 - [x] Change 3: Dark hero section (bg #1A1A2E, white headline, green accent #10B981, light gray subheadline #D1D5DB)
+
+## Phase 28: Landing Page Copy Overhaul
+- [x] Change 1: Hero rewrite — "$28,000+" headline, new subheadline with full value prop
+- [x] Change 2: CTA buttons — "Get My Free Missed Call Audit" + "Hear a Live Demo Call" + bottom CTA rewrite
+- [x] Change 3: Feature cards — 6 cards rewritten with revenue-focused copy
