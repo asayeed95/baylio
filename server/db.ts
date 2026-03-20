@@ -373,3 +373,139 @@ export async function createContactSubmission(data: InsertContactSubmission) {
   const result = await db.insert(contactSubmissions).values(data);
   return result[0].insertId;
 }
+
+// ─── Affiliates ──────────────────────────────────────────────────────
+
+import {
+  affiliates,
+  affiliateReferrals,
+  affiliateCommissions,
+} from "../drizzle/schema";
+import type {
+  InsertAffiliate,
+  InsertAffiliateReferral,
+  InsertAffiliateCommission,
+} from "../drizzle/schema";
+
+/** Create a new affiliate and return its ID. */
+export async function createAffiliate(data: InsertAffiliate) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(affiliates).values(data);
+  return result[0].insertId;
+}
+
+/** Get an affiliate by user ID. */
+export async function getAffiliateByUserId(userId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(affiliates).where(eq(affiliates.userId, userId)).limit(1);
+  return result[0];
+}
+
+/** Get an affiliate by their unique referral code. */
+export async function getAffiliateByCode(code: string) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(affiliates).where(eq(affiliates.code, code)).limit(1);
+  return result[0];
+}
+
+/** Get an affiliate by ID. */
+export async function getAffiliateById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(affiliates).where(eq(affiliates.id, id)).limit(1);
+  return result[0];
+}
+
+/** Update an affiliate's fields. */
+export async function updateAffiliate(id: number, data: Partial<InsertAffiliate>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(affiliates).set(data).where(eq(affiliates.id, id));
+}
+
+/** List all affiliates (admin view), newest first. */
+export async function listAffiliates() {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(affiliates).orderBy(desc(affiliates.createdAt));
+}
+
+/** Increment click count for an affiliate. */
+export async function incrementAffiliateClicks(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(affiliates)
+    .set({ totalClicks: sql`${affiliates.totalClicks} + 1` })
+    .where(eq(affiliates.id, affiliateId));
+}
+
+// ─── Affiliate Referrals ─────────────────────────────────────────────
+
+/** Create a referral record. */
+export async function createAffiliateReferral(data: InsertAffiliateReferral) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(affiliateReferrals).values(data);
+  return result[0].insertId;
+}
+
+/** Get referrals for an affiliate. */
+export async function getReferralsByAffiliate(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(affiliateReferrals)
+    .where(eq(affiliateReferrals.affiliateId, affiliateId))
+    .orderBy(desc(affiliateReferrals.createdAt));
+}
+
+/** Update a referral's status. */
+export async function updateAffiliateReferral(id: number, data: Partial<InsertAffiliateReferral>) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(affiliateReferrals).set(data).where(eq(affiliateReferrals.id, id));
+}
+
+/** Find a referral by shop ID (to link commission on subscription). */
+export async function getReferralByShop(shopId: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(affiliateReferrals)
+    .where(eq(affiliateReferrals.shopId, shopId)).limit(1);
+  return result[0];
+}
+
+// ─── Affiliate Commissions ───────────────────────────────────────────
+
+/** Create a commission record. */
+export async function createAffiliateCommission(data: InsertAffiliateCommission) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(affiliateCommissions).values(data);
+  return result[0].insertId;
+}
+
+/** Get commissions for an affiliate. */
+export async function getCommissionsByAffiliate(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(affiliateCommissions)
+    .where(eq(affiliateCommissions.affiliateId, affiliateId))
+    .orderBy(desc(affiliateCommissions.createdAt));
+}
+
+/** Get total pending commissions for an affiliate. */
+export async function getPendingCommissionTotal(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return "0.00";
+  const result = await db.select({
+    total: sql<string>`COALESCE(SUM(${affiliateCommissions.amount}), 0)`,
+  }).from(affiliateCommissions)
+    .where(and(
+      eq(affiliateCommissions.affiliateId, affiliateId),
+      eq(affiliateCommissions.status, "pending"),
+    ));
+  return result[0]?.total ?? "0.00";
+}

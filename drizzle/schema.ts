@@ -241,3 +241,66 @@ export const contactSubmissions = mysqlTable("contact_submissions", {
 });
 export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
+
+// ─── Affiliates ─────────────────────────────────────────────────────
+export const affiliates = mysqlTable("affiliates", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  code: varchar("code", { length: 32 }).notNull().unique(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  paypalEmail: varchar("paypalEmail", { length: 320 }),
+  stripeConnectId: varchar("stripeConnectId", { length: 128 }),
+  tier: mysqlEnum("affiliateTier", ["affiliate", "pro", "agency"]).default("affiliate").notNull(),
+  commissionRate: decimal("commissionRate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
+  status: mysqlEnum("affiliateStatus", ["pending", "active", "suspended", "inactive"]).default("pending").notNull(),
+  totalClicks: int("totalClicks").default(0).notNull(),
+  totalSignups: int("totalSignups").default(0).notNull(),
+  totalEarnings: decimal("totalEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  pendingPayout: decimal("pendingPayout", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  lastPayoutAt: timestamp("lastPayoutAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Affiliate = typeof affiliates.$inferSelect;
+export type InsertAffiliate = typeof affiliates.$inferInsert;
+
+// ─── Affiliate Referrals ────────────────────────────────────────────
+export const affiliateReferrals = mysqlTable("affiliate_referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliateId").notNull(),
+  shopId: int("shopId"),
+  shopOwnerId: int("shopOwnerId"),
+  referredEmail: varchar("referredEmail", { length: 320 }),
+  referredName: varchar("referredName", { length: 255 }),
+  status: mysqlEnum("referralStatus", ["clicked", "signed_up", "subscribed", "churned"]).default("clicked").notNull(),
+  subscribedTier: varchar("subscribedTier", { length: 32 }),
+  monthlyValue: decimal("monthlyValue", { precision: 10, scale: 2 }),
+  convertedAt: timestamp("convertedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type AffiliateReferral = typeof affiliateReferrals.$inferSelect;
+export type InsertAffiliateReferral = typeof affiliateReferrals.$inferInsert;
+
+// ─── Affiliate Commissions ──────────────────────────────────────────
+export const affiliateCommissions = mysqlTable("affiliate_commissions", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliateId").notNull(),
+  referralId: int("referralId").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
+  status: mysqlEnum("commissionStatus", ["pending", "approved", "paid", "rejected"]).default("pending").notNull(),
+  periodStart: timestamp("periodStart"),
+  periodEnd: timestamp("periodEnd"),
+  paidAt: timestamp("paidAt"),
+  payoutMethod: varchar("payoutMethod", { length: 32 }),
+  payoutReference: varchar("payoutReference", { length: 255 }),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type AffiliateCommission = typeof affiliateCommissions.$inferSelect;
+export type InsertAffiliateCommission = typeof affiliateCommissions.$inferInsert;

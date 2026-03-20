@@ -299,3 +299,16 @@
 - [ ] Verify Manus deployment is published and accessible
 - [ ] Fix domain configuration or guide user through Manus Settings > Domains
 - [ ] Confirm baylio.io loads correctly
+
+## Phase 31: Affiliate Portal MVP
+- [x] Pull Claude Code's security fixes (timing-safe bug, validateEnv, type safety)
+- [x] Design affiliate database schema (affiliates, referrals, commissions tables)
+- [x] Run database migrations for affiliate tables
+- [x] Build affiliate tRPC procedures (signup, get stats, get referral link, list referrals)
+- [ ] Build referral tracking middleware (capture ref code from URL, tag on shop signup)
+- [ ] Build commission calculation logic (20% recurring monthly)
+- [x] Build affiliate signup/dashboard page (public signup + authenticated dashboard)
+- [x] Build affiliate stats display (clicks, signups, active shops, earnings)
+- [x] Build admin affiliate management view (list affiliates, approve payouts, view performance)
+- [x] Write vitest tests for affiliate features (19 tests passing)
+- [x] Save checkpoint

@@ -16,6 +16,8 @@ import Notifications from "./pages/Notifications";
 import ShopSettings from "./pages/ShopSettings";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
+import AffiliatePortal from "./pages/AffiliatePortal";
+import AffiliateAdmin from "./pages/AffiliateAdmin";
 
 /**
  * Baylio App Router
@@ -49,6 +51,8 @@ function Router() {
       <Route path="/notifications" component={Notifications} />
       <Route path="/contact" component={Contact} />
       <Route path="/faq" component={FAQ} />
+      <Route path="/affiliate" component={AffiliatePortal} />
+      <Route path="/admin/affiliates" component={AffiliateAdmin} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

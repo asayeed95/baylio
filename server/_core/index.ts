@@ -6,6 +6,7 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
+import { validateEnv } from "./env";
 import { serveStatic, setupVite } from "./vite";
 import { twilioRouter } from "../services/twilioWebhooks";
 import { validateTwilioSignature } from "../middleware/twilioValidation";
@@ -32,6 +33,7 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
+  validateEnv();
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
