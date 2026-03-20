@@ -241,6 +241,8 @@ async function handleSalesLineCall(
 
   console.log(`[SALES] Routing to Baylio Sales Agent (${agentId})`);
 
+  // Sales line uses 'multi' language mode — the sales agent itself is a demo
+  // of Baylio's bilingual capability, so it must auto-detect and match the caller.
   return registerElevenLabsCall(agentId, fromNumber, toNumber, {
     configOverride: {
       agent: {
@@ -248,7 +250,7 @@ async function handleSalesLineCall(
           prompt: baylioSalesAgentPrompt,
         },
         first_message: baylioSalesFirstMessage,
-        language: "en",
+        language: "multi",
       },
     },
     dynamicVariables: {
@@ -374,13 +376,20 @@ async function handleShopCall(
   console.log(`[CALL] Compiled prompt for shop ${shopId} (${context.shopName}), tokens ~${Math.ceil(compiledPrompt.length / 4)}`);
 
   // Build the config override with optional voice
+  // Use 'multi' language mode to enable automatic language detection.
+  // ElevenLabs 'multi' mode allows the AI to detect and respond in the caller's
+  // language automatically — critical for Baylio's bilingual/Spanglish support.
+  const effectiveLanguage = (context.language === "es" || context.language === "multi")
+    ? "multi"  // Spanish or multi → enable full multilingual detection
+    : context.language || "en";
+
   const configOverride: ConversationConfigOverride = {
     agent: {
       prompt: {
         prompt: compiledPrompt,
       },
       first_message: greeting,
-      language: context.language || "en",
+      language: effectiveLanguage,
     },
   };
 

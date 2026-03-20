@@ -312,3 +312,18 @@
 - [x] Build admin affiliate management view (list affiliates, approve payouts, view performance)
 - [x] Write vitest tests for affiliate features (19 tests passing)
 - [x] Save checkpoint
+
+## Phase 32: Landing Page Improvements
+- [x] CHANGE 1: Add Human Handoff Trust Section (between Features and Pricing)
+- [x] CHANGE 2: Add After-Hours / Bilingual Section (after trust section)
+- [x] CHANGE 3: Add pricing microcopy (subtitles for each tier + setup line)
+- [x] CHANGE 4: Add stat block source citation below the 4 stats
+- [x] AI FEATURE: Automatic language detection (Spanish/English instant switch)
+- [x] AI FEATURE: Spanglish/code-switching support (mirror caller's language ratio)
+- [x] AI FEATURE: Accent and speaking style mirroring (casual/formal/slang matching)
+- [x] AI FEATURE: Never-ask-to-switch rule (just do it, don't ask)
+- [x] Update promptCompiler.ts with full language matching rules section
+- [x] Update bilingualAgent.ts with enhanced Spanglish + colloquial auto terms
+- [x] Update baylioSalesAgent.ts with language matching + bilingual pitch
+- [x] Update ElevenLabs conversation config for multilingual support (language: 'multi')
+- [x] Write 13 new tests for language matching (366 total passing)

@@ -437,3 +437,102 @@ describe("confidence threshold labels", () => {
     expect(prompt).toContain("LOW (offer suggestions more freely)");
   });
 });
+
+// ---------------------------------------------------------------------------
+// Language & Speaking Style Matching rules in compiled prompt
+// ---------------------------------------------------------------------------
+describe("language and speaking style matching rules", () => {
+  const prompt = compileSystemPrompt(makeFullContext());
+
+  it("includes the LANGUAGE & SPEAKING STYLE MATCHING section header", () => {
+    expect(prompt).toContain("LANGUAGE & SPEAKING STYLE MATCHING");
+  });
+
+  it("includes Rule 1: AUTOMATIC LANGUAGE DETECTION", () => {
+    expect(prompt).toContain("AUTOMATIC LANGUAGE DETECTION");
+    expect(prompt).toContain("respond in Spanish IMMEDIATELY");
+  });
+
+  it("includes Rule 2: SPANGLISH / CODE-SWITCHING SUPPORT", () => {
+    expect(prompt).toContain("SPANGLISH / CODE-SWITCHING SUPPORT");
+    expect(prompt).toContain("mirror that style");
+    expect(prompt).toContain("mi carro");
+    expect(prompt).toContain("puedo ayudarte con eso");
+  });
+
+  it("includes Rule 3: ACCENT AND SPEAKING STYLE MIRRORING", () => {
+    expect(prompt).toContain("SPEAKING STYLE MIRRORING");
+    expect(prompt).toContain("match the caller");
+  });
+
+  it("includes Rule 4: NEVER ASK TO SWITCH LANGUAGES", () => {
+    expect(prompt).toContain("NEVER ASK TO SWITCH LANGUAGES");
+    expect(prompt).toContain("Would you like me to speak in Spanish?");
+  });
+
+  it("includes colloquial auto terms for Spanish speakers", () => {
+    expect(prompt).toContain("el mofle");
+    expect(prompt).toContain("los wipers");
+    expect(prompt).toContain("la troca");
+    expect(prompt).toContain("las balatas");
+    expect(prompt).toContain("el foquito del motor");
+  });
+
+  it("includes the language matching section for all language settings", () => {
+    // Even English-only shops get the rules (caller might speak Spanish)
+    const enPrompt = compileSystemPrompt(makeFullContext({ language: "en" }));
+    expect(enPrompt).toContain("AUTOMATIC LANGUAGE DETECTION");
+
+    const esPrompt = compileSystemPrompt(makeFullContext({ language: "es" }));
+    expect(esPrompt).toContain("AUTOMATIC LANGUAGE DETECTION");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Sales agent language matching
+// ---------------------------------------------------------------------------
+describe("sales agent language matching", () => {
+  // Import the sales agent prompt directly
+  it("includes language_matching section in sales agent prompt", async () => {
+    const { baylioSalesAgentPrompt } = await import("./prompts/baylioSalesAgent");
+    expect(baylioSalesAgentPrompt).toContain("<language_matching>");
+    expect(baylioSalesAgentPrompt).toContain("AUTOMATIC LANGUAGE AND STYLE MATCHING");
+    expect(baylioSalesAgentPrompt).toContain("respond in Spanish IMMEDIATELY");
+    expect(baylioSalesAgentPrompt).toContain("NEVER say");
+  });
+
+  it("includes bilingual pitch line for Spanish-speaking prospects", async () => {
+    const { baylioSalesAgentPrompt } = await import("./prompts/baylioSalesAgent");
+    expect(baylioSalesAgentPrompt).toContain("Baylio habla español también");
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Bilingual agent enhanced rules
+// ---------------------------------------------------------------------------
+describe("bilingual agent enhanced rules", () => {
+  it("includes Spanglish code-switching support", async () => {
+    const { bilingualAgentPrompt } = await import("./prompts/bilingualAgent");
+    expect(bilingualAgentPrompt).toContain("SPANGLISH / CODE-SWITCHING SUPPORT");
+    expect(bilingualAgentPrompt).toContain("KEY DIFFERENTIATOR");
+  });
+
+  it("includes never-ask-to-switch rule", async () => {
+    const { bilingualAgentPrompt } = await import("./prompts/bilingualAgent");
+    expect(bilingualAgentPrompt).toContain("NEVER say");
+    expect(bilingualAgentPrompt).toContain("No asking. No announcing");
+  });
+
+  it("includes colloquial auto terms", async () => {
+    const { bilingualAgentPrompt } = await import("./prompts/bilingualAgent");
+    expect(bilingualAgentPrompt).toContain("el mofle");
+    expect(bilingualAgentPrompt).toContain("la troca");
+    expect(bilingualAgentPrompt).toContain("las balatas");
+  });
+
+  it("includes speaking style mirroring", async () => {
+    const { bilingualAgentPrompt } = await import("./prompts/bilingualAgent");
+    expect(bilingualAgentPrompt).toContain("SPEAKING STYLE MIRRORING");
+    expect(bilingualAgentPrompt).toContain("talking to one of their own");
+  });
+});

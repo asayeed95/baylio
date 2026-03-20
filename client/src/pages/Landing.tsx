@@ -21,6 +21,9 @@ import {
   Users,
   MessageSquare,
   Globe,
+  PhoneOff,
+  Languages,
+  Headphones,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -79,6 +82,7 @@ const PRICING_TIERS = [
     name: "Pilot",
     price: 149,
     description: "Try Baylio risk-free on your after-hours calls",
+    microcopy: "",
     minutes: 150,
     badge: "30-Day Trial",
     features: [
@@ -95,6 +99,7 @@ const PRICING_TIERS = [
     name: "Starter",
     price: 199,
     description: "For single-location shops getting started",
+    microcopy: "Best for shops taking 5–20 calls/day. 300 min covers ~100–150 calls/month.",
     minutes: 300,
     badge: null,
     features: [
@@ -111,6 +116,7 @@ const PRICING_TIERS = [
     name: "Pro",
     price: 349,
     description: "For busy shops that need more capacity",
+    microcopy: "Best for shops taking 20–50 calls/day who want full booking automation and SMS alerts. Most popular plan.",
     minutes: 750,
     badge: null,
     features: [
@@ -127,6 +133,7 @@ const PRICING_TIERS = [
     name: "Elite",
     price: 599,
     description: "For multi-location operators and high-volume shops",
+    microcopy: "Best for high-volume or multi-location shops who need the intelligent upsell engine.",
     minutes: 1500,
     badge: null,
     features: [
@@ -371,6 +378,9 @@ export default function Landing() {
               </div>
             ))}
           </div>
+          <p className="text-center text-xs mt-6" style={{ color: "#9CA3AF" }}>
+            Sources: AAA Auto Repair Industry Report, IBISWorld, BrightLocal — 2024
+          </p>
         </div>
       </section>
 
@@ -425,7 +435,81 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── Pricing ─── */}
+      {/* ─── Human Handoff Trust Section (CHANGE 1) ─── */}
+      <section style={{ backgroundColor: "#1A1A2E" }} className="py-20">
+        <div className="container">
+          <div className="max-w-4xl mx-auto">
+            <h2 className="text-3xl md:text-4xl font-bold text-center mb-6 text-white">
+              What If a Customer Has a Problem the AI Can't Handle?
+            </h2>
+            <p className="text-center mb-12 max-w-3xl mx-auto leading-relaxed" style={{ color: "#D1D5DB" }}>
+              We get this question from every shop owner — and it is the right one to ask. Baylio handles 85–90% of all inbound shop calls: appointment requests, pricing questions, hours, service inquiries, and upsells. For everything else, it has a clear escalation path. If a caller is upset, has a complex warranty dispute, or specifically asks to speak to a person, Baylio immediately routes them to your designated phone number or takes a detailed message with a callback promise. Nothing falls through the cracks. You set the rules. You control the experience. Baylio enforces them, every call.
+            </p>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
+              {[
+                "Answers in under 2 seconds on every inbound call",
+                "Human escalation on any call, at any time you configure",
+                "99.9% uptime SLA — if Baylio goes down, calls route to your backup",
+                "All calls logged, transcribed, and stored in your dashboard",
+                "CCPA-compliant data handling",
+                "Built on enterprise-grade voice infrastructure",
+              ].map((point, i) => (
+                <div key={i} className="flex items-start gap-3">
+                  <CheckCircle2 className="h-5 w-5 text-emerald-400 mt-0.5 shrink-0" />
+                  <span className="text-sm" style={{ color: "#E5E7EB" }}>{point}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── After-Hours / Bilingual Section (CHANGE 2) ─── */}
+      <section className="container py-20">
+        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
+          Your Shop Closes. Your Phone Doesn't Have To.
+        </h2>
+        <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+          Baylio works when you can't — and when you're too busy to pick up.
+        </p>
+        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          <Card className="border bg-card">
+            <CardContent className="pt-6">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <PhoneOff className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">After Hours</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Customers call at 7pm, 10pm, Saturday morning. Baylio answers every one. By Monday morning, your schedule is already full.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border bg-card">
+            <CardContent className="pt-6">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <Headphones className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">Overflow Coverage</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                When your front desk is slammed, Baylio handles the calls they can't get to. No missed opportunities during your busiest hours.
+              </p>
+            </CardContent>
+          </Card>
+          <Card className="border bg-card">
+            <CardContent className="pt-6">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                <Languages className="h-5 w-5 text-primary" />
+              </div>
+              <h3 className="text-lg font-semibold mb-2">English + Spanish</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Every call is handled in the customer's preferred language. Baylio detects language automatically — if a caller says <em>Hola</em>, Baylio responds in Spanish instantly. No switching, no asking. It even matches the caller's speaking style — Spanglish, mixed language, regional accents. Your customers feel like they are talking to one of their own.
+              </p>
+            </CardContent>
+          </Card>
+        </div>
+      </section>
+
+      {/* ─── Pricing (CHANGE 3 — microcopy added) ─── */}
       <section id="pricing" className="container py-20">
         <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
@@ -447,6 +531,9 @@ export default function Landing() {
               <CardHeader className="text-center pb-4">
                 <CardTitle className="text-xl">{tier.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">{tier.description}</p>
+                {tier.microcopy && (
+                  <p className="text-xs text-muted-foreground/80 mt-1 italic">{tier.microcopy}</p>
+                )}
                 <div className="mt-4">
                   <span className="text-4xl font-bold">${tier.price}</span>
                   <span className="text-muted-foreground">/month</span>
@@ -473,8 +560,11 @@ export default function Landing() {
             </Card>
           ))}
         </div>
-        <p className="text-center text-sm text-muted-foreground mt-8">
+        <p className="text-center text-sm text-muted-foreground mt-6">
           Overage: $0.15/minute beyond your plan. Annual billing saves 20%.
+        </p>
+        <p className="text-center text-sm font-medium text-muted-foreground mt-2">
+          Setup takes under 10 minutes. Our team helps you go live the same day.
         </p>
       </section>
 
