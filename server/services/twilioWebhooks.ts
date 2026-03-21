@@ -250,7 +250,7 @@ async function handleSalesLineCall(
           prompt: baylioSalesAgentPrompt,
         },
         first_message: baylioSalesFirstMessage,
-        language: "multi",
+        language: "en",
       },
     },
     dynamicVariables: {
@@ -376,12 +376,10 @@ async function handleShopCall(
   console.log(`[CALL] Compiled prompt for shop ${shopId} (${context.shopName}), tokens ~${Math.ceil(compiledPrompt.length / 4)}`);
 
   // Build the config override with optional voice
-  // Use 'multi' language mode to enable automatic language detection.
-  // ElevenLabs 'multi' mode allows the AI to detect and respond in the caller's
-  // language automatically — critical for Baylio's bilingual/Spanglish support.
-  const effectiveLanguage = (context.language === "es" || context.language === "multi")
-    ? "multi"  // Spanish or multi → enable full multilingual detection
-    : context.language || "en";
+  // Language detection is handled in the AI prompt itself (bilingual/Spanglish rules).
+  // ElevenLabs language param sets the TTS voice language — use 'en' as default
+  // since the prompt handles code-switching. Use 'es' only if shop is Spanish-primary.
+  const effectiveLanguage = context.language === "es" ? "es" : "en";
 
   const configOverride: ConversationConfigOverride = {
     agent: {

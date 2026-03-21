@@ -18,6 +18,7 @@ import {
   releasePhoneNumber,
   getAccountBalance,
 } from "./services/twilioProvisioning";
+import { createOrUpdateContact, createDeal } from "./services/hubspotService";
 
 const shopInput = z.object({
   name: z.string().min(1).max(255),
@@ -79,6 +80,34 @@ export const shopRouter = router({
     .input(shopInput)
     .mutation(async ({ ctx, input }) => {
       const id = await createShop({ ...input, ownerId: ctx.user.id });
+
+      // Sync shop owner to HubSpot as a contact
+      try {
+        const user = ctx.user;
+        const email = user.email || "unknown@baylio.io";
+        const nameParts = user.name?.split(" ") || ["Shop", "Owner"];
+        const city = input.city || "Unknown";
+        const state = input.state || "Unknown";
+        await createOrUpdateContact(email, {
+          firstname: nameParts[0],
+          lastname: nameParts.slice(1).join(" ") || "Owner",
+          phone: input.phone,
+          company: input.name,
+          lifecyclestage: "customer",
+          hs_lead_status: "baylio_shop_signup",
+        });
+
+        // Create a deal for the shop signup
+        await createDeal(`Shop Signup: ${input.name}`, email, {
+          dealstage: "appointmentscheduled",
+          amount: 149,
+          description: `New shop signup via Baylio. Location: ${city}, ${state}`,
+        });
+      } catch (hubspotError) {
+        console.warn("[HubSpot] Warning: Failed to sync shop signup to HubSpot", hubspotError);
+        // Don't fail the shop creation if HubSpot sync fails
+      }
+
       return { id };
     }),
 

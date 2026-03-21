@@ -327,3 +327,26 @@
 - [x] Update baylioSalesAgent.ts with language matching + bilingual pitch
 - [x] Update ElevenLabs conversation config for multilingual support (language: 'multi')
 - [x] Write 13 new tests for language matching (366 total passing)
+
+## Phase 33: HubSpot CRM Integration
+- [x] Build HubSpot service layer (hubspotService.ts) with contact/deal/note creation
+- [x] Wire HubSpot contact creation into shop signup flow (shopRouter.ts create procedure)
+- [x] Wire HubSpot deal creation into shop signup (lifecycle: customer, stage: appointmentscheduled)
+- [ ] Wire HubSpot contact creation into lead capture form (when built) — lifecycle: baylio_audit_lead
+- [ ] Wire HubSpot notes into call logs (post-call summaries attached to contacts)
+- [ ] Build lead capture form component (Dialog modal: name, phone, shop name, email)
+- [ ] Test HubSpot sync end-to-end (shop signup → contact + deal appears in HubSpot)
+
+## Phase 34: Domain Configuration & DNS
+- [ ] Fix baylio.io domain loading (remove Namecheap URL forwarding)
+- [ ] Add CNAME records for baylio.io to point to Manus deployment
+- [ ] Update Twilio webhooks to use baylio.io instead of sandbox URL
+- [ ] Verify domain loads correctly and SSL certificate works
+- [ ] Save checkpoint after domain is live
+
+## Priority Backlog
+- [ ] Build lead capture form (shadcn Dialog modal)
+- [ ] Build shop service menu feature (pricing/promotions in AI prompt)
+- [ ] Test live bilingual call end-to-end
+- [ ] Mobile responsiveness audit
+- [ ] Final checkpoint & deploy
