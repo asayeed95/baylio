@@ -40,6 +40,7 @@ const shopInput = z.object({
     price: z.number().min(0).max(100000).optional(),
     description: z.string().max(1000).optional(),
   })).max(100).optional(),
+  emailMarketingConsent: z.boolean().optional(),
 });
 
 const agentConfigInput = z.object({
@@ -95,6 +96,7 @@ export const shopRouter = router({
           company: input.name,
           lifecyclestage: "customer",
           hs_lead_status: "baylio_shop_signup",
+          emailMarketingConsent: input.emailMarketingConsent ?? true,
         });
 
         // Create a deal for the shop signup

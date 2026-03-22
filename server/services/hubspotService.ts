@@ -42,7 +42,9 @@ interface HubSpotNote {
 }
 
 /**
- * Create or update a contact in HubSpot
+ * Create or update a contact in HubSpot.
+ * If emailMarketingConsent is true, the contact is enrolled in the
+ * "Baylio Product Updates" and "Baylio Promotions" subscription types.
  */
 export async function createOrUpdateContact(
   email: string,
@@ -53,6 +55,7 @@ export async function createOrUpdateContact(
     company?: string;
     lifecyclestage?: "subscriber" | "lead" | "marketingqualifiedlead" | "salesqualifiedlead" | "opportunity" | "customer" | "evangelist" | "other";
     hs_lead_status?: string;
+    emailMarketingConsent?: boolean;
   }
 ): Promise<HubSpotContact | null> {
   if (!HUBSPOT_API_KEY) {
@@ -60,13 +63,15 @@ export async function createOrUpdateContact(
     return null;
   }
 
+  const { emailMarketingConsent, ...contactProperties } = properties;
+
   try {
     const response = await axios.post(
       `${HUBSPOT_API_BASE}/crm/v3/objects/contacts`,
       {
         properties: {
           email,
-          ...properties,
+          ...contactProperties,
         },
       },
       {
@@ -77,15 +82,103 @@ export async function createOrUpdateContact(
       }
     );
 
-    return response.data;
+    const contact = response.data as HubSpotContact;
+
+    // Enroll in email marketing subscriptions if consent given
+    if (emailMarketingConsent !== false) {
+      await enrollContactInEmailSubscriptions(contact.id, email).catch(err =>
+        console.warn("[HubSpot] Warning: Could not enroll contact in email subscriptions", err.message)
+      );
+    }
+
+    return contact;
   } catch (error) {
     const axiosError = error as AxiosError;
     if (axiosError.response?.status === 409) {
       // Contact already exists, update it instead
-      return updateContactByEmail(email, properties);
+      return updateContactByEmail(email, { ...contactProperties, emailMarketingConsent });
     }
     console.error("[HubSpot] Error creating contact:", axiosError.message);
     throw error;
+  }
+}
+
+/**
+ * Enroll a contact in Baylio email marketing subscription types.
+ * Uses HubSpot's Communication Preferences API to opt-in the contact
+ * for "Product Updates" and "Promotional" emails.
+ */
+async function enrollContactInEmailSubscriptions(
+  contactId: string,
+  email: string
+): Promise<void> {
+  if (!HUBSPOT_API_KEY) return;
+
+  // Subscribe to all marketing email types using the Communication Preferences API
+  // This uses the "subscribeToAll" approach which subscribes to all non-transactional types
+  try {
+    await axios.post(
+      `${HUBSPOT_API_BASE}/communication-preferences/v3/subscribe`,
+      {
+        emailAddress: email,
+        subscriptionId: "product_updates",
+        legalBasis: "CONSENT_WITH_NOTICE",
+        legalBasisExplanation: "User opted in during Baylio shop signup",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log(`[HubSpot] Enrolled ${email} in product_updates subscription`);
+  } catch (err) {
+    // Subscription type may not exist yet — log and continue
+    console.warn(`[HubSpot] Could not subscribe to product_updates:`, (err as AxiosError).response?.data || (err as Error).message);
+  }
+
+  try {
+    await axios.post(
+      `${HUBSPOT_API_BASE}/communication-preferences/v3/subscribe`,
+      {
+        emailAddress: email,
+        subscriptionId: "promotional",
+        legalBasis: "CONSENT_WITH_NOTICE",
+        legalBasisExplanation: "User opted in during Baylio shop signup",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+    console.log(`[HubSpot] Enrolled ${email} in promotional subscription`);
+  } catch (err) {
+    console.warn(`[HubSpot] Could not subscribe to promotional:`, (err as AxiosError).response?.data || (err as Error).message);
+  }
+
+  // Also set the marketing email opt-in property on the contact
+  try {
+    await axios.patch(
+      `${HUBSPOT_API_BASE}/crm/v3/objects/contacts/${contactId}`,
+      {
+        properties: {
+          hs_email_optout: "false",
+          hs_marketable_status: "true",
+          hs_marketable_reason_type: "FORM_SUBMISSION",
+        },
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.warn("[HubSpot] Could not set marketable status:", (err as Error).message);
   }
 }
 
@@ -94,12 +187,14 @@ export async function createOrUpdateContact(
  */
 export async function updateContactByEmail(
   email: string,
-  properties: Record<string, string | undefined>
+  properties: Record<string, string | boolean | undefined>
 ): Promise<HubSpotContact | null> {
   if (!HUBSPOT_API_KEY) {
     console.warn("[HubSpot] API key not configured, skipping contact update");
     return null;
   }
+
+  const { emailMarketingConsent, ...contactProperties } = properties;
 
   try {
     // First, search for the contact by email
@@ -129,7 +224,7 @@ export async function updateContactByEmail(
 
     if (searchResponse.data.results.length === 0) {
       // Contact not found, create it
-      return createOrUpdateContact(email, properties as any);
+      return createOrUpdateContact(email, { ...contactProperties, emailMarketingConsent } as any);
     }
 
     const contactId = searchResponse.data.results[0].id;
@@ -139,7 +234,7 @@ export async function updateContactByEmail(
       `${HUBSPOT_API_BASE}/crm/v3/objects/contacts/${contactId}`,
       {
         properties: Object.fromEntries(
-          Object.entries(properties).filter(([, v]) => v !== undefined)
+          Object.entries(contactProperties).filter(([, v]) => v !== undefined)
         ),
       },
       {
@@ -150,10 +245,48 @@ export async function updateContactByEmail(
       }
     );
 
+    // Handle email subscription update
+    if (emailMarketingConsent === true) {
+      await enrollContactInEmailSubscriptions(contactId, email).catch(err =>
+        console.warn("[HubSpot] Warning: Could not update email subscriptions", err.message)
+      );
+    } else if (emailMarketingConsent === false) {
+      await unsubscribeContactFromEmails(email).catch(err =>
+        console.warn("[HubSpot] Warning: Could not unsubscribe contact", err.message)
+      );
+    }
+
     return updateResponse.data;
   } catch (error) {
     console.error("[HubSpot] Error updating contact:", error);
     throw error;
+  }
+}
+
+/**
+ * Unsubscribe a contact from all marketing emails
+ */
+async function unsubscribeContactFromEmails(email: string): Promise<void> {
+  if (!HUBSPOT_API_KEY) return;
+
+  try {
+    await axios.post(
+      `${HUBSPOT_API_BASE}/communication-preferences/v3/unsubscribe`,
+      {
+        emailAddress: email,
+        subscriptionId: "product_updates",
+        legalBasis: "CONSENT_WITH_NOTICE",
+        legalBasisExplanation: "User opted out",
+      },
+      {
+        headers: {
+          Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+      }
+    );
+  } catch (err) {
+    console.warn("[HubSpot] Could not unsubscribe from product_updates:", (err as Error).message);
   }
 }
 
@@ -239,16 +372,15 @@ export async function createDeal(
             associationCategory: "HUBSPOT_DEFINED",
             associationTypeId: 3,
           },
-        {
-          headers: {
-            Authorization: `Bearer ${HUBSPOT_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-        }
+          {
+            headers: {
+              Authorization: `Bearer ${HUBSPOT_API_KEY}`,
+              "Content-Type": "application/json",
+            },
+          }
         );
       } catch (assocError) {
         console.warn("[HubSpot] Warning: Could not associate deal with contact", assocError);
-        // Don't fail the whole operation if association fails
       }
     }
 
@@ -342,7 +474,6 @@ export async function createContactNote(
       );
     } catch (assocError) {
       console.warn("[HubSpot] Warning: Could not associate note with contact", assocError);
-      // Don't fail the whole operation if association fails
     }
 
     return noteResponse.data;

@@ -27,6 +27,7 @@ import {
 
 } from "lucide-react";
 import { useState } from "react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -52,6 +53,7 @@ function DashboardContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newShopName, setNewShopName] = useState("");
   const [newShopPhone, setNewShopPhone] = useState("");
+  const [emailConsent, setEmailConsent] = useState(true);
 
   const { data: shops, isLoading, refetch } = trpc.shop.list.useQuery();
   const createShop = trpc.shop.create.useMutation({
@@ -60,6 +62,7 @@ function DashboardContent() {
       setCreateOpen(false);
       setNewShopName("");
       setNewShopPhone("");
+      setEmailConsent(true);
       refetch();
     },
     onError: (err) => {
@@ -75,6 +78,7 @@ function DashboardContent() {
     createShop.mutate({
       name: newShopName.trim(),
       phone: newShopPhone.trim() || undefined,
+      emailMarketingConsent: emailConsent,
     });
   };
 
@@ -133,6 +137,22 @@ function DashboardContent() {
                   value={newShopPhone}
                   onChange={(e) => setNewShopPhone(e.target.value)}
                 />
+              </div>
+              <div className="flex items-start space-x-3 rounded-md border p-3 bg-muted/30">
+                <Checkbox
+                  id="email-consent"
+                  checked={emailConsent}
+                  onCheckedChange={(v) => setEmailConsent(v === true)}
+                  className="mt-0.5"
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="email-consent" className="text-sm font-medium cursor-pointer">
+                    Send me product updates &amp; tips
+                  </Label>
+                  <p className="text-xs text-muted-foreground">
+                    Occasional emails about new features, promotions, and best practices for your shop. Unsubscribe anytime.
+                  </p>
+                </div>
               </div>
               <Button
                 className="w-full"

@@ -350,3 +350,20 @@
 - [ ] Test live bilingual call end-to-end
 - [ ] Mobile responsiveness audit
 - [ ] Final checkpoint & deploy
+
+## Phase 35: HubSpot Email Marketing Integration
+- [x] Add email consent checkbox to shop creation form (Dashboard.tsx)
+- [x] Add emailMarketingConsent field to shopInput schema (shopRouter.ts)
+- [x] Update hubspotService.ts with enrollContactInEmailSubscriptions function
+- [x] Update hubspotService.ts with unsubscribeContactFromEmails function
+- [x] Wire email consent into createOrUpdateContact (auto-enrolls on signup)
+- [ ] Add communication_preferences.read_write scope to HubSpot Private App token
+- [ ] Create "Product Updates" and "Promotional" subscription types in HubSpot
+- [ ] Test email subscription enrollment end-to-end
+- [ ] Set up SPF/DKIM/DMARC records for hello@baylio.io (primary inbox delivery)
+
+## Phase 34: Domain Fixed
+- [x] Diagnose baylio.io DNS issue (URL301 redirect record blocking A records)
+- [x] Guide user to delete URL301 record in Namecheap
+- [x] Verify baylio.io resolves correctly (HTTP 200, SSL working)
+- [x] Update Twilio webhooks to https://baylio.io (permanent domain)
