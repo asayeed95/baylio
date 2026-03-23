@@ -16,6 +16,19 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+/**
+ * Returns the main Baylio site URL.
+ * On production (partners.baylio.io) → baylio.io
+ * On dev/preview → same origin root
+ */
+function getMainSiteUrl(): string {
+  const hostname = window.location.hostname;
+  if (hostname === "partners.baylio.io") {
+    return "https://baylio.io";
+  }
+  return window.location.origin;
+}
+
 const TIERS = [
   {
     name: "Bronze",
@@ -153,6 +166,13 @@ export default function PartnersLanding() {
             </Badge>
           </div>
           <div className="flex items-center gap-3">
+            <a
+              href={getMainSiteUrl()}
+              className="text-sm text-zinc-400 hover:text-white transition-colors flex items-center gap-1"
+            >
+              <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+              baylio.io
+            </a>
             <a
               href={loginUrl}
               className="text-sm text-zinc-400 hover:text-white transition-colors"
