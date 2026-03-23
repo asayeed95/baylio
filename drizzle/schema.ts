@@ -402,3 +402,24 @@ export const prospectNotes = mysqlTable("prospect_notes", {
 });
 export type ProspectNote = typeof prospectNotes.$inferSelect;
 export type InsertProspectNote = typeof prospectNotes.$inferInsert;
+
+// ─── Scheduled Follow-Up Calls ───────────────────────────────────────
+// When a caller says "call me back in 2 hours" or "let's talk next week",
+// Alex creates a scheduled call here. The cron job dials them at the right time.
+export const scheduledCalls = mysqlTable("scheduled_calls", {
+  id: int("id").autoincrement().primaryKey(),
+  phone: varchar("phone", { length: 32 }).notNull(),             // Number to call back
+  callerProfileId: int("callerProfileId"),                        // Link to caller_profiles if known
+  prospectId: int("prospectId"),                                  // Link to prospects if cold lead
+  scheduledAt: timestamp("scheduledAt").notNull(),                // When to make the call
+  reason: text("reason"),                                         // What the caller said ("call me after 4pm")
+  context: text("context"),                                       // Summary of previous conversation to inject
+  status: mysqlEnum("scheduleStatus", ["pending", "calling", "completed", "failed", "cancelled"]).default("pending").notNull(),
+  callSid: varchar("callSid", { length: 64 }),                    // Twilio SID of the outbound call when made
+  attempts: int("attempts").default(0).notNull(),                 // How many times we've tried
+  lastAttemptAt: timestamp("lastAttemptAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ScheduledCall = typeof scheduledCalls.$inferSelect;
+export type InsertScheduledCall = typeof scheduledCalls.$inferInsert;

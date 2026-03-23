@@ -17,6 +17,7 @@ import { eq, and, sql } from "drizzle-orm";
 import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
 import { extractAndSaveMemory } from "./callerMemoryService";
+import { extractFollowUpIntent, scheduleFollowUpCall } from "./followUpScheduler";
 
 /**
  * Analyze a call transcription using LLM.
@@ -275,6 +276,19 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
       extractAndSaveMemory(call.callerPhone, call.transcription, callSid).catch((err) =>
         console.error(`[POST-CALL] Memory extraction failed for call ${callLogId}:`, err)
       );
+
+      // Step 6: Extract follow-up scheduling intent ("call me back in 2 hours", "talk next week")
+      // If the caller asked for a callback, schedule it automatically.
+      extractFollowUpIntent(call.transcription, call.callerPhone)
+        .then(async (intent) => {
+          if (intent.hasFollowUp) {
+            console.log(`[POST-CALL] Follow-up intent detected for ${call.callerPhone}: ${intent.reason}`);
+            await scheduleFollowUpCall(call.callerPhone ?? "", intent);
+          }
+        })
+        .catch((err) =>
+          console.error(`[POST-CALL] Follow-up extraction failed for call ${callLogId}:`, err)
+        );
     }
 
     console.log(`[POST-CALL] Completed processing for call ${callLogId}`);

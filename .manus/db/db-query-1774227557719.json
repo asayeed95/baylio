@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE `scheduled_calls` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`phone` varchar(32) NOT NULL,\n\t`callerProfileId` int,\n\t`prospectId` int,\n\t`scheduledAt` timestamp NOT NULL,\n\t`reason` text,\n\t`context` text,\n\t`scheduleStatus` enum('pending','calling','completed','failed','cancelled') NOT NULL DEFAULT 'pending',\n\t`callSid` varchar(64),\n\t`attempts` int NOT NULL DEFAULT 0,\n\t`lastAttemptAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `scheduled_calls_id` PRIMARY KEY(`id`)\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute CREATE TABLE `scheduled_calls` (\n\t`id` int AUTO_INCREMENT NOT NULL,\n\t`phone` varchar(32) NOT NULL,\n\t`callerProfileId` int,\n\t`prospectId` int,\n\t`scheduledAt` timestamp NOT NULL,\n\t`reason` text,\n\t`context` text,\n\t`scheduleStatus` enum('pending','calling','completed','failed','cancelled') NOT NULL DEFAULT 'pending',\n\t`callSid` varchar(64),\n\t`attempts` int NOT NULL DEFAULT 0,\n\t`lastAttemptAt` timestamp,\n\t`createdAt` timestamp NOT NULL DEFAULT (now()),\n\t`updatedAt` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,\n\tCONSTRAINT `scheduled_calls_id` PRIMARY KEY(`id`)\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 123
+}

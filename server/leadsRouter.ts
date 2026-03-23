@@ -6,7 +6,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import { TRPCError } from "@trpc/server";
 import { getDb } from "./db";
-import { prospects, prospectNotes, users } from "../drizzle/schema";
+import { prospects, prospectNotes, users, scheduledCalls } from "../drizzle/schema";
 import { eq, desc, and, or, like, count, SQL } from "drizzle-orm";
 
 function requireAdmin(role: string | undefined) {
@@ -226,5 +226,47 @@ export const leadsRouter = router({
       return db.select().from(prospectNotes)
         .where(eq(prospectNotes.prospectId, input.prospectId))
         .orderBy(desc(prospectNotes.createdAt));
+    }),
+
+  // ── Scheduled Follow-Up Calls (Alex's callback queue) ─────────────────────
+  getScheduledCalls: protectedProcedure
+    .input(z.object({
+      status: z.enum(["pending", "calling", "completed", "failed", "cancelled"]).optional(),
+      page: z.number().min(1).default(1),
+      limit: z.number().min(1).max(50).default(20),
+    }))
+    .query(async ({ ctx, input }) => {
+      requireAdmin(ctx.user?.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      const offset = (input.page - 1) * input.limit;
+      const conditions = input.status ? [eq(scheduledCalls.status, input.status)] : [];
+
+      const [rows, totalRows] = await Promise.all([
+        db.select().from(scheduledCalls)
+          .where(conditions.length ? and(...conditions) : undefined)
+          .orderBy(desc(scheduledCalls.scheduledAt))
+          .limit(input.limit)
+          .offset(offset),
+        db.select({ count: count() }).from(scheduledCalls)
+          .where(conditions.length ? and(...conditions) : undefined),
+      ]);
+
+      return { calls: rows, total: totalRows[0]?.count ?? 0 };
+    }),
+
+  cancelScheduledCall: protectedProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      requireAdmin(ctx.user?.role);
+      const db = await getDb();
+      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR" });
+
+      await db.update(scheduledCalls)
+        .set({ status: "cancelled" })
+        .where(eq(scheduledCalls.id, input.id));
+
+      return { success: true };
     }),
 });

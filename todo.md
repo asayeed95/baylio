@@ -445,3 +445,21 @@
 - [ ] CSV export for both lead types
 - [ ] Sync all leads to HubSpot with correct lifecycle stage (cold=lead, warm=marketingqualifiedlead)
 - [ ] Document AgencyFlow MCP integration spec for future AgencyFlow developers
+
+## Phase 44: Fix Caller Memory (P0 Bug)
+- [ ] Trace full call flow — verify pre-call lookup runs and injects into Alex's prompt
+- [ ] Fix: save caller profile by phone number immediately when call starts (not just post-call)
+- [ ] Fix: inject memory context into Alex's customSystemPrompt before ElevenLabs registration
+- [ ] Verify post-call extractAndSaveMemory is actually being called with transcript
+- [ ] Add Zabir / Autoblitz as first test prospect in DB
+- [ ] Test: call twice, verify Alex remembers name and shop on second call
+
+## Phase 45: Alex Follow-Up Call Scheduler (Outbound Calls)
+- [ ] Remove placeholder Abdur caller profile (+10000000000) from DB
+- [ ] Add scheduled_calls table (phone, callerProfileId, prospectId, scheduledAt, reason, status: pending/called/cancelled, callSid, createdAt)
+- [ ] Wire follow-up intent detection into post-call pipeline (LLM extracts "call me back in X hours/days" from transcript)
+- [ ] Build Twilio outbound call trigger (Alex initiates call at scheduled time via cron job)
+- [ ] Alex opens callback with full context: "Hey [name], it's Alex from Baylio — you asked me to call back. Last time we talked about [topic]..."
+- [ ] Add follow-up call queue to admin dashboard (pending, completed, cancelled)
+- [ ] Wire follow-up context into Alex's prompt so he references the previous conversation on callback
+- [ ] Caller memory auto-learns phone number on first call (no manual DB entry needed)

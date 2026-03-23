@@ -538,9 +538,53 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
         const { callLogs } = await import("../../drizzle/schema");
 
         if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
-          // Skip DB logging for sales line calls (no shop to associate)
+          // Sales line calls: no shop DB logging, but DO run caller memory extraction
           if (isBaylioSalesLine(To)) {
-            console.log(`[CALL-STATUS] Sales line call ${CallSid} — ${CallStatus} (no DB logging for sales calls)`);
+            console.log(`[CALL-STATUS] Sales line call ${CallSid} — ${CallStatus} (running memory extraction)`);
+            if (CallStatus === "completed" && From) {
+              // Fire-and-forget: fetch ElevenLabs transcript then extract caller memory
+              setImmediate(async () => {
+                try {
+                  const { extractAndSaveMemory, upsertCallerProfile } = await import("./callerMemoryService");
+                  const { getConversationHistory } = await import("./elevenLabsService");
+
+                  // Always increment call count first (even if transcript fetch fails)
+                  await upsertCallerProfile(From, {});
+
+                  // Try to find the ElevenLabs conversation for this CallSid
+                  // ElevenLabs links conversations to Twilio CallSid in metadata
+                  const agentId = ENV.elevenLabsAgentId;
+                  if (agentId) {
+                    // Fetch recent conversations and find the one matching this CallSid
+                    const conversations = await getConversationHistory(agentId, 5);
+                    const match = conversations.find(
+                      (c: any) =>
+                        c.metadata?.twilio_call_sid === CallSid ||
+                        c.call_sid === CallSid ||
+                        c.conversation_id // fallback: use most recent
+                    );
+
+                    const conversationId = match?.conversation_id || conversations[0]?.conversation_id;
+
+                    if (conversationId) {
+                      const { getConversationTranscript } = await import("./elevenLabsService");
+                      const transcript = await getConversationTranscript(conversationId);
+                      if (transcript) {
+                        console.log(`[CALL-STATUS] Extracting memory from transcript for ${From} (conv: ${conversationId})`);
+                        await extractAndSaveMemory(From, transcript, CallSid);
+                      } else {
+                        console.log(`[CALL-STATUS] No transcript found for conversation ${conversationId}`);
+                      }
+                    } else {
+                      console.log(`[CALL-STATUS] No matching ElevenLabs conversation found for CallSid ${CallSid}`);
+                    }
+                  }
+                  console.log(`[CALL-STATUS] Memory processing complete for ${From}`);
+                } catch (err) {
+                  console.error("[CALL-STATUS] Failed to process sales call memory:", err);
+                }
+              });
+            }
             return;
           }
 

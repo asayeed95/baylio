@@ -13,6 +13,7 @@ import { validateTwilioSignature } from "../middleware/twilioValidation";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
 import { onboardRouter } from "../routes/onboardRoute";
 import { agencyflowRouter } from "../agencyflowRouter";
+import { startFollowUpCron } from "../services/followUpScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -82,8 +83,21 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
+  // Add outbound voice endpoint for Alex's follow-up callbacks
+  app.post("/api/twilio/outbound-voice", express.urlencoded({ extended: false }), (_req, res) => {
+    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="wss://api.elevenlabs.io/v1/convai/twilio-media-stream" />
+  </Connect>
+</Response>`;
+    res.type("text/xml").send(twiml);
+  });
+
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
+    // Start the follow-up call cron job after server is ready
+    startFollowUpCron();
   });
 }
 

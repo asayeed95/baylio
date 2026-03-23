@@ -35,6 +35,8 @@ import {
   Building2,
   ChevronLeft,
   ChevronRight,
+  Clock,
+  X,
 } from "lucide-react";
 
 type OutreachStatus =
@@ -90,6 +92,8 @@ export default function AdminLeads() {
   const [newStatus, setNewStatus] = useState<OutreachStatus>("called");
   const [statusNote, setStatusNote] = useState("");
   const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [scheduledPage, setScheduledPage] = useState(1);
+  const [scheduledStatusFilter, setScheduledStatusFilter] = useState<string>("pending");
   const [newLead, setNewLead] = useState({
     ownerName: "", shopName: "", phone: "", email: "",
     address: "", city: "", state: "", notes: "",
@@ -119,6 +123,19 @@ export default function AdminLeads() {
       setSelectedLead(null);
       setStatusNote("");
       toast.success("Status updated");
+    },
+  });
+
+  const { data: scheduledCallsData, isLoading: scheduledLoading } = trpc.leads.getScheduledCalls.useQuery({
+    page: scheduledPage,
+    limit: 20,
+    status: scheduledStatusFilter !== "all" ? scheduledStatusFilter as "pending" | "calling" | "completed" | "failed" | "cancelled" : undefined,
+  });
+
+  const cancelCall = trpc.leads.cancelScheduledCall.useMutation({
+    onSuccess: () => {
+      utils.leads.getScheduledCalls.invalidate();
+      toast.success("Callback cancelled");
     },
   });
 
@@ -236,6 +253,15 @@ export default function AdminLeads() {
               Warm Leads
               {warmTotal > 0 && (
                 <Badge variant="secondary" className="ml-2 text-xs">{warmTotal}</Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="scheduled">
+              <Clock className="h-3.5 w-3.5 mr-1.5" />
+              Alex's Callbacks
+              {(scheduledCallsData?.calls.filter(c => c.status === "pending").length ?? 0) > 0 && (
+                <Badge variant="secondary" className="ml-2 text-xs bg-orange-100 text-orange-700">
+                  {scheduledCallsData?.calls.filter(c => c.status === "pending").length}
+                </Badge>
               )}
             </TabsTrigger>
           </TabsList>
@@ -420,6 +446,95 @@ export default function AdminLeads() {
                     <ChevronRight className="h-4 w-4" />
                   </Button>
                 </div>
+              </div>
+            )}
+          </TabsContent>
+
+          {/* ── Scheduled Callbacks Tab ── */}
+          <TabsContent value="scheduled" className="space-y-4">
+            <div className="flex gap-3 flex-wrap items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                When callers ask Alex to call them back, the scheduled callbacks appear here.
+              </p>
+              <Select value={scheduledStatusFilter} onValueChange={v => { setScheduledStatusFilter(v); setScheduledPage(1); }}>
+                <SelectTrigger className="w-40">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="pending">Pending</SelectItem>
+                  <SelectItem value="calling">Calling</SelectItem>
+                  <SelectItem value="completed">Completed</SelectItem>
+                  <SelectItem value="failed">Failed</SelectItem>
+                  <SelectItem value="cancelled">Cancelled</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {scheduledLoading ? (
+              <div className="flex justify-center py-12">
+                <RefreshCw className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : !scheduledCallsData?.calls.length ? (
+              <div className="text-center py-16 text-muted-foreground">
+                <Clock className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                <p className="font-medium">No scheduled callbacks yet</p>
+                <p className="text-sm mt-1">When a caller tells Alex "call me back later", it will appear here.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {scheduledCallsData.calls.map(call => {
+                  const isPending = call.status === "pending";
+                  const isFailed = call.status === "failed";
+                  const statusColors: Record<string, string> = {
+                    pending: "bg-orange-100 text-orange-700",
+                    calling: "bg-blue-100 text-blue-700",
+                    completed: "bg-green-100 text-green-700",
+                    failed: "bg-red-100 text-red-700",
+                    cancelled: "bg-gray-100 text-gray-500",
+                  };
+                  return (
+                    <Card key={call.id} className={`hover:shadow-sm transition-shadow ${isFailed ? "border-red-200" : ""}`}>
+                      <CardContent className="py-3 px-4">
+                        <div className="flex items-start justify-between gap-4">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="font-semibold text-sm flex items-center gap-1">
+                                <Phone className="h-3.5 w-3.5" />
+                                {call.phone}
+                              </span>
+                              <Badge className={`text-xs ${statusColors[call.status] ?? ""}`}>
+                                {call.status.charAt(0).toUpperCase() + call.status.slice(1)}
+                              </Badge>
+                              {call.attempts > 1 && (
+                                <span className="text-xs text-muted-foreground">{call.attempts} attempts</span>
+                              )}
+                            </div>
+                            {call.reason && (
+                              <p className="text-xs text-muted-foreground mt-1 italic">"{call.reason}"</p>
+                            )}
+                            {call.context && (
+                              <p className="text-xs text-muted-foreground mt-1 line-clamp-2">{call.context}</p>
+                            )}
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Scheduled for: <span className="font-medium text-foreground">{new Date(call.scheduledAt).toLocaleString()}</span>
+                            </p>
+                          </div>
+                          {isPending && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-700 hover:bg-red-50 shrink-0"
+                              onClick={() => cancelCall.mutate({ id: call.id })}
+                            >
+                              <X className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>

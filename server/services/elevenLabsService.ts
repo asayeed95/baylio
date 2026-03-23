@@ -229,6 +229,30 @@ export async function getSubscriptionInfo(): Promise<SubscriptionInfo> {
 }
 
 /**
+ * Get the full transcript of a specific conversation by conversation_id.
+ * Used post-call to extract caller memory from the ElevenLabs conversation.
+ */
+export async function getConversationTranscript(conversationId: string): Promise<string | null> {
+  try {
+    const client = createClient();
+    const response = await client.get(`/v1/convai/conversations/${conversationId}`);
+    const messages = response.data?.transcript || [];
+    if (!messages.length) return null;
+
+    // Build a readable transcript string
+    const lines = messages
+      .filter((m: any) => m.message)
+      .map((m: any) => `${m.role === 'agent' ? 'Alex' : 'Caller'}: ${m.message}`)
+      .join('\n');
+    return lines || null;
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    console.error("[ElevenLabs] Error getting conversation transcript:", axiosError.response?.data || axiosError.message);
+    return null;
+  }
+}
+
+/**
  * Get conversation history for an agent (for analytics).
  */
 export async function getConversationHistory(
