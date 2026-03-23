@@ -25,7 +25,7 @@ if (!API_KEY) {
 
 // ─── Voice IDs ───────────────────────────────────────────────────────────────
 const ALEX_VOICE_ID = "IKne3meq5aSn9XLyUdCD";   // Charlie — Deep, Confident, Energetic (Australian)
-const RANVIR_VOICE_ID = "JBFqnCBsd6RMkjVDRZzb"; // George — Warm, Captivating, British (precise/technical feel)
+const RANVIR_VOICE_ID = "DvGqn8Zp8GnW2xWcyhzt"; // Raunak M — Polite & Professional (Indian)
 
 // ─── Alex System Prompt ───────────────────────────────────────────────────────
 const ALEX_SYSTEM_PROMPT = `You are Alex, the AI sales representative for Baylio — the AI receptionist platform built specifically for auto repair shops.
