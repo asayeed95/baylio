@@ -4,6 +4,7 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useAuth } from "./_core/hooks/useAuth";
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ShopDetail from "./pages/ShopDetail";
@@ -15,6 +16,7 @@ import Subscriptions from "./pages/Subscriptions";
 import Notifications from "./pages/Notifications";
 import ShopSettings from "./pages/ShopSettings";
 import PartnersPortal from "./pages/PartnersPortal";
+import PartnersLanding from "./pages/PartnersLanding";
 import PartnersReferrals from "./pages/PartnersReferrals";
 import PartnersEarnings from "./pages/PartnersEarnings";
 import PartnersNetwork from "./pages/PartnersNetwork";
@@ -41,10 +43,22 @@ function detectPortal(): "admin" | "partners" | "main" {
   return "main";
 }
 
+/**
+ * Root of the partners portal:
+ * - Unauthenticated visitors → public landing page (commission tiers, calculator, CTA)
+ * - Authenticated partners  → partner dashboard
+ */
+function PartnersLandingOrDashboard() {
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return null;
+  if (isAuthenticated) return <PartnersPortal />;
+  return <PartnersLanding />;
+}
+
 function PartnersRouter() {
   return (
     <Switch>
-      <Route path="/" component={PartnersPortal} />
+      <Route path="/" component={PartnersLandingOrDashboard} />
       <Route path="/referrals" component={PartnersReferrals} />
       <Route path="/earnings" component={PartnersEarnings} />
       <Route path="/network" component={PartnersNetwork} />
