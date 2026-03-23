@@ -28,6 +28,8 @@ import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
 import Integrations from "./pages/Integrations";
 import CallScorecard from "./pages/CallScorecard";
+import Blog from "./pages/Blog";
+import BlogPost from "./pages/BlogPost";
 
 /**
  * Detect which portal to render based on hostname or ?portal= query param.
@@ -110,6 +112,8 @@ function MainRouter() {
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/dashboard/costs" component={CostAnalytics} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
       <Route path="/faq" component={FAQ} />
       <Route path="/contact" component={Contact} />
       {/* Partners routes accessible from main domain too */}
