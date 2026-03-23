@@ -26,9 +26,9 @@ import AdminPortal from "./pages/AdminPortal";
 
 /**
  * Detect which portal to render based on hostname or ?portal= query param.
- * - admin.baylio.io  → "admin"
+ * - admin.baylio.io    → "admin"
  * - partners.baylio.io → "partners"
- * - everything else  → "main"
+ * - everything else    → "main"
  * Dev shortcut: ?portal=admin or ?portal=partners
  */
 function detectPortal(): "admin" | "partners" | "main" {
@@ -46,7 +46,7 @@ function detectPortal(): "admin" | "partners" | "main" {
 /**
  * Root of the partners portal:
  * - Unauthenticated visitors → public landing page (commission tiers, calculator, CTA)
- * - Authenticated partners  → partner dashboard
+ * - Authenticated partners   → partner dashboard
  */
 function PartnersLandingOrDashboard() {
   const { isAuthenticated, loading } = useAuth();
@@ -55,17 +55,16 @@ function PartnersLandingOrDashboard() {
   return <PartnersLanding />;
 }
 
+/**
+ * Partners portal router.
+ * Sidebar nav uses /partners/* paths so they work on both
+ * partners.baylio.io and baylio.io/partners/*.
+ */
 function PartnersRouter() {
   return (
     <Switch>
       <Route path="/" component={PartnersLandingOrDashboard} />
-      <Route path="/referrals" component={PartnersReferrals} />
-      <Route path="/earnings" component={PartnersEarnings} />
-      <Route path="/network" component={PartnersNetwork} />
-      <Route path="/resources" component={PartnersResources} />
-      <Route path="/settings" component={PartnersSettings} />
-      {/* Legacy /partners/* paths */}
-      <Route path="/partners" component={PartnersPortal} />
+      <Route path="/partners" component={PartnersLandingOrDashboard} />
       <Route path="/partners/referrals" component={PartnersReferrals} />
       <Route path="/partners/earnings" component={PartnersEarnings} />
       <Route path="/partners/network" component={PartnersNetwork} />
@@ -101,7 +100,7 @@ function MainRouter() {
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
       {/* Partners routes accessible from main domain too */}
-      <Route path="/partners" component={PartnersPortal} />
+      <Route path="/partners" component={PartnersLandingOrDashboard} />
       <Route path="/partners/referrals" component={PartnersReferrals} />
       <Route path="/partners/earnings" component={PartnersEarnings} />
       <Route path="/partners/network" component={PartnersNetwork} />
