@@ -24,6 +24,8 @@ import {
   PhoneOff,
   Languages,
   Headphones,
+  Menu,
+  X,
 } from "lucide-react";
 import { Link } from "wouter";
 
@@ -305,6 +307,18 @@ function ROICalculator() {
 }
 
 export default function Landing() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  const navLinks = [
+    { label: "Features", href: "#features", isAnchor: true },
+    { label: "Pricing", href: "#pricing", isAnchor: true },
+    { label: "How It Works", href: "#how-it-works", isAnchor: true },
+    { label: "FAQ", href: "/faq", isAnchor: false },
+    { label: "Contact", href: "/contact", isAnchor: false },
+  ];
+
+  const handleMobileNavClick = () => setMobileMenuOpen(false);
+
   return (
     <div className="min-h-screen bg-background">
       {/* ─── Navbar ─── */}
@@ -314,14 +328,18 @@ export default function Landing() {
             <Phone className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold tracking-tight">Baylio</span>
           </div>
+
+          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
-            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
+            {navLinks.map(link => link.isAnchor ? (
+              <a key={link.label} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</a>
+            ) : (
+              <Link key={link.label} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</Link>
+            ))}
           </div>
-          <div className="flex items-center gap-3">
+
+          {/* Desktop auth buttons */}
+          <div className="hidden md:flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
               Sign In
             </Button>
@@ -329,7 +347,55 @@ export default function Landing() {
               Get Started
             </Button>
           </div>
+
+          {/* Mobile: Sign In + Hamburger */}
+          <div className="flex md:hidden items-center gap-2">
+            <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Sign In
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="p-2"
+              onClick={() => setMobileMenuOpen(prev => !prev)}
+              aria-label="Toggle menu"
+            >
+              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </Button>
+          </div>
         </div>
+
+        {/* Mobile dropdown menu */}
+        {mobileMenuOpen && (
+          <div className="md:hidden border-t bg-background/98 backdrop-blur">
+            <div className="container py-4 flex flex-col gap-1">
+              {navLinks.map(link => link.isAnchor ? (
+                <a
+                  key={link.label}
+                  href={link.href}
+                  onClick={handleMobileNavClick}
+                  className="px-3 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  {link.label}
+                </a>
+              ) : (
+                <Link
+                  key={link.label}
+                  href={link.href}
+                  onClick={handleMobileNavClick}
+                  className="px-3 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
+                >
+                  {link.label}
+                </Link>
+              ))}
+              <div className="pt-3 border-t mt-2">
+                <Button className="w-full" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+                  Get Started Free
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
       </nav>
 
       {/* ─── Hero (Dark) ─── */}

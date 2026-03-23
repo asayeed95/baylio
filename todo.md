@@ -367,3 +367,9 @@
 - [x] Guide user to delete URL301 record in Namecheap
 - [x] Verify baylio.io resolves correctly (HTTP 200, SSL working)
 - [x] Update Twilio webhooks to https://baylio.io (permanent domain)
+
+## Phase 36: Mobile Navigation
+- [x] Add hamburger menu button to Landing.tsx navbar (visible on mobile only)
+- [x] Build slide-out/dropdown mobile menu with all nav links (Features, Pricing, How It Works, FAQ, Contact)
+- [x] Close menu on link click and outside click
+- [x] Ensure Sign In and Get Started buttons are accessible on mobile
