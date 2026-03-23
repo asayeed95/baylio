@@ -28,6 +28,11 @@ import AffiliateAdmin from "./pages/AffiliateAdmin";
 
 // Partners portal pages (partners.baylio.io)
 import AffiliatePortal from "./pages/AffiliatePortal";
+import PartnersReferrals from "./pages/PartnersReferrals";
+import PartnersEarnings from "./pages/PartnersEarnings";
+import PartnersNetwork from "./pages/PartnersNetwork";
+import PartnersResources from "./pages/PartnersResources";
+import PartnersSettings from "./pages/PartnersSettings";
 
 /**
  * Main site router — baylio.io
@@ -80,6 +85,12 @@ function PartnersRouter() {
     <Switch>
       <Route path="/" component={AffiliatePortal} />
       <Route path="/dashboard" component={AffiliatePortal} />
+      <Route path="/referrals" component={PartnersReferrals} />
+      <Route path="/earnings" component={PartnersEarnings} />
+      <Route path="/payouts" component={PartnersEarnings} />
+      <Route path="/network" component={PartnersNetwork} />
+      <Route path="/resources" component={PartnersResources} />
+      <Route path="/settings" component={PartnersSettings} />
       <Route component={AffiliatePortal} />
     </Switch>
   );

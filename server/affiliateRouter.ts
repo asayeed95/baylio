@@ -23,6 +23,9 @@ import {
   getReferralsByAffiliate,
   getCommissionsByAffiliate,
   getPendingCommissionTotal,
+  getPayoutsByAffiliate,
+  createAffiliatePayout,
+  hasPendingPayout,
 } from "./db";
 import crypto from "crypto";
 
@@ -189,6 +192,85 @@ export const affiliateRouter = router({
       });
 
       return { id };
+    }),
+
+  // ─── Protected: Get my network (downline partners) ─────────────────
+  getMyNetwork: protectedProcedure.query(async ({ ctx }) => {
+    const affiliate = await getAffiliateByUserId(ctx.user.id);
+    if (!affiliate) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate account not found" });
+    }
+    // Downline is not yet supported in schema (no parentAffiliateId column).
+    // Return empty array for now — will populate once schema supports it.
+    return { partners: [] as Array<{ id: number; name: string; tier: string; referralCount: number; overrideEarnings: string }> };
+  }),
+
+  // ─── Protected: Request a payout ──────────────────────────────────
+  requestPayout: protectedProcedure
+    .input(z.object({
+      method: z.enum(["paypal", "stripe", "bank", "manual"]).default("paypal"),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const affiliate = await getAffiliateByUserId(ctx.user.id);
+      if (!affiliate) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate account not found" });
+      }
+
+      const pendingBalance = parseFloat(affiliate.pendingPayout);
+      if (pendingBalance < 50) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Minimum payout is $50. Your current balance is $" + affiliate.pendingPayout,
+        });
+      }
+
+      const alreadyPending = await hasPendingPayout(affiliate.id);
+      if (alreadyPending) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "You already have a pending payout request",
+        });
+      }
+
+      const id = await createAffiliatePayout({
+        affiliateId: affiliate.id,
+        amount: affiliate.pendingPayout,
+        method: input.method,
+        status: "pending",
+      });
+
+      return { success: true, payoutId: id };
+    }),
+
+  // ─── Protected: Get my payout history ─────────────────────────────
+  getMyPayouts: protectedProcedure.query(async ({ ctx }) => {
+    const affiliate = await getAffiliateByUserId(ctx.user.id);
+    if (!affiliate) {
+      throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate account not found" });
+    }
+    return getPayoutsByAffiliate(affiliate.id);
+  }),
+
+  // ─── Protected: Update settings ───────────────────────────────────
+  updateSettings: protectedProcedure
+    .input(z.object({
+      paypalEmail: z.string().email().max(320).optional(),
+      name: z.string().min(1).max(255).optional(),
+      phone: z.string().max(32).optional(),
+    }))
+    .mutation(async ({ ctx, input }) => {
+      const affiliate = await getAffiliateByUserId(ctx.user.id);
+      if (!affiliate) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Affiliate account not found" });
+      }
+      const updates: Record<string, string | undefined> = {};
+      if (input.paypalEmail !== undefined) updates.paypalEmail = input.paypalEmail;
+      if (input.name !== undefined) updates.name = input.name;
+      if (input.phone !== undefined) updates.phone = input.phone;
+      if (Object.keys(updates).length > 0) {
+        await updateAffiliate(affiliate.id, updates);
+      }
+      return { success: true };
     }),
 
   // ═══════════════════════════════════════════════════════════════════
