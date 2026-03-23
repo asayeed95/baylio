@@ -20,29 +20,60 @@ import PartnersEarnings from "./pages/PartnersEarnings";
 import PartnersNetwork from "./pages/PartnersNetwork";
 import PartnersResources from "./pages/PartnersResources";
 import PartnersSettings from "./pages/PartnersSettings";
+import AdminPortal from "./pages/AdminPortal";
 
 /**
- * Baylio App Router
- * 
- * Route structure:
- * /                    → Landing page (public) or Dashboard (authenticated)
- * /dashboard           → Main dashboard with shop overview
- * /shops/:id           → Shop detail page
- * /shops/:id/agent     → AI agent configuration
- * /shops/:id/calls     → Call logs for a shop
- * /shops/:id/analytics → Analytics dashboard
- * /shops/:id/settings  → Shop settings (hours, services, etc.)
- * /audits              → Missed call audit management
- * /subscriptions       → Subscription & billing management
- * /notifications       → Notification center
- * /partners            → Partners Portal dashboard
- * /partners/referrals  → Referral tracking
- * /partners/earnings   → Earnings & payouts
- * /partners/network    → Referral network
- * /partners/resources  → Marketing resources
- * /partners/settings   → Partner settings
+ * Detect which portal to render based on hostname or ?portal= query param.
+ * - admin.baylio.io  → "admin"
+ * - partners.baylio.io → "partners"
+ * - everything else  → "main"
+ * Dev shortcut: ?portal=admin or ?portal=partners
  */
-function Router() {
+function detectPortal(): "admin" | "partners" | "main" {
+  const params = new URLSearchParams(window.location.search);
+  const override = params.get("portal");
+  if (override === "admin") return "admin";
+  if (override === "partners") return "partners";
+
+  const hostname = window.location.hostname;
+  if (hostname.startsWith("admin.")) return "admin";
+  if (hostname.startsWith("partners.")) return "partners";
+  return "main";
+}
+
+function PartnersRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={PartnersPortal} />
+      <Route path="/referrals" component={PartnersReferrals} />
+      <Route path="/earnings" component={PartnersEarnings} />
+      <Route path="/network" component={PartnersNetwork} />
+      <Route path="/resources" component={PartnersResources} />
+      <Route path="/settings" component={PartnersSettings} />
+      {/* Legacy /partners/* paths */}
+      <Route path="/partners" component={PartnersPortal} />
+      <Route path="/partners/referrals" component={PartnersReferrals} />
+      <Route path="/partners/earnings" component={PartnersEarnings} />
+      <Route path="/partners/network" component={PartnersNetwork} />
+      <Route path="/partners/resources" component={PartnersResources} />
+      <Route path="/partners/settings" component={PartnersSettings} />
+      <Route component={NotFound} />
+    </Switch>
+  );
+}
+
+function AdminRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={AdminPortal} />
+      <Route path="/admin" component={AdminPortal} />
+      <Route path="/admin/:rest*" component={AdminPortal} />
+      <Route component={AdminPortal} />
+    </Switch>
+  );
+}
+
+function MainRouter() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
@@ -55,6 +86,7 @@ function Router() {
       <Route path="/audits" component={MissedCallAudit} />
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
+      {/* Partners routes accessible from main domain too */}
       <Route path="/partners" component={PartnersPortal} />
       <Route path="/partners/referrals" component={PartnersReferrals} />
       <Route path="/partners/earnings" component={PartnersEarnings} />
@@ -65,6 +97,13 @@ function Router() {
       <Route component={NotFound} />
     </Switch>
   );
+}
+
+function Router() {
+  const portal = detectPortal();
+  if (portal === "partners") return <PartnersRouter />;
+  if (portal === "admin") return <AdminRouter />;
+  return <MainRouter />;
 }
 
 function App() {
