@@ -1,0 +1,9 @@
+{
+  "query": "ALTER TABLE call_logs ADD UNIQUE INDEX uq_call_logs_twilio_sid (twilioCallSid);\nALTER TABLE partners ADD UNIQUE INDEX uq_partners_user_id (userId);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute ALTER TABLE call_logs ADD UNIQUE INDEX uq_call_logs_twilio_sid (twilioCallSid);\nALTER TABLE partners ADD UNIQUE INDEX uq_partners_user_id (userId);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 603
+}
