@@ -14,6 +14,12 @@ import MissedCallAudit from "./pages/MissedCallAudit";
 import Subscriptions from "./pages/Subscriptions";
 import Notifications from "./pages/Notifications";
 import ShopSettings from "./pages/ShopSettings";
+import PartnersPortal from "./pages/PartnersPortal";
+import PartnersReferrals from "./pages/PartnersReferrals";
+import PartnersEarnings from "./pages/PartnersEarnings";
+import PartnersNetwork from "./pages/PartnersNetwork";
+import PartnersResources from "./pages/PartnersResources";
+import PartnersSettings from "./pages/PartnersSettings";
 
 /**
  * Baylio App Router
@@ -29,6 +35,12 @@ import ShopSettings from "./pages/ShopSettings";
  * /audits              → Missed call audit management
  * /subscriptions       → Subscription & billing management
  * /notifications       → Notification center
+ * /partners            → Partners Portal dashboard
+ * /partners/referrals  → Referral tracking
+ * /partners/earnings   → Earnings & payouts
+ * /partners/network    → Referral network
+ * /partners/resources  → Marketing resources
+ * /partners/settings   → Partner settings
  */
 function Router() {
   return (
@@ -43,6 +55,12 @@ function Router() {
       <Route path="/audits" component={MissedCallAudit} />
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
+      <Route path="/partners" component={PartnersPortal} />
+      <Route path="/partners/referrals" component={PartnersReferrals} />
+      <Route path="/partners/earnings" component={PartnersEarnings} />
+      <Route path="/partners/network" component={PartnersNetwork} />
+      <Route path="/partners/resources" component={PartnersResources} />
+      <Route path="/partners/settings" component={PartnersSettings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>

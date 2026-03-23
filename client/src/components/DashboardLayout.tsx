@@ -31,6 +31,7 @@ import {
   ClipboardCheck,
   CreditCard,
   Bell,
+  Handshake,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -54,6 +55,7 @@ const menuItems = [
   { icon: ClipboardCheck, label: "Missed Call Audits", path: "/audits" },
   { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
+  { icon: Handshake, label: "Partners", path: "/partners" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

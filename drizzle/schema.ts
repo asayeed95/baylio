@@ -230,3 +230,66 @@ export const notifications = mysqlTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
+
+// ─── Partners ───────────────────────────────────────────────────────
+export const partners = mysqlTable("partners", {
+  id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").notNull(),
+  referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
+  commissionRate: decimal("commissionRate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
+  tier: mysqlEnum("partnerTier", ["bronze", "silver", "gold", "platinum"]).default("bronze").notNull(),
+  status: mysqlEnum("partnerStatus", ["pending", "active", "suspended"]).default("pending").notNull(),
+  totalReferrals: int("totalReferrals").default(0).notNull(),
+  totalEarnings: decimal("totalEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  pendingEarnings: decimal("pendingEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  payoutMethod: mysqlEnum("payoutMethod", ["stripe", "paypal", "bank_transfer"]).default("stripe"),
+  payoutEmail: varchar("payoutEmail", { length: 320 }),
+  companyName: varchar("companyName", { length: 255 }),
+  website: varchar("website", { length: 512 }),
+  notifyReferrals: boolean("notifyReferrals").default(true).notNull(),
+  notifyPayouts: boolean("notifyPayouts").default(true).notNull(),
+  notifyNewsletter: boolean("notifyNewsletter").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Partner = typeof partners.$inferSelect;
+export type InsertPartner = typeof partners.$inferInsert;
+
+// ─── Referrals ──────────────────────────────────────────────────────
+export const referrals = mysqlTable("referrals", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  referredUserId: int("referredUserId"),
+  referredShopId: int("referredShopId"),
+  referredEmail: varchar("referredEmail", { length: 320 }),
+  referredName: varchar("referredName", { length: 255 }),
+  status: mysqlEnum("referralStatus", ["pending", "signed_up", "subscribed", "churned"]).default("pending").notNull(),
+  subscriptionTier: varchar("subscriptionTier", { length: 20 }),
+  monthlyValue: decimal("monthlyValue", { precision: 10, scale: 2 }),
+  commissionEarned: decimal("commissionEarned", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  convertedAt: timestamp("convertedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
+
+// ─── Partner Payouts ────────────────────────────────────────────────
+export const partnerPayouts = mysqlTable("partner_payouts", {
+  id: int("id").autoincrement().primaryKey(),
+  partnerId: int("partnerId").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  status: mysqlEnum("payoutStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
+  payoutMethod: varchar("payoutMethod", { length: 32 }),
+  payoutEmail: varchar("payoutEmail", { length: 320 }),
+  transactionId: varchar("transactionId", { length: 255 }),
+  notes: text("notes"),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type PartnerPayout = typeof partnerPayouts.$inferSelect;
+export type InsertPartnerPayout = typeof partnerPayouts.$inferInsert;

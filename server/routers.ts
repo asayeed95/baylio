@@ -8,6 +8,7 @@ import { notificationRouter } from "./notificationRouter";
 import { subscriptionRouter } from "./subscriptionRouter";
 import { organizationRouter } from "./organizationRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
+import { partnerRouter } from "./partnerRouter";
 
 /**
  * Baylio App Router
@@ -41,6 +42,7 @@ export const appRouter = router({
   subscription: subscriptionRouter,
   organization: organizationRouter,
   stripe: stripeRouter,
+  partner: partnerRouter,
 });
 
 export type AppRouter = typeof appRouter;
