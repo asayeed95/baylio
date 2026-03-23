@@ -13,4 +13,5 @@ export const ENV = {
   twilioValidationEnabled: process.env.TWILIO_VALIDATION_ENABLED !== "false",
   // ElevenLabs
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
+  hubspotApiKey: process.env.HUBSPOT_API_KEY ?? "",
 };

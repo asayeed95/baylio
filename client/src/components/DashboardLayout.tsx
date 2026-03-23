@@ -33,6 +33,7 @@ import {
   Bell,
   Handshake,
   BarChart2,
+  Plug,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -57,6 +58,7 @@ const menuItems = [
   { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
   { icon: BarChart2, label: "Cost Analytics", path: "/dashboard/costs" },
+  { icon: Plug, label: "Integrations", path: "/integrations" },
   { icon: Handshake, label: "Partners", path: "/partners" },
 ];
 

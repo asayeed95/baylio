@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./_core/trpc";
+import { seedDemoShop } from "./services/demoService";
 import {
   createShop,
   getShopsByOwner,
@@ -320,4 +321,13 @@ export const shopRouter = router({
         isLive: !!config?.elevenLabsAgentId && !!shop.twilioPhoneNumber,
       };
     }),
+
+  /** Create a demo shop with sample data for product demos */
+  createDemo: protectedProcedure.mutation(async ({ ctx }) => {
+    const shopId = await seedDemoShop(ctx.user.id);
+    if (!shopId) {
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create demo shop" });
+    }
+    return { shopId };
+  }),
 });
