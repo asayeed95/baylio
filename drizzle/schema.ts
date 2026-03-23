@@ -91,7 +91,7 @@ export const callLogs = mysqlTable("call_logs", {
   id: int("id").autoincrement().primaryKey(),
   shopId: int("shopId").notNull(),
   ownerId: int("ownerId").notNull().default(0),
-  twilioCallSid: varchar("twilioCallSid", { length: 128 }),
+  twilioCallSid: varchar("twilioCallSid", { length: 128 }).unique(),
   callerPhone: varchar("callerPhone", { length: 32 }),
   callerName: varchar("callerName", { length: 255 }),
   direction: mysqlEnum("direction", ["inbound", "outbound"]).default("inbound").notNull(),
@@ -234,7 +234,7 @@ export type InsertNotification = typeof notifications.$inferInsert;
 // ─── Partners ───────────────────────────────────────────────────────
 export const partners = mysqlTable("partners", {
   id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
+  userId: int("userId").notNull().unique(),
   referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
   commissionRate: decimal("commissionRate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
   tier: mysqlEnum("partnerTier", ["bronze", "silver", "gold", "platinum"]).default("bronze").notNull(),

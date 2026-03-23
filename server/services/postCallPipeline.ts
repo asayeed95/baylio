@@ -13,7 +13,7 @@
  * (Bull, BullMQ, or n8n webhooks).
  */
 import { getDb } from "../db";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
 
@@ -243,7 +243,7 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         // Update subscription used minutes
         await db
           .update(subscriptions)
-          .set({ usedMinutes: sub.usedMinutes + minutesUsed })
+          .set({ usedMinutes: sql`${subscriptions.usedMinutes} + ${minutesUsed}` })
           .where(eq(subscriptions.id, sub.id));
       }
     }
