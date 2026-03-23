@@ -16,6 +16,7 @@ import { getDb } from "../db";
 import { eq, and, sql } from "drizzle-orm";
 import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
+import { extractAndSaveMemory } from "./callerMemoryService";
 
 /**
  * Analyze a call transcription using LLM.
@@ -264,6 +265,16 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         message: `A caller inquired about services worth an estimated $${analysisRevenue.toFixed(2)}. Review the call log for details.`,
         metadata: { callLogId, estimatedRevenue: analysisRevenue },
       });
+    }
+
+    // Step 5: Extract and save caller memory from transcript (sales line calls)
+    // This enables the AI to remember the caller by name/role/shop on future calls.
+    if (call.transcription && call.callerPhone) {
+      const callSid = (call as { callSid?: string }).callSid || "";
+      // Run memory extraction non-blocking — don't let it delay other steps
+      extractAndSaveMemory(call.callerPhone, call.transcription, callSid).catch((err) =>
+        console.error(`[POST-CALL] Memory extraction failed for call ${callLogId}:`, err)
+      );
     }
 
     console.log(`[POST-CALL] Completed processing for call ${callLogId}`);

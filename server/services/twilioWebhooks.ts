@@ -25,6 +25,8 @@ import { eq } from "drizzle-orm";
 import { shops, agentConfigs } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
 import { baylioSalesAgentPrompt, baylioSalesFirstMessage } from "./prompts/baylioSalesAgent";
+import { baylioSupportAgentPrompt, baylioSupportFirstMessage } from "./prompts/baylioSupportAgent";
+import { lookupCallerProfile, buildMemoryPromptBlock } from "./callerMemoryService";
 
 /** Timeout for ElevenLabs Register Call API — prevents dead air on slow responses */
 const ELEVENLABS_TIMEOUT_MS = 8000;
@@ -227,6 +229,7 @@ function isBaylioSalesLine(toNumber: string): boolean {
 /**
  * Handle the Baylio sales line call.
  * Uses the baylioSalesAgentPrompt and the corporate ElevenLabs agent.
+ * Injects caller memory so the AI remembers returning callers by name/role/shop.
  */
 async function handleSalesLineCall(
   fromNumber: string,
@@ -239,17 +242,45 @@ async function handleSalesLineCall(
     return generateVoicemailTwiML("Baylio");
   }
 
+  // ── Caller Memory Injection ──────────────────────────────────────
+  // Look up the caller's profile and inject their history into the prompt.
+  // This makes the AI greet returning callers by name, skip the pitch for
+  // founders/testers, and reference past objections or interests.
+  let personalizedPrompt = baylioSalesAgentPrompt;
+  let personalizedFirstMessage = baylioSalesFirstMessage;
+
+  try {
+    const callerCtx = await lookupCallerProfile(fromNumber);
+    const memoryBlock = buildMemoryPromptBlock(callerCtx);
+
+    // Inject memory block at the top of the system prompt
+    personalizedPrompt = `${memoryBlock}\n\n${baylioSalesAgentPrompt}`;
+
+    // Personalize the greeting for returning callers
+    if (callerCtx.isKnown && callerCtx.name) {
+      if (callerCtx.role === "founder" || callerCtx.role === "tester") {
+        personalizedFirstMessage = `Hey ${callerCtx.name}! Good to hear from you again. What are we testing today?`;
+      } else if (callerCtx.callCount > 1) {
+        personalizedFirstMessage = `Hey ${callerCtx.name}! Great to hear from you again. How can I help you today?`;
+      }
+    }
+
+    console.log(`[SALES] Caller memory loaded for ${fromNumber}: known=${callerCtx.isKnown}, role=${callerCtx.role}, name=${callerCtx.name ?? "unknown"}`);
+  } catch (err) {
+    console.error("[SALES] Failed to load caller memory, using default prompt:", err);
+    // Non-fatal — fall back to the default prompt
+  }
+
   console.log(`[SALES] Routing to Baylio Sales Agent (${agentId})`);
 
-  // Sales line uses 'multi' language mode — the sales agent itself is a demo
-  // of Baylio's bilingual capability, so it must auto-detect and match the caller.
+  // Sales line uses 'en' language mode with bilingual capability built into the prompt.
   return registerElevenLabsCall(agentId, fromNumber, toNumber, {
     configOverride: {
       agent: {
         prompt: {
-          prompt: baylioSalesAgentPrompt,
+          prompt: personalizedPrompt,
         },
-        first_message: baylioSalesFirstMessage,
+        first_message: personalizedFirstMessage,
         language: "en",
       },
     },
@@ -651,6 +682,101 @@ twilioRouter.post("/transcription-complete", async (req: Request, res: Response)
     console.error("[TRANSCRIPTION] Error:", error);
     res.type("text/xml");
     res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+  }
+});
+
+/**
+ * POST /api/twilio/transfer-to-sam
+ *
+ * Called by the ElevenLabs transfer_to_sam client tool when Alex decides to
+ * hand off to Sam (technical support). This endpoint:
+ * 1. Reads the caller's memory profile so Sam knows who they are
+ * 2. Builds a personalized Sam prompt with full context from Alex's conversation
+ * 3. Re-registers the live call with Sam's agent ID and the enriched prompt
+ * 4. Returns TwiML that connects the caller to Sam seamlessly
+ */
+twilioRouter.post("/transfer-to-sam", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+
+  try {
+    const { From, To, CallSid, callerName, shopName, transferReason } = req.body;
+
+    console.log(`[TRANSFER] Alex→Sam transfer: ${From} (SID: ${CallSid}), reason: ${transferReason || 'not specified'}`);
+
+    const samAgentId = ENV.elevenLabsAgentId; // Sam uses the same base agent, different prompt
+
+    if (!samAgentId) {
+      console.error("[TRANSFER] No ELEVENLABS_AGENT_ID configured for Sam");
+      res.type("text/xml");
+      return res.send(generateVoicemailTwiML("Baylio Support"));
+    }
+
+    // Load caller memory for Sam — same shared table Alex uses
+    let samPrompt = baylioSupportAgentPrompt;
+    let samFirstMessage = baylioSupportFirstMessage;
+
+    try {
+      const callerCtx = await lookupCallerProfile(From);
+      const memoryBlock = buildMemoryPromptBlock(callerCtx);
+
+      // Build transfer context block — tells Sam what Alex already covered
+      const transferContext = [
+        `## Transfer Context from Alex`,
+        `The caller was just speaking with Alex (Baylio's sales AI) and has been transferred to you for technical support.`,
+        callerName ? `Caller's name: ${callerName}` : "",
+        shopName ? `Shop name: ${shopName}` : "",
+        transferReason ? `Reason for transfer: ${transferReason}` : "The caller needs technical assistance.",
+        `IMPORTANT: Do NOT make them repeat information. Greet them by name if you have it and acknowledge the transfer warmly.`,
+      ].filter(Boolean).join("\n");
+
+      samPrompt = `${transferContext}\n\n${memoryBlock}\n\n${baylioSupportAgentPrompt}`;
+
+      // Personalized Sam greeting on transfer
+      const name = callerName || (callerCtx.isKnown ? callerCtx.name : null);
+      const shop = shopName || (callerCtx.isKnown ? callerCtx.shopName : null);
+      const reason = transferReason || "technical help";
+
+      if (name) {
+        samFirstMessage = `Hey ${name}! Alex just filled me in — I'm Sam, Baylio's support AI. Sounds like you need help with ${reason}. You're in the right place, let's get this sorted out.`;
+      } else {
+        samFirstMessage = `Hey! Alex just passed you over — I'm Sam, Baylio's support AI. I'm here to help with ${reason}. What are we working on?`;
+      }
+
+      // Also log this as a memory fact — Sam was needed
+      if (callerCtx.isKnown) {
+        const { upsertCallerProfile } = await import("./callerMemoryService");
+        await upsertCallerProfile(From, {
+          notes: `Transferred from Alex to Sam for: ${reason}`,
+        });
+      }
+
+      console.log(`[TRANSFER] Sam context built for ${From}: name=${name ?? 'unknown'}, shop=${shop ?? 'unknown'}`);
+    } catch (err) {
+      console.error("[TRANSFER] Failed to build Sam context, using default:", err);
+    }
+
+    const twiml = await registerElevenLabsCall(samAgentId, From, To, {
+      configOverride: {
+        agent: {
+          prompt: { prompt: samPrompt },
+          first_message: samFirstMessage,
+          language: "en",
+        },
+      },
+      dynamicVariables: {
+        caller_number: From,
+        call_type: "support_transfer",
+        transfer_reason: transferReason || "technical_support",
+      },
+    });
+
+    console.log(`[TRANSFER] Sam registered OK (${Date.now() - startTime}ms)`);
+    res.type("text/xml");
+    return res.send(twiml);
+  } catch (error) {
+    console.error("[TRANSFER] Error transferring to Sam:", error);
+    res.type("text/xml");
+    return res.send(generateVoicemailTwiML("Baylio Support"));
   }
 });
 

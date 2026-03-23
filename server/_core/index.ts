@@ -12,6 +12,7 @@ import { twilioRouter } from "../services/twilioWebhooks";
 import { validateTwilioSignature } from "../middleware/twilioValidation";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
 import { onboardRouter } from "../routes/onboardRoute";
+import { agencyflowRouter } from "../agencyflowRouter";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -47,6 +48,9 @@ async function startServer() {
 
   // Onboard endpoint — called by ElevenLabs custom tool during sales calls
   app.use("/api/onboard", onboardRouter);
+
+  // AgencyFlow → Baylio lead intelligence API (API key authenticated)
+  app.use("/api/agencyflow", agencyflowRouter);
 
   // Twilio webhook routes (with signature validation middleware)
   // The validation middleware checks X-Twilio-Signature before any

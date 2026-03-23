@@ -304,3 +304,101 @@ export const affiliateCommissions = mysqlTable("affiliate_commissions", {
 
 export type AffiliateCommission = typeof affiliateCommissions.$inferSelect;
 export type InsertAffiliateCommission = typeof affiliateCommissions.$inferInsert;
+
+// ─── Caller Profiles (Sales AI Memory) ──────────────────────────────
+// Keyed by phone number. Stores everything the AI learns about a caller
+// across all calls so it can greet them by name, remember their role,
+// and pick up where the last conversation left off.
+export const callerProfiles = mysqlTable("caller_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  phone: varchar("phone", { length: 32 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  role: mysqlEnum("callerRole", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]).default("unknown").notNull(),
+  shopName: varchar("shopName", { length: 255 }),
+  shopCity: varchar("shopCity", { length: 128 }),
+  shopState: varchar("shopState", { length: 64 }),
+  callCount: int("callCount").default(0).notNull(),
+  lastCalledAt: timestamp("lastCalledAt"),
+  notes: text("notes"),           // Free-form notes the AI has accumulated
+  doNotSell: boolean("doNotSell").default(false).notNull(),  // Skip sales pitch
+  preferredLanguage: varchar("preferredLanguage", { length: 8 }).default("en"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type CallerProfile = typeof callerProfiles.$inferSelect;
+export type InsertCallerProfile = typeof callerProfiles.$inferInsert;
+
+// ─── Caller Memory Facts ─────────────────────────────────────────────
+// Structured facts extracted from each call transcript.
+// Examples: "mentioned_budget: $200/mo", "objection: too expensive",
+//           "interest: appointment booking", "follow_up: call back Thursday"
+export const callerMemoryFacts = mysqlTable("caller_memory_facts", {
+  id: int("id").autoincrement().primaryKey(),
+  callerProfileId: int("callerProfileId").notNull(),
+  factType: varchar("factType", { length: 64 }).notNull(),   // e.g. "objection", "interest", "budget", "follow_up"
+  factValue: text("factValue").notNull(),                     // e.g. "price too high", "wants appointment booking"
+  callSid: varchar("callSid", { length: 64 }),               // Twilio call SID for traceability
+  extractedAt: timestamp("extractedAt").defaultNow().notNull(),
+});
+export type CallerMemoryFact = typeof callerMemoryFacts.$inferSelect;
+export type InsertCallerMemoryFact = typeof callerMemoryFacts.$inferInsert;
+
+// ─── Affiliate Payouts ───────────────────────────────────────────────
+// Batch payout records — one per payout run per affiliate.
+export const affiliatePayouts = mysqlTable("affiliate_payouts", {
+  id: int("id").autoincrement().primaryKey(),
+  affiliateId: int("affiliateId").notNull(),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: varchar("currency", { length: 8 }).default("usd").notNull(),
+  method: mysqlEnum("payoutMethod", ["paypal", "stripe", "bank", "manual"]).notNull(),
+  status: mysqlEnum("payoutStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
+  reference: varchar("reference", { length: 128 }),
+  commissionIds: json("commissionIds"),
+  processedAt: timestamp("processedAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type AffiliatePayout = typeof affiliatePayouts.$inferSelect;
+export type InsertAffiliatePayout = typeof affiliatePayouts.$inferInsert;
+
+// ─── Cold Lead Prospects ─────────────────────────────────────────────
+// Pre-loaded shop owner data for personalized outreach.
+// When Alex or Sam receives a call from a known prospect's number,
+// they greet them by name and reference their shop — no cold intro needed.
+export const prospects = mysqlTable("prospects", {
+  id: int("id").autoincrement().primaryKey(),
+  ownerName: varchar("ownerName", { length: 255 }).notNull(),
+  shopName: varchar("shopName", { length: 255 }).notNull(),
+  phone: varchar("phone", { length: 32 }).unique(),             // Primary contact number (for caller ID match)
+  email: varchar("email", { length: 320 }),
+  address: varchar("address", { length: 255 }),
+  city: varchar("city", { length: 128 }),
+  state: varchar("state", { length: 64 }),
+  zip: varchar("zip", { length: 16 }),
+  googlePlaceId: varchar("googlePlaceId", { length: 128 }),     // For enrichment via Google Places API
+  website: varchar("website", { length: 512 }),
+  estimatedMonthlyRevenue: varchar("estimatedMonthlyRevenue", { length: 64 }), // e.g. "$50k-$100k"
+  numTechnicians: int("numTechnicians"),
+  source: mysqlEnum("prospectSource", ["manual", "csv_import", "google_maps", "yelp", "referral", "cold_call"]).default("manual").notNull(),
+  outreachStatus: mysqlEnum("outreachStatus", ["not_contacted", "called", "voicemail", "interested", "demo_scheduled", "signed_up", "not_interested", "do_not_call"]).default("not_contacted").notNull(),
+  lastContactedAt: timestamp("lastContactedAt"),
+  convertedAt: timestamp("convertedAt"),                        // When they became a paying shop
+  convertedShopId: int("convertedShopId"),                      // Link to shops table after conversion
+  notes: text("notes"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type Prospect = typeof prospects.$inferSelect;
+export type InsertProspect = typeof prospects.$inferInsert;
+
+// ─── Prospect Notes ──────────────────────────────────────────────────
+// Chronological log of every interaction with a prospect.
+export const prospectNotes = mysqlTable("prospect_notes", {
+  id: int("id").autoincrement().primaryKey(),
+  prospectId: int("prospectId").notNull(),
+  note: text("note").notNull(),
+  createdBy: mysqlEnum("createdBy", ["human", "alex", "sam", "system"]).default("human").notNull(),
+  callSid: varchar("callSid", { length: 64 }),                  // Twilio call SID if note came from a call
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type ProspectNote = typeof prospectNotes.$inferSelect;
+export type InsertProspectNote = typeof prospectNotes.$inferInsert;

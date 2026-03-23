@@ -373,3 +373,75 @@
 - [x] Build slide-out/dropdown mobile menu with all nav links (Features, Pricing, How It Works, FAQ, Contact)
 - [x] Close menu on link click and outside click
 - [x] Ensure Sign In and Get Started buttons are accessible on mobile
+
+## Phase 37: Caller Memory System (Sales AI)
+- [ ] Create caller_profiles table (phone, name, role, shop_name, notes, call_count, last_called_at)
+- [ ] Create caller_memory_facts table (caller_id, fact_type, fact_value, extracted_at)
+- [ ] Add getCallerProfile and upsertCallerProfile helpers to db.ts
+- [ ] Wire caller lookup into sales AI webhook (inject memory into system prompt before call)
+- [ ] Build post-call memory extraction pipeline (LLM extracts name/role/shop from transcript)
+- [ ] Add special handling for founder/tester role (Abdur = founder, skip sales pitch)
+- [ ] Add Caller Memory admin page in dashboard to view/edit caller profiles
+
+## Phase 38: Notion Documentation Workspace
+- [ ] Create Baylio master Notion page with sub-pages
+- [ ] Technical Build Log page (architecture decisions, stack, how features were built)
+- [ ] Content Creation Pipeline page (YouTube long-form, short-form ideas, hooks)
+- [ ] Short-Form Content Ideas database (TikTok/Reels/Shorts with status tracking)
+- [ ] Migration Reference page (how to migrate Baylio to another stack/AI)
+- [ ] Caller Memory System documentation page
+
+## Phase 39: Affiliate Partner Portal (partners.baylio.io)
+- [ ] Design 3-tier affiliate structure: Partner → Senior Partner → Elite Partner
+- [ ] Add affiliate_tiers, affiliates, affiliate_referrals, affiliate_commissions, affiliate_payouts tables to schema
+- [ ] Build affiliate registration flow (separate from main app signup)
+- [ ] Build affiliate dashboard: earnings, referral link, downline tree, payout history
+- [ ] Build multi-level commission tracking (Tier 1: 20%, Tier 2: 5%, Tier 3: 2%)
+- [ ] Wire referral tracking to shop signups (UTM + referral code)
+- [ ] Add /partners route with its own branded layout (separate from main nav)
+- [ ] Add DNS CNAME record for partners.baylio.io → baylio.io
+- [ ] Admin view: all affiliates, commissions owed, payout management
+
+## Phase 40: AI Persona Names — Alex (Sales) & Sam (Support)
+- [ ] Rename sales AI from unnamed to "Alex" in baylioSalesAgent.ts prompt
+- [ ] Update Alex's first message and all self-references to use "Alex"
+- [ ] Add Alex's Spanish bilingual rules (already partially there, make explicit)
+- [ ] Create samSupportAgent.ts — bilingual IT/support persona for existing shop owners
+- [ ] Sam handles: setup help, call forwarding, dashboard questions, billing, troubleshooting
+- [ ] Sam speaks English and Spanish seamlessly (auto-detect, no announcement)
+- [ ] Wire Sam to a support phone line or dashboard chat widget
+
+## Phase 41: Alex→Sam Warm Handoff & Shared Caller Memory
+- [ ] Add transfer_to_sam ElevenLabs client tool to Alex's agent config
+- [ ] Update Alex prompt with handoff trigger rules (when to transfer to Sam)
+- [ ] Build /api/twilio/transfer-to-sam endpoint that re-registers call with Sam's prompt
+- [ ] Sam receives full caller context from shared caller_profiles table on transfer
+- [ ] Sam's opening on transfer: "Hey [name], Alex just filled me in — you need help with [topic], right?"
+- [ ] Both Alex and Sam write to same caller_profiles and caller_memory_facts tables
+- [ ] Memory includes: phone number, name, shop name, past issues, past interests, call count
+- [ ] Sam remembers specific shop config details (plan tier, setup status, known issues)
+
+## Phase 42: Cold Lead Intelligence & Personalized Outreach
+- [ ] Remove duplicate affiliate tables appended to schema.ts (lines 349+)
+- [ ] Add prospects table: shop_name, owner_name, phone, address, city, state, zip, status, source
+- [ ] Add prospect_notes table: prospect_id, note, created_by (human or AI), created_at
+- [ ] Wire prospect lookup into Alex's caller memory: when a known prospect calls, inject their shop/owner data
+- [ ] Alex greets known prospects by name: "Hey Zabir! This is Alex from Baylio — calling about Autoblitz..."
+- [ ] Add prospect import UI in admin dashboard (CSV upload + manual add)
+- [ ] Add Zabir / Autoblitz as first test prospect in DB
+- [ ] Track outreach status per prospect: not_contacted, called, voicemail, interested, signed_up, not_interested
+
+## Phase 43: AgencyFlow→Baylio Lead Intelligence Integration
+
+- [ ] Design AgencyFlow→Baylio API integration (REST endpoint with API key auth for cold lead ingestion)
+- [ ] Build POST /api/agencyflow/leads endpoint (batch upsert cold leads from AgencyFlow)
+- [ ] Build GET /api/agencyflow/leads endpoint (AgencyFlow can read back status/conversion data)
+- [ ] Apply pending DB migration (affiliate_payouts, prospects, prospect_notes tables)
+- [ ] Build admin Leads Portal page (/admin/leads) with Cold Leads and Warm Leads tabs
+- [ ] Cold leads tab: show prospects from AgencyFlow with outreach status, owner name, shop, phone, address
+- [ ] Warm leads tab: show contacts who visited site and signed up for marketing emails
+- [ ] HubSpot sync status column in both tabs (synced / not synced)
+- [ ] Bulk actions: mark as contacted, update status, sync to HubSpot
+- [ ] CSV export for both lead types
+- [ ] Sync all leads to HubSpot with correct lifecycle stage (cold=lead, warm=marketingqualifiedlead)
+- [ ] Document AgencyFlow MCP integration spec for future AgencyFlow developers

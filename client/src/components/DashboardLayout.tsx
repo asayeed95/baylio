@@ -32,6 +32,7 @@ import {
   CreditCard,
   Bell,
   Users,
+  Target,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -59,6 +60,7 @@ const menuItems = [
 
 const adminMenuItems = [
   { icon: Users, label: "Affiliates", path: "/admin/affiliates" },
+  { icon: Target, label: "Lead Intelligence", path: "/admin/leads" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
