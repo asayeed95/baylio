@@ -18,6 +18,11 @@ import {
   releasePhoneNumber,
   getAccountBalance,
 } from "./services/twilioProvisioning";
+import {
+  createConversationalAgent,
+  updateConversationalAgent,
+} from "./services/elevenLabsService";
+import { compileSystemPrompt, compileGreeting, type ShopContext } from "./services/promptCompiler";
 
 const shopInput = z.object({
   name: z.string().min(1).max(255),
@@ -211,5 +216,108 @@ export const shopRouter = router({
       } as any);
 
       return { success: true };
+    }),
+
+  // ─── ElevenLabs Agent Provisioning ──────────────────────────────────
+
+  /**
+   * Provision (create or update) an ElevenLabs conversational AI agent for a shop.
+   * This is the critical step that makes inbound calls work.
+   * If no elevenLabsAgentId exists, creates a new agent.
+   * If one exists, updates the existing agent with the latest config.
+   */
+  provisionAgent: protectedProcedure
+    .input(z.object({ shopId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const shop = await getShopById(input.shopId);
+      if (!shop || shop.ownerId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+      }
+
+      const agentConfig = await getAgentConfigByShop(input.shopId);
+      if (!agentConfig) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "Save your agent configuration first before provisioning.",
+        });
+      }
+
+      // Build the prompt from shop context
+      const shopContext: ShopContext = {
+        shopName: shop.name,
+        agentName: agentConfig.agentName || "Baylio",
+        phone: shop.phone || "",
+        address: shop.address || "",
+        city: shop.city || "",
+        state: shop.state || "",
+        timezone: shop.timezone || "America/New_York",
+        businessHours: (shop.businessHours as any) || {},
+        serviceCatalog: (shop.serviceCatalog as any) || [],
+        upsellRules: (agentConfig.upsellRules as any) || [],
+        confidenceThreshold: parseFloat(agentConfig.confidenceThreshold?.toString() || "0.80"),
+        maxUpsellsPerCall: agentConfig.maxUpsellsPerCall || 1,
+        greeting: agentConfig.greeting || "",
+        language: agentConfig.language || "en",
+        customSystemPrompt: agentConfig.systemPrompt || undefined,
+      };
+
+      const systemPrompt = compileSystemPrompt(shopContext);
+      const greeting = compileGreeting(shopContext);
+
+      const existingAgentId = agentConfig.elevenLabsAgentId;
+
+      try {
+        if (existingAgentId) {
+          // Update existing agent
+          const result = await updateConversationalAgent(existingAgentId, {
+            name: `Baylio — ${shop.name} (${agentConfig.agentName || "Agent"})`,
+            voiceId: agentConfig.voiceId || undefined,
+            systemPrompt,
+            firstMessage: greeting,
+            language: agentConfig.language || "en",
+          });
+          return { agentId: existingAgentId, action: "updated" as const };
+        } else {
+          // Create new agent
+          const result = await createConversationalAgent({
+            name: `Baylio — ${shop.name} (${agentConfig.agentName || "Agent"})`,
+            voiceId: agentConfig.voiceId || "cjVigY5qzO86Huf0OWal", // Default voice
+            systemPrompt,
+            firstMessage: greeting,
+            language: agentConfig.language || "en",
+          });
+
+          // Save the agent ID back to the config
+          await upsertAgentConfig({
+            ...agentConfig,
+            shopId: input.shopId,
+            elevenLabsAgentId: result.agent_id,
+          } as any);
+
+          return { agentId: result.agent_id, action: "created" as const };
+        }
+      } catch (err: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to provision ElevenLabs agent: ${err.message}`,
+        });
+      }
+    }),
+
+  /** Get the current agent provisioning status for a shop. */
+  getAgentStatus: protectedProcedure
+    .input(z.object({ shopId: z.number() }))
+    .query(async ({ ctx, input }) => {
+      const shop = await getShopById(input.shopId);
+      if (!shop || shop.ownerId !== ctx.user.id) return null;
+      const config = await getAgentConfigByShop(input.shopId);
+      return {
+        hasConfig: !!config,
+        hasAgent: !!config?.elevenLabsAgentId,
+        hasPhone: !!shop.twilioPhoneNumber,
+        agentId: config?.elevenLabsAgentId || null,
+        phoneNumber: shop.twilioPhoneNumber || null,
+        isLive: !!config?.elevenLabsAgentId && !!shop.twilioPhoneNumber,
+      };
     }),
 });
