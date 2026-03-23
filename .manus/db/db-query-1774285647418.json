@@ -1,0 +1,122 @@
+{
+  "query": "DESCRIBE caller_profiles;\nSELECT * FROM caller_profiles LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute DESCRIBE caller_profiles;\nSELECT * FROM caller_profiles LIMIT 5;",
+  "rows": [
+    {
+      "Field": "id",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "PRI",
+      "Default": "NULL",
+      "Extra": "auto_increment"
+    },
+    {
+      "Field": "phone",
+      "Type": "varchar(32)",
+      "Null": "NO",
+      "Key": "UNI",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "name",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "callerRole",
+      "Type": "enum('prospect','shop_owner','founder','tester','vendor','unknown')",
+      "Null": "NO",
+      "Key": "",
+      "Default": "unknown",
+      "Extra": ""
+    },
+    {
+      "Field": "shopName",
+      "Type": "varchar(255)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "shopCity",
+      "Type": "varchar(128)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "shopState",
+      "Type": "varchar(64)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "callCount",
+      "Type": "int",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "lastCalledAt",
+      "Type": "timestamp",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "notes",
+      "Type": "text",
+      "Null": "YES",
+      "Key": "",
+      "Default": "NULL",
+      "Extra": ""
+    },
+    {
+      "Field": "doNotSell",
+      "Type": "tinyint(1)",
+      "Null": "NO",
+      "Key": "",
+      "Default": "0",
+      "Extra": ""
+    },
+    {
+      "Field": "preferredLanguage",
+      "Type": "varchar(8)",
+      "Null": "YES",
+      "Key": "",
+      "Default": "en",
+      "Extra": ""
+    },
+    {
+      "Field": "createdAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": ""
+    },
+    {
+      "Field": "updatedAt",
+      "Type": "timestamp",
+      "Null": "NO",
+      "Key": "",
+      "Default": "CURRENT_TIMESTAMP",
+      "Extra": "DEFAULT_GENERATED on update CURRENT_TIMESTAMP"
+    }
+  ],
+  "messages": [],
+  "stdout": "Field\tType\tNull\tKey\tDefault\tExtra\nid\tint\tNO\tPRI\tNULL\tauto_increment\nphone\tvarchar(32)\tNO\tUNI\tNULL\t\nname\tvarchar(255)\tYES\t\tNULL\t\ncallerRole\tenum('prospect','shop_owner','founder','tester','vendor','unknown')\tNO\t\tunknown\t\nshopName\tvarchar(255)\tYES\t\tNULL\t\nshopCity\tvarchar(128)\tYES\t\tNULL\t\nshopState\tvarchar(64)\tYES\t\tNULL\t\ncallCount\tint\tNO\t\t0\t\nlastCalledAt\ttimestamp\tYES\t\tNULL\t\nnotes\ttext\tYES\t\tNULL\t\ndoNotSell\ttinyint(1)\tNO\t\t0\t\npreferredLanguage\tvarchar(8)\tYES\t\ten\t\ncreatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\t\nupdatedAt\ttimestamp\tNO\t\tCURRENT_TIMESTAMP\tDEFAULT_GENERATED on update CURRENT_TIMESTAMP\n",
+  "stderr": "",
+  "execution_time_ms": 65
+}

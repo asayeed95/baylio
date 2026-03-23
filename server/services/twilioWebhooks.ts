@@ -82,12 +82,37 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
  * This is the correct approach per ElevenLabs docs:
  * https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/register-call
  */
+async function lookupCallerProfile(phone: string): Promise<{ name: string; role: string } | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+    // Raw query since caller_profiles is not in Drizzle schema yet
+    const [rows] = await (db as any).execute(
+      "SELECT name, callerRole FROM caller_profiles WHERE phone = ? LIMIT 1",
+      [phone]
+    );
+    const row = Array.isArray(rows) ? rows[0] : null;
+    if (row && row.name) {
+      return { name: row.name as string, role: (row.callerRole as string) || "unknown" };
+    }
+    return null;
+  } catch (err) {
+    // Non-critical — don't let this break the call
+    console.warn("[CALL] Caller profile lookup failed:", err);
+    return null;
+  }
+}
+
 async function registerElevenLabsCall(
   elevenLabsAgentId: string,
   fromNumber: string,
   toNumber: string,
-  shopContext?: ShopContext
+  shopContext?: ShopContext,
+  callerProfile?: { name: string; role: string } | null
 ): Promise<string> {
+  const callerName = callerProfile?.name || "Unknown Caller";
+  const callerRole = callerProfile?.role || "unknown";
+
   const response = await fetch(
     "https://api.elevenlabs.io/v1/convai/twilio/register-call",
     {
@@ -104,6 +129,8 @@ async function registerElevenLabsCall(
         conversation_initiation_client_data: {
           dynamic_variables: {
             caller_number: fromNumber,
+            caller_name: callerName,
+            caller_role: callerRole,
             shop_name: shopContext?.shopName || "Auto Repair Shop",
             agent_name: shopContext?.agentName || "Baylio",
           },
@@ -261,14 +288,23 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       return res.send(generateVoicemailTwiML(context.shopName));
     }
 
-    // Step 3: Register call with ElevenLabs (authenticated server-side)
+    // Step 3: Look up caller profile for personalized greeting (non-blocking)
+    const callerProfile = await lookupCallerProfile(From);
+    if (callerProfile) {
+      console.log(`[CALL] Known caller: ${callerProfile.name} (${callerProfile.role})`);
+    } else {
+      console.log(`[CALL] Unknown caller: ${From}`);
+    }
+
+    // Step 4: Register call with ElevenLabs (authenticated server-side)
     console.log(`[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId}...`);
 
     const twiml = await registerElevenLabsCall(
       elevenLabsAgentId,
       From,
       To,
-      context
+      context,
+      callerProfile
     );
 
     console.log(`[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`);

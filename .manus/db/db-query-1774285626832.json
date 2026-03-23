@@ -1,0 +1,17 @@
+{
+  "query": "SELECT id, shopId, agentName, elevenLabsAgentId, greeting FROM agent_configs LIMIT 10;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute SELECT id, shopId, agentName, elevenLabsAgentId, greeting FROM agent_configs LIMIT 10;",
+  "rows": [
+    {
+      "id": "1",
+      "shopId": "1",
+      "agentName": "Baylio",
+      "elevenLabsAgentId": "agent_8401kkzx0edafhbb0c56a04d1kmb",
+      "greeting": "Thanks for calling, this is Baylio, your AI assistant. How can I help you today?"
+    }
+  ],
+  "messages": [],
+  "stdout": "id\tshopId\tagentName\televenLabsAgentId\tgreeting\n1\t1\tBaylio\tagent_8401kkzx0edafhbb0c56a04d1kmb\tThanks for calling, this is Baylio, your AI assistant. How can I help you today?\n",
+  "stderr": "",
+  "execution_time_ms": 219
+}

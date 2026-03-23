@@ -1,0 +1,11 @@
+{
+  "query": "SHOW TABLES LIKE '%caller%';\nSELECT * FROM caller_memory LIMIT 5;",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute SHOW TABLES LIKE '%caller%';\nSELECT * FROM caller_memory LIMIT 5;",
+  "returncode": 1,
+  "logs": [
+    "Tables_in_LRTLctKwgGEqbGCoN4bV83 (%caller%)",
+    "caller_memory_facts",
+    "caller_profiles",
+    "ERROR 1146 (42S02) at line 2: Table 'lrtlctkwggeqbgcon4bv83.caller_memory' doesn't exist"
+  ]
+}

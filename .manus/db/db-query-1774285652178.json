@@ -1,0 +1,9 @@
+{
+  "query": "SELECT * FROM caller_profiles WHERE phone = '+12013212235';\nINSERT INTO caller_profiles (phone, name, callerRole, notes) \nVALUES ('+12013212235', 'Abdur', 'founder', 'Baylio founder — testing the system')\nON DUPLICATE KEY UPDATE name = 'Abdur', callerRole = 'founder', notes = 'Baylio founder — testing the system';",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute SELECT * FROM caller_profiles WHERE phone = '+12013212235';\nINSERT INTO caller_profiles (phone, name, callerRole, notes) \nVALUES ('+12013212235', 'Abdur', 'founder', 'Baylio founder — testing the system')\nON DUPLICATE KEY UPDATE name = 'Abdur', callerRole = 'founder', notes = 'Baylio founder — testing the system';",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 200
+}
