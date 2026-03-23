@@ -293,3 +293,34 @@ export const partnerPayouts = mysqlTable("partner_payouts", {
 
 export type PartnerPayout = typeof partnerPayouts.$inferSelect;
 export type InsertPartnerPayout = typeof partnerPayouts.$inferInsert;
+
+// ─── Caller Profiles ────────────────────────────────────────────────
+export const callerProfiles = mysqlTable("caller_profiles", {
+  id: int("id").autoincrement().primaryKey(),
+  phone: varchar("phone", { length: 32 }).notNull().unique(),
+  name: varchar("name", { length: 255 }),
+  callerRole: mysqlEnum("callerRole", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]).default("unknown").notNull(),
+  shopName: varchar("shopName", { length: 255 }),
+  callCount: int("callCount").default(0).notNull(),
+  lastCalledAt: timestamp("lastCalledAt"),
+  notes: text("notes"),
+  doNotSell: boolean("doNotSell").default(false).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+
+export type CallerProfile = typeof callerProfiles.$inferSelect;
+export type InsertCallerProfile = typeof callerProfiles.$inferInsert;
+
+// ─── Contact Submissions ────────────────────────────────────────────
+export const contactSubmissions = mysqlTable("contact_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;

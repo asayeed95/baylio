@@ -19,9 +19,10 @@
 import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
 import { compileSystemPrompt, compileGreeting, type ShopContext } from "./promptCompiler";
+import { processCompletedCall } from "./postCallPipeline";
 import { getDb } from "../db";
-import { eq } from "drizzle-orm";
-import { shops, agentConfigs } from "../../drizzle/schema";
+import { eq, sql } from "drizzle-orm";
+import { shops, agentConfigs, callLogs, callerProfiles } from "../../drizzle/schema";
 import { ENV } from "../_core/env";
 
 const twilioRouter = Router();
@@ -82,41 +83,22 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
  * This is the correct approach per ElevenLabs docs:
  * https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/register-call
  */
-async function lookupCallerProfile(phone: string): Promise<{ name: string; role: string } | null> {
-  try {
-    const db = await getDb();
-    if (!db) return null;
-    // Raw query since caller_profiles is not in Drizzle schema yet
-    const [rows] = await (db as any).execute(
-      "SELECT name, callerRole FROM caller_profiles WHERE phone = ? LIMIT 1",
-      [phone]
-    );
-    const row = Array.isArray(rows) ? rows[0] : null;
-    if (row && row.name) {
-      return { name: row.name as string, role: (row.callerRole as string) || "unknown" };
-    }
-    return null;
-  } catch (err) {
-    // Non-critical — don't let this break the call
-    console.warn("[CALL] Caller profile lookup failed:", err);
-    return null;
-  }
-}
-
 async function registerElevenLabsCall(
   elevenLabsAgentId: string,
   fromNumber: string,
   toNumber: string,
   shopContext?: ShopContext,
-  callerProfile?: { name: string; role: string } | null
+  callerName?: string,
+  callerRole?: string
 ): Promise<string> {
-  const callerName = callerProfile?.name || "Unknown Caller";
-  const callerRole = callerProfile?.role || "unknown";
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3000);
 
   const response = await fetch(
     "https://api.elevenlabs.io/v1/convai/twilio/register-call",
     {
       method: "POST",
+      signal: controller.signal,
       headers: {
         "xi-api-key": ENV.elevenLabsApiKey,
         "Content-Type": "application/json",
@@ -129,8 +111,8 @@ async function registerElevenLabsCall(
         conversation_initiation_client_data: {
           dynamic_variables: {
             caller_number: fromNumber,
-            caller_name: callerName,
-            caller_role: callerRole,
+            caller_name: callerName || "Unknown Caller",
+            caller_role: callerRole || "unknown",
             shop_name: shopContext?.shopName || "Auto Repair Shop",
             agent_name: shopContext?.agentName || "Baylio",
           },
@@ -138,6 +120,8 @@ async function registerElevenLabsCall(
       }),
     }
   );
+
+  clearTimeout(timeout);
 
   if (!response.ok) {
     const errorText = await response.text();
@@ -254,6 +238,59 @@ async function resolveShopContext(
   return { shopId, context, elevenLabsAgentId };
 }
 
+// ─── Caller Profile Lookup ───────────────────────────────────────────
+
+/**
+ * Look up a caller profile by phone number.
+ * Returns name and role if found, null otherwise.
+ */
+async function lookupCallerProfile(
+  phone: string
+): Promise<{ name: string | null; callerRole: string } | null> {
+  try {
+    const db = await getDb();
+    if (!db) return null;
+
+    const results = await db
+      .select({ name: callerProfiles.name, callerRole: callerProfiles.callerRole })
+      .from(callerProfiles)
+      .where(eq(callerProfiles.phone, phone))
+      .limit(1);
+
+    return results[0] || null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Ensure a caller profile exists for this phone number.
+ * Creates one if missing, increments callCount + updates lastCalledAt on every call.
+ */
+async function ensureCallerProfile(phone: string): Promise<void> {
+  try {
+    const db = await getDb();
+    if (!db) return;
+
+    await db
+      .insert(callerProfiles)
+      .values({
+        phone,
+        callerRole: "unknown",
+        callCount: 1,
+        lastCalledAt: new Date(),
+      })
+      .onDuplicateKeyUpdate({
+        set: {
+          callCount: sql`${callerProfiles.callCount} + 1`,
+          lastCalledAt: new Date(),
+        },
+      });
+  } catch (err) {
+    console.error("[CALLER-PROFILE] Error upserting caller profile:", err);
+  }
+}
+
 // ─── Webhook Endpoints ──────────────────────────────────────────────
 
 /**
@@ -269,6 +306,14 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     const { To, From, CallSid, CallStatus } = req.body;
 
     console.log(`[CALL] Inbound call: ${From} → ${To} (SID: ${CallSid})`);
+
+    // Step 0: Look up caller profile + ensure one exists
+    const callerProfile = await lookupCallerProfile(From);
+    // Fire-and-forget: create or increment call count (don't block the response)
+    setImmediate(() => ensureCallerProfile(From));
+
+    const callerName = callerProfile?.name || "Unknown Caller";
+    const callerRole = callerProfile?.callerRole || "unknown";
 
     // Step 1: Resolve shop context from the called number
     const resolved = await resolveShopContext(To);
@@ -288,23 +333,17 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       return res.send(generateVoicemailTwiML(context.shopName));
     }
 
-    // Step 3: Look up caller profile for personalized greeting (non-blocking)
-    const callerProfile = await lookupCallerProfile(From);
-    if (callerProfile) {
-      console.log(`[CALL] Known caller: ${callerProfile.name} (${callerProfile.role})`);
-    } else {
-      console.log(`[CALL] Unknown caller: ${From}`);
-    }
-
-    // Step 4: Register call with ElevenLabs (authenticated server-side)
-    console.log(`[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId}...`);
+    // Step 3: Register call with ElevenLabs (authenticated server-side)
+    // Pass caller_name and caller_role as dynamic_variables so Alex can greet known callers
+    console.log(`[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`);
 
     const twiml = await registerElevenLabsCall(
       elevenLabsAgentId,
       From,
       To,
       context,
-      callerProfile
+      callerName,
+      callerRole
     );
 
     console.log(`[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`);
@@ -338,7 +377,6 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
         const db = await getDb();
         if (!db) return;
 
-        const { callLogs } = await import("../../drizzle/schema");
 
         if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
           // Look up shop by phone number
@@ -350,11 +388,17 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
 
           if (shopResult.length > 0) {
             const shop = shopResult[0];
+
+            // Look up caller name from profile
+            const callerProfile = await lookupCallerProfile(From);
+            const callerName = callerProfile?.name || null;
+
             await db.insert(callLogs).values({
               shopId: shop.id,
               ownerId: shop.ownerId,
               twilioCallSid: CallSid,
               callerPhone: From,
+              callerName,
               direction: "inbound",
               status: CallStatus === "completed" ? "completed" : "missed",
               duration: parseInt(CallDuration) || 0,
@@ -369,6 +413,24 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
                 callEndedAt: new Date(),
               },
             });
+
+            // Wire up post-call processing for completed calls
+            if (CallStatus === "completed") {
+              try {
+                // Find the call log we just upserted
+                const callLogResult = await db
+                  .select({ id: callLogs.id })
+                  .from(callLogs)
+                  .where(eq(callLogs.twilioCallSid, CallSid))
+                  .limit(1);
+
+                if (callLogResult.length > 0) {
+                  await processCompletedCall(callLogResult[0].id);
+                }
+              } catch (pipelineErr) {
+                console.error("[CALL-STATUS] Post-call pipeline error (non-fatal):", pipelineErr);
+              }
+            }
           }
         }
       } catch (err) {
@@ -402,7 +464,6 @@ twilioRouter.post("/recording-complete", async (req: Request, res: Response) => 
         const db = await getDb();
         if (!db) return;
 
-        const { callLogs } = await import("../../drizzle/schema");
 
         // Update the call log with recording URL
         await db
@@ -441,8 +502,7 @@ twilioRouter.post("/transcription-complete", async (req: Request, res: Response)
           const db = await getDb();
           if (!db) return;
 
-          const { callLogs } = await import("../../drizzle/schema");
-
+  
           await db
             .update(callLogs)
             .set({ transcription: TranscriptionText })

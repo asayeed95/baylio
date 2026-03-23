@@ -48,3 +48,43 @@ ALTER TABLE partners
 ALTER TABLE call_logs DROP INDEX uq_call_logs_twilio_sid;
 ALTER TABLE partners DROP INDEX uq_partners_user_id;
 ```
+
+---
+
+## Migration 002 — Create caller_profiles table
+
+**Date:** 2026-03-23
+**Commit:** `feat(voice): agent transfer, caller profiles, post-call pipeline, cost analytics`
+
+### Why
+
+The `/api/twilio/voice` webhook now looks up callers in `caller_profiles` to pass
+`caller_name` and `caller_role` as dynamic variables to ElevenLabs. Unknown callers
+get a profile auto-created via `INSERT ... ON DUPLICATE KEY UPDATE`.
+
+This table already exists in the production DB (seeded manually). This migration
+formalizes it in the Drizzle schema and ensures the structure matches.
+
+### SQL
+
+```sql
+CREATE TABLE IF NOT EXISTS caller_profiles (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  phone VARCHAR(32) NOT NULL UNIQUE,
+  name VARCHAR(255),
+  callerRole ENUM('prospect', 'shop_owner', 'founder', 'tester', 'vendor', 'unknown') NOT NULL DEFAULT 'unknown',
+  shopName VARCHAR(255),
+  callCount INT NOT NULL DEFAULT 0,
+  lastCalledAt TIMESTAMP NULL,
+  notes TEXT,
+  doNotSell BOOLEAN NOT NULL DEFAULT FALSE,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
+```
+
+### Rollback
+
+```sql
+DROP TABLE IF EXISTS caller_profiles;
+```
