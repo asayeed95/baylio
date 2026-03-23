@@ -12,6 +12,7 @@ import { voiceRouter } from "./voiceRouter";
 import { contactRouter } from "./contactRouter";
 import { affiliateRouter } from "./affiliateRouter";
 import { leadsRouter } from "./leadsRouter";
+import { teamRouter } from "./teamRouter";
 
 /**
  * Baylio App Router
@@ -50,6 +51,7 @@ export const appRouter = router({
   contact: contactRouter,
   affiliate: affiliateRouter,
   leads: leadsRouter,
+  team: teamRouter,
 });
 
 export type AppRouter = typeof appRouter;

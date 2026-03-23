@@ -1,0 +1,9 @@
+{
+  "query": "CREATE TABLE IF NOT EXISTS `team_invites` (\n  `id` int AUTO_INCREMENT PRIMARY KEY NOT NULL,\n  `email` varchar(320) NOT NULL,\n  `inviteRole` enum('admin','user') NOT NULL DEFAULT 'user',\n  `invitedBy` int NOT NULL,\n  `token` varchar(128) NOT NULL UNIQUE,\n  `inviteStatus` enum('pending','accepted','cancelled','expired') NOT NULL DEFAULT 'pending',\n  `acceptedAt` timestamp,\n  `expiresAt` timestamp,\n  `createdAt` timestamp NOT NULL DEFAULT (now())\n);",
+  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute CREATE TABLE IF NOT EXISTS `team_invites` (\n  `id` int AUTO_INCREMENT PRIMARY KEY NOT NULL,\n  `email` varchar(320) NOT NULL,\n  `inviteRole` enum('admin','user') NOT NULL DEFAULT 'user',\n  `invitedBy` int NOT NULL,\n  `token` varchar(128) NOT NULL UNIQUE,\n  `inviteStatus` enum('pending','accepted','cancelled','expired') NOT NULL DEFAULT 'pending',\n  `acceptedAt` timestamp,\n  `expiresAt` timestamp,\n  `createdAt` timestamp NOT NULL DEFAULT (now())\n);",
+  "rows": [],
+  "messages": [],
+  "stdout": "",
+  "stderr": "",
+  "execution_time_ms": 233
+}

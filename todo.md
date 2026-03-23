@@ -463,3 +463,28 @@
 - [ ] Add follow-up call queue to admin dashboard (pending, completed, cancelled)
 - [ ] Wire follow-up context into Alex's prompt so he references the previous conversation on callback
 - [ ] Caller memory auto-learns phone number on first call (no manual DB entry needed)
+
+## Phase 46: Admin Portal Subdomain (admin.baylio.io)
+- [ ] Design subdomain detection strategy (hostname check in React, separate route tree)
+- [ ] Build AdminPortalLayout — clean, minimal, enterprise-grade (separate from DashboardLayout)
+- [ ] Route guard: admin.baylio.io only accessible to admin/manager roles
+- [ ] Move all admin pages (/admin/leads, /admin/affiliates, /admin/shops, /admin/calls) under admin subdomain
+- [ ] Build team member management page (invite by email, assign roles: admin/manager/viewer, revoke)
+- [ ] Add admin_invites table to schema (email, role, token, expires_at, accepted_at)
+- [ ] Build invite flow: admin sends invite → email with link → new member sets password → gets access
+- [ ] Add CNAME record for admin.baylio.io in Namecheap DNS
+- [ ] Add admin.baylio.io as custom domain in Manus Settings → Domains
+- [ ] Test: admin.baylio.io shows admin portal, baylio.io shows public site
+
+## Phase 46: Subdomain Portals + Team Management
+- [x] useSubdomain hook — detects admin.baylio.io / partners.baylio.io / main
+- [x] App.tsx subdomain routing — AdminRouter / PartnersRouter / MainRouter
+- [x] AdminPortalLayout — dark sidebar, role guard, nav (Overview/Leads/Calls/Affiliates/Analytics/Team/Settings)
+- [x] AdminTeam page — invite members, list active members, pending invites, remove/promote
+- [x] teamRouter — getMembers, inviteMember, removeMember, cancelInvite, promoteToAdmin
+- [x] team_invites DB table created
+- [x] DNS propagated: admin.baylio.io → cname.manus.space ✓
+- [x] DNS propagated: partners.baylio.io → cname.manus.space ✓
+- [ ] Add admin.baylio.io in Manus Settings → Domains
+- [ ] Add partners.baylio.io in Manus Settings → Domains
+- [ ] Set abdur@baylio.io as admin login for admin portal

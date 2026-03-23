@@ -423,3 +423,21 @@ export const scheduledCalls = mysqlTable("scheduled_calls", {
 });
 export type ScheduledCall = typeof scheduledCalls.$inferSelect;
 export type InsertScheduledCall = typeof scheduledCalls.$inferInsert;
+
+// ─── Team Invites ─────────────────────────────────────────────────────
+// Tracks pending invitations to the admin portal.
+// When an admin invites a partner/employee, a record is created here.
+// In production, an email is sent with the token link.
+export const teamInvites = mysqlTable("team_invites", {
+  id: int("id").autoincrement().primaryKey(),
+  email: varchar("email", { length: 320 }).notNull(),
+  role: mysqlEnum("inviteRole", ["admin", "user"]).default("user").notNull(),
+  invitedBy: int("invitedBy").notNull(),           // user.id of the admin who sent the invite
+  token: varchar("token", { length: 128 }).notNull().unique(),
+  status: mysqlEnum("inviteStatus", ["pending", "accepted", "cancelled", "expired"]).default("pending").notNull(),
+  acceptedAt: timestamp("acceptedAt"),
+  expiresAt: timestamp("expiresAt"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type TeamInvite = typeof teamInvites.$inferSelect;
+export type InsertTeamInvite = typeof teamInvites.$inferInsert;

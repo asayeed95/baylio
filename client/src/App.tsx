@@ -4,6 +4,9 @@ import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { useSubdomain } from "./hooks/useSubdomain";
+
+// Main site pages
 import Landing from "./pages/Landing";
 import Dashboard from "./pages/Dashboard";
 import ShopDetail from "./pages/ShopDetail";
@@ -16,28 +19,20 @@ import Notifications from "./pages/Notifications";
 import ShopSettings from "./pages/ShopSettings";
 import Contact from "./pages/Contact";
 import FAQ from "./pages/FAQ";
-import AffiliatePortal from "./pages/AffiliatePortal";
-import AffiliateAdmin from "./pages/AffiliateAdmin";
+
+// Admin portal pages (admin.baylio.io)
+import AdminOverview from "./pages/AdminOverview";
 import AdminLeads from "./pages/AdminLeads";
+import AdminTeam from "./pages/AdminTeam";
+import AffiliateAdmin from "./pages/AffiliateAdmin";
+
+// Partners portal pages (partners.baylio.io)
+import AffiliatePortal from "./pages/AffiliatePortal";
 
 /**
- * Baylio App Router
- * 
- * Route structure:
- * /                    → Landing page (public) or Dashboard (authenticated)
- * /dashboard           → Main dashboard with shop overview
- * /shops/:id           → Shop detail page
- * /shops/:id/agent     → AI agent configuration
- * /shops/:id/calls     → Call logs for a shop
- * /shops/:id/analytics → Analytics dashboard
- * /shops/:id/settings  → Shop settings (hours, services, etc.)
- * /audits              → Missed call audit management
- * /subscriptions       → Subscription & billing management
- * /notifications       → Notification center
- * /contact             → Contact page (public)
- * /faq                 → FAQ page (public)
+ * Main site router — baylio.io
  */
-function Router() {
+function MainRouter() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
@@ -52,13 +47,50 @@ function Router() {
       <Route path="/notifications" component={Notifications} />
       <Route path="/contact" component={Contact} />
       <Route path="/faq" component={FAQ} />
-      <Route path="/affiliate" component={AffiliatePortal} />
-      <Route path="/admin/affiliates" component={AffiliateAdmin} />
-      <Route path="/admin/leads" component={AdminLeads} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />
     </Switch>
   );
+}
+
+/**
+ * Admin portal router — admin.baylio.io
+ */
+function AdminRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={AdminOverview} />
+      <Route path="/admin" component={AdminOverview} />
+      <Route path="/admin/leads" component={AdminLeads} />
+      <Route path="/admin/affiliates" component={AffiliateAdmin} />
+      <Route path="/admin/calls" component={AdminLeads} />
+      <Route path="/admin/team" component={AdminTeam} />
+      <Route path="/admin/analytics" component={AdminOverview} />
+      <Route path="/admin/settings" component={AdminOverview} />
+      <Route component={AdminOverview} />
+    </Switch>
+  );
+}
+
+/**
+ * Partners portal router — partners.baylio.io
+ */
+function PartnersRouter() {
+  return (
+    <Switch>
+      <Route path="/" component={AffiliatePortal} />
+      <Route path="/dashboard" component={AffiliatePortal} />
+      <Route component={AffiliatePortal} />
+    </Switch>
+  );
+}
+
+function Router() {
+  const subdomain = useSubdomain();
+
+  if (subdomain === "admin") return <AdminRouter />;
+  if (subdomain === "partners") return <PartnersRouter />;
+  return <MainRouter />;
 }
 
 function App() {
