@@ -25,6 +25,7 @@ import AdminOverview from "./pages/AdminOverview";
 import AdminLeads from "./pages/AdminLeads";
 import AdminTeam from "./pages/AdminTeam";
 import AffiliateAdmin from "./pages/AffiliateAdmin";
+import AdminAnalytics from "./pages/AdminAnalytics";
 
 // Partners portal pages (partners.baylio.io)
 import AffiliatePortal from "./pages/AffiliatePortal";
@@ -70,7 +71,7 @@ function AdminRouter() {
       <Route path="/admin/affiliates" component={AffiliateAdmin} />
       <Route path="/admin/calls" component={AdminLeads} />
       <Route path="/admin/team" component={AdminTeam} />
-      <Route path="/admin/analytics" component={AdminOverview} />
+      <Route path="/admin/analytics" component={AdminAnalytics} />
       <Route path="/admin/settings" component={AdminOverview} />
       <Route component={AdminOverview} />
     </Switch>
