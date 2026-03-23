@@ -19,7 +19,6 @@ import {
   SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar";
-import { getLoginUrl } from "@/const";
 import { useIsMobile } from "@/hooks/useMobile";
 import {
   LayoutDashboard,
@@ -35,7 +34,6 @@ import {
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "./ui/button";
 import { Skeleton } from "./ui/skeleton";
 
 /**
@@ -93,47 +91,15 @@ export default function PartnersPortalLayout({
     const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
     return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
-  const { loading, user } = useAuth();
 
   useEffect(() => {
     localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
   }, [sidebarWidth]);
 
-  if (loading) {
-    return <PartnersSkeleton />;
-  }
-
-  if (!user) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
-        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
-          <div className="flex flex-col items-center gap-6">
-            <div className="flex items-center gap-2 mb-2">
-              <Handshake className="h-8 w-8 text-emerald-400" />
-              <span className="text-2xl font-bold tracking-tight text-white">
-                Baylio Partners
-              </span>
-            </div>
-            <h1 className="text-2xl font-semibold tracking-tight text-center text-white">
-              Sign in to your partner portal
-            </h1>
-            <p className="text-sm text-zinc-400 text-center max-w-sm">
-              Track referrals, manage earnings, and grow your network.
-            </p>
-          </div>
-          <Button
-            onClick={() => {
-              window.location.href = getLoginUrl();
-            }}
-            size="lg"
-            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl transition-all"
-          >
-            Sign in
-          </Button>
-        </div>
-      </div>
-    );
-  }
+  // NOTE: Auth is handled at the routing layer in App.tsx.
+  // PartnersPortalLayout only renders when the user IS authenticated.
+  // Do NOT add auth checks here — it causes the login wall to appear
+  // instead of the public landing page for unauthenticated visitors.
 
   return (
     <div className="partners-portal bg-zinc-950 text-zinc-100 min-h-screen">
