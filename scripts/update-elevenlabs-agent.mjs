@@ -75,7 +75,7 @@ const payload = {
         prompt: SYSTEM_PROMPT,
       },
       first_message: FIRST_MESSAGE,
-      language: "multi", // Supports English + Spanish auto-detection
+      language: "en",
     },
     tts: {
       // Keep existing voice — cjVigY5qzO86Huf0OWal

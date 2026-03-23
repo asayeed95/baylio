@@ -121,3 +121,17 @@
 
 ## Bug: Application Error on Call to (XXX) XXX-XXXX
 - [ ] Diagnose and fix Twilio "application error" when calling the test number
+
+## Phase 19: Voice Agent Fix + Mobile Nav + Developer Documentation
+- [x] Fix AI voice agent — update ElevenLabs agent with Sam identity, shop context, natural greeting, 2s response pause
+- [x] Add Partners link to mobile hamburger menu on baylio.io landing page
+- [x] Write DEVELOPER.md — architecture, tech stack, project structure, setup guide
+- [x] Write DATA_MODEL.md — full database schema with relationships and field explanations
+- [x] Write API_REFERENCE.md — every tRPC router and procedure with inputs, outputs, auth
+- [x] Write VOICE_AGENT.md — ElevenLabs + Twilio integration, prompt compiler, call flow
+- [ ] Write PORTALS.md — multi-portal architecture, subdomain routing, each portal's pages
+
+## Bug: Voice Agent Disconnects After Greeting
+- [ ] Fix voice agent hanging up immediately after saying "Thanks for calling" — diagnose Twilio TwiML, ElevenLabs WebSocket bridge, and agent turn settings
+- [ ] Design automated voice agent testing strategy using OpenClaw/Claude Code for 24/7 QA
+- [ ] Build Cost Analytics admin dashboard (Claude Code task) — real-time COGS per shop, Twilio + ElevenLabs usage, margin tracking

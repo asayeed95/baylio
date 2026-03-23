@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { getLoginUrl } from "@/const";
 import {
   Phone,
@@ -22,6 +23,7 @@ import {
   Users,
   BadgeDollarSign,
   Gift,
+  Menu,
 } from "lucide-react";
 
 /**
@@ -316,10 +318,41 @@ export default function Landing() {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+            {/* Mobile menu */}
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="md:hidden">
+                  <Menu className="h-5 w-5" />
+                  <span className="sr-only">Open menu</span>
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72 pt-10">
+                <nav className="flex flex-col gap-4">
+                  <a href="#features" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Features</a>
+                  <a href="#pricing" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Pricing</a>
+                  <a href="#how-it-works" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">How It Works</a>
+                  <a
+                    href={getPartnersUrl()}
+                    className="text-base font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-2 py-2"
+                  >
+                    <Handshake className="h-4 w-4" />
+                    Become a Partner
+                  </a>
+                  <hr className="my-2" />
+                  <Button variant="outline" className="w-full" onClick={() => { window.location.href = getLoginUrl(); }}>
+                    Sign In
+                  </Button>
+                  <Button className="w-full" onClick={() => { window.location.href = getLoginUrl(); }}>
+                    Get Started
+                  </Button>
+                </nav>
+              </SheetContent>
+            </Sheet>
+            {/* Desktop buttons */}
+            <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => { window.location.href = getLoginUrl(); }}>
               Sign In
             </Button>
-            <Button size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button size="sm" className="hidden md:inline-flex" onClick={() => { window.location.href = getLoginUrl(); }}>
               Get Started
             </Button>
           </div>
