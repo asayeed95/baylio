@@ -122,7 +122,7 @@ export default function PartnersPortal() {
             100
         );
 
-  const referralLink = `https://baylio.io/?ref=${partner.referralCode}`;
+  const referralLink = `${window.location.origin}/?ref=${partner.referralCode}`;
 
   const copyReferralLink = () => {
     navigator.clipboard.writeText(referralLink);

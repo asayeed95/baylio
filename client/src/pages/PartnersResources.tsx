@@ -127,7 +127,7 @@ export default function PartnersResources() {
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const referralCode = profile?.referralCode || "YOUR_CODE";
-  const referralLink = `https://baylio.io/?ref=${referralCode}`;
+  const referralLink = `${window.location.origin}/?ref=${referralCode}`;
 
   const copyToClipboard = (text: string, id: string) => {
     navigator.clipboard.writeText(text);
