@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
   createShop,
@@ -82,7 +83,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.id);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
       }
       await updateShop(input.id, input.data as any);
       return { success: true };
@@ -93,7 +94,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.id);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
       }
       await deleteShop(input.id);
       return { success: true };
@@ -113,7 +114,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
       }
       const id = await upsertAgentConfig(input);
       return { id };
@@ -145,7 +146,7 @@ export const shopRouter = router({
     try {
       return await getAccountBalance();
     } catch (err: any) {
-      throw new Error(`Failed to fetch balance: ${err.message}`);
+      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to fetch balance: ${err.message}` });
     }
   }),
 
@@ -168,7 +169,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
       }
 
       const provisioned = await purchasePhoneNumber(
@@ -193,12 +194,12 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new Error("Shop not found or unauthorized");
+        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
       }
 
       const phoneSid = (shop as any).twilioPhoneSid;
       if (!phoneSid) {
-        throw new Error("No Twilio phone number assigned to this shop");
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No Twilio phone number assigned to this shop" });
       }
 
       await releasePhoneNumber(phoneSid);

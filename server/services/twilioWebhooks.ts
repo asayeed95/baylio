@@ -325,6 +325,13 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
               recordingUrl: RecordingUrl || null,
               callStartedAt: new Date(),
               callEndedAt: new Date(),
+            }).onDuplicateKeyUpdate({
+              set: {
+                status: CallStatus === "completed" ? "completed" : "missed",
+                duration: parseInt(CallDuration) || 0,
+                recordingUrl: RecordingUrl || null,
+                callEndedAt: new Date(),
+              },
             });
           }
         }
