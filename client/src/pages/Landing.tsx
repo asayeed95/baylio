@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { getLoginUrl } from "@/const";
+import { Link } from "wouter";
 import {
   Phone,
   BarChart3,
@@ -309,6 +310,8 @@ export default function Landing() {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
+            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
             <a
               href={getPartnersUrl()}
               className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
@@ -507,6 +510,57 @@ export default function Landing() {
         </p>
       </section>
 
+      {/* ─── Credibility Section ─── */}
+      <section className="border-y bg-muted/30">
+        <div className="container py-16">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Built for Shop Owners, by Operators Who Get It</h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            We didn't build Baylio in a lab. We built it because we saw how many shops were bleeding revenue from unanswered phones.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            <Card className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Shield className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Enterprise-Grade Voice Infrastructure</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  Built on the same telephony platform used by major contact centers. 99.9% uptime SLA. If Baylio ever goes down, calls automatically route to your backup number.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Clock className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Answers in Under 2 Seconds. Every Time.</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  No ringing. No hold music. No voicemail. Your customers hear a live, professional AI voice before the second ring completes.
+                </p>
+              </CardContent>
+            </Card>
+            <Card className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Users className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-lg font-semibold mb-2">Be One of Our First 50 Shops</h3>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  We are onboarding a small group of auto repair shops for hands-on launch support. Early adopters get direct access to our team, priority feature requests, and locked-in pricing.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+          <div className="text-center mt-10">
+            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Apply for Early Access
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Trust / Social Proof ─── */}
       <section className="border-y bg-muted/30">
         <div className="container py-16">
@@ -653,9 +707,10 @@ export default function Landing() {
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
             <div className="flex gap-6">
+              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
+              <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Support</a>
               <a href={getPartnersUrl()} className="text-sm text-primary hover:text-primary/80 font-medium">Partners</a>
             </div>
           </div>

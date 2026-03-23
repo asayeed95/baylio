@@ -10,6 +10,7 @@ import {
   subscriptions, InsertSubscription,
   usageRecords, InsertUsageRecord,
   notifications, InsertNotification,
+  contactSubmissions, InsertContactSubmission,
 } from "../drizzle/schema";
 import { ENV } from './_core/env';
 
@@ -301,4 +302,12 @@ export async function markAllNotificationsRead(userId: number) {
   const db = await getDb();
   if (!db) return;
   await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+}
+
+// ─── Contact Submissions ─────────────────────────────────────────────
+export async function createContactSubmission(data: InsertContactSubmission) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(contactSubmissions).values(data);
+  return result[0].insertId;
 }

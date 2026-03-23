@@ -311,3 +311,16 @@ export const callerProfiles = mysqlTable("caller_profiles", {
 
 export type CallerProfile = typeof callerProfiles.$inferSelect;
 export type InsertCallerProfile = typeof callerProfiles.$inferInsert;
+
+// ─── Contact Submissions ────────────────────────────────────────────
+export const contactSubmissions = mysqlTable("contact_submissions", {
+  id: int("id").autoincrement().primaryKey(),
+  name: varchar("name", { length: 255 }).notNull(),
+  email: varchar("email", { length: 320 }).notNull(),
+  phone: varchar("phone", { length: 32 }),
+  message: text("message").notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+
+export type ContactSubmission = typeof contactSubmissions.$inferSelect;
+export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;

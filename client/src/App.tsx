@@ -24,6 +24,8 @@ import PartnersResources from "./pages/PartnersResources";
 import PartnersSettings from "./pages/PartnersSettings";
 import AdminPortal from "./pages/AdminPortal";
 import CostAnalytics from "./pages/CostAnalytics";
+import FAQ from "./pages/FAQ";
+import Contact from "./pages/Contact";
 
 /**
  * Detect which portal to render based on hostname or ?portal= query param.
@@ -104,6 +106,8 @@ function MainRouter() {
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/dashboard/costs" component={CostAnalytics} />
+      <Route path="/faq" component={FAQ} />
+      <Route path="/contact" component={Contact} />
       {/* Partners routes accessible from main domain too */}
       <Route path="/partners" component={PartnersLandingOrDashboard} />
       <Route path="/partners/referrals" component={PartnersReferrals} />
