@@ -88,3 +88,72 @@ CREATE TABLE IF NOT EXISTS caller_profiles (
 ```sql
 DROP TABLE IF EXISTS caller_profiles;
 ```
+
+---
+
+## Migration 003 — Integrations, scorecard, SMS opt-out
+
+**Date:** 2026-03-23
+**Commit:** `feat(integrations): Sprint 4 — Google Calendar/Sheets, HubSpot, Shopmonkey, call scorecard, demo service`
+
+### Why
+
+Sprint 4 adds third-party integration support (Google Calendar, Google Sheets, HubSpot,
+Shopmonkey) and call scorecard analytics. New tables track integration credentials and
+sync history. New columns add call quality scorecard data, SMS follow-up controls,
+and SMS opt-out for caller profiles.
+
+### SQL
+
+```sql
+-- 1. Create shop_integrations table
+CREATE TABLE IF NOT EXISTS shop_integrations (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  shopId INT NOT NULL,
+  integrationProvider ENUM('google_calendar', 'google_sheets', 'shopmonkey', 'tekmetric', 'hubspot') NOT NULL,
+  accessToken TEXT,
+  refreshToken TEXT,
+  tokenExpiresAt TIMESTAMP NULL,
+  externalAccountId VARCHAR(255),
+  settings JSON,
+  isActive BOOLEAN NOT NULL DEFAULT TRUE,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  INDEX idx_shop_integrations_shop_provider (shopId, integrationProvider)
+);
+
+-- 2. Create integration_sync_logs table
+CREATE TABLE IF NOT EXISTS integration_sync_logs (
+  id INT AUTO_INCREMENT PRIMARY KEY,
+  shopId INT NOT NULL,
+  provider VARCHAR(64) NOT NULL,
+  action VARCHAR(64) NOT NULL,
+  syncStatus ENUM('success', 'failed') NOT NULL,
+  errorMessage TEXT,
+  metadata JSON,
+  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  INDEX idx_sync_logs_shop (shopId)
+);
+
+-- 3. Add scorecardData column to call_logs
+ALTER TABLE call_logs
+  ADD COLUMN scorecardData JSON AFTER estimatedRevenue;
+
+-- 4. Add smsFollowUpEnabled column to shops
+ALTER TABLE shops
+  ADD COLUMN smsFollowUpEnabled BOOLEAN NOT NULL DEFAULT TRUE AFTER isActive;
+
+-- 5. Add smsOptOut column to caller_profiles
+ALTER TABLE caller_profiles
+  ADD COLUMN smsOptOut BOOLEAN NOT NULL DEFAULT FALSE AFTER doNotSell;
+```
+
+### Rollback
+
+```sql
+ALTER TABLE caller_profiles DROP COLUMN smsOptOut;
+ALTER TABLE shops DROP COLUMN smsFollowUpEnabled;
+ALTER TABLE call_logs DROP COLUMN scorecardData;
+DROP TABLE IF EXISTS integration_sync_logs;
+DROP TABLE IF EXISTS shop_integrations;
+```

@@ -26,6 +26,8 @@ import AdminPortal from "./pages/AdminPortal";
 import CostAnalytics from "./pages/CostAnalytics";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
+import Integrations from "./pages/Integrations";
+import CallScorecard from "./pages/CallScorecard";
 
 /**
  * Detect which portal to render based on hostname or ?portal= query param.
@@ -102,6 +104,8 @@ function MainRouter() {
       <Route path="/shops/:id/calls" component={CallLogs} />
       <Route path="/shops/:id/analytics" component={Analytics} />
       <Route path="/shops/:id/settings" component={ShopSettings} />
+      <Route path="/shops/:id/integrations" component={Integrations} />
+      <Route path="/shops/:id/calls/:callId/scorecard" component={CallScorecard} />
       <Route path="/audits" component={MissedCallAudit} />
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />

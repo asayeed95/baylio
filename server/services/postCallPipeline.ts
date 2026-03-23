@@ -16,6 +16,12 @@ import { getDb } from "../db";
 import { eq, and, sql } from "drizzle-orm";
 import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
+import { createAppointment } from "./calendarService";
+import { syncCallToSheet } from "./sheetsService";
+import { syncCallerToHubspot } from "./hubspotService";
+import { createWorkOrder } from "./shopmonkeyService";
+import { sendSMS } from "./smsService";
+import { callerProfiles } from "../../drizzle/schema";
 
 /**
  * Analyze a call transcription using LLM.
@@ -203,6 +209,13 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
           estimatedRevenue: analysis.estimatedRevenue.toFixed(2),
         })
         .where(eq(callLogs.id, callLogId));
+
+      // Step 2b: Run post-call integrations (fire-and-forget)
+      try {
+        await runPostCallIntegrations(call.shopId, call, analysis);
+      } catch (err) {
+        console.error("[POST-CALL] Integration pipeline error (non-fatal):", err);
+      }
     }
 
     // Step 3: Record usage for billing
@@ -263,6 +276,100 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
     console.log(`[POST-CALL] Completed processing for call ${callLogId}`);
   } catch (error) {
     console.error(`[POST-CALL] Error processing call ${callLogId}:`, error);
+  }
+}
+
+/**
+ * Run post-call integrations after analysis is complete.
+ * All integrations are fire-and-forget — failures don't affect the core pipeline.
+ */
+async function runPostCallIntegrations(
+  shopId: number,
+  callLog: any,
+  analysis: { appointmentBooked: boolean; serviceRequested: string; summary: string; upsellAttempted: boolean; upsellAccepted: boolean; estimatedRevenue: number }
+): Promise<void> {
+  // Google Calendar: create appointment if booked
+  if (analysis.appointmentBooked) {
+    try {
+      await createAppointment(shopId, {
+        customerName: callLog.callerName || "Customer",
+        customerPhone: callLog.callerPhone || "",
+        service: analysis.serviceRequested,
+        dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(), // Default: tomorrow (actual date extracted from transcription in production)
+        notes: analysis.summary,
+      });
+    } catch (err) {
+      console.error("[POST-CALL] Calendar integration error:", err);
+    }
+  }
+
+  // Google Sheets: sync call data
+  try {
+    await syncCallToSheet(shopId, callLog);
+  } catch (err) {
+    console.error("[POST-CALL] Sheets integration error:", err);
+  }
+
+  // HubSpot: sync caller as contact
+  try {
+    await syncCallerToHubspot(shopId, {
+      phone: callLog.callerPhone || "",
+      name: callLog.callerName || undefined,
+      service: analysis.serviceRequested,
+      callSummary: analysis.summary,
+      duration: callLog.duration,
+      recordingUrl: callLog.recordingUrl,
+    });
+  } catch (err) {
+    console.error("[POST-CALL] HubSpot integration error:", err);
+  }
+
+  // Shopmonkey: create work order if appointment booked
+  if (analysis.appointmentBooked) {
+    try {
+      await createWorkOrder(shopId, {
+        customerName: callLog.callerName || "Customer",
+        customerPhone: callLog.callerPhone || "",
+        service: analysis.serviceRequested,
+        notes: analysis.summary,
+      });
+    } catch (err) {
+      console.error("[POST-CALL] Shopmonkey integration error:", err);
+    }
+  }
+
+  // SMS follow-up to the caller
+  try {
+    const db = await getDb();
+    if (db && callLog.callerPhone) {
+      // Check opt-out
+      const profile = await db
+        .select({ smsOptOut: callerProfiles.smsOptOut, doNotSell: callerProfiles.doNotSell })
+        .from(callerProfiles)
+        .where(eq(callerProfiles.phone, callLog.callerPhone))
+        .limit(1);
+
+      const optedOut = profile[0]?.smsOptOut || profile[0]?.doNotSell;
+
+      // Check shop SMS setting
+      const shopResult = await db
+        .select({ smsFollowUpEnabled: shops.smsFollowUpEnabled, name: shops.name, phone: shops.phone })
+        .from(shops)
+        .where(eq(shops.id, shopId))
+        .limit(1);
+
+      const shop = shopResult[0];
+
+      if (!optedOut && shop?.smsFollowUpEnabled) {
+        const smsBody = analysis.appointmentBooked
+          ? `Hi! Your appointment for ${analysis.serviceRequested} at ${shop.name} has been noted. We'll confirm the details shortly. Reply STOP to opt out.`
+          : `Thanks for calling ${shop.name}! If you need anything, call us at ${shop.phone || "our shop"}. Reply STOP to opt out.`;
+
+        await sendSMS({ to: callLog.callerPhone, body: smsBody });
+      }
+    }
+  } catch (err) {
+    console.error("[POST-CALL] SMS follow-up error:", err);
   }
 }
 

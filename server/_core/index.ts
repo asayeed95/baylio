@@ -10,6 +10,7 @@ import { serveStatic, setupVite } from "./vite";
 import { twilioRouter } from "../services/twilioWebhooks";
 import { validateTwilioSignature } from "../middleware/twilioValidation";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
+import { googleAuthRouter } from "../services/googleAuth";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -49,6 +50,9 @@ async function startServer() {
   // In development, run in logOnly mode so test calls aren't rejected.
   const isDev = process.env.NODE_ENV !== "production";
   app.use("/api/twilio", validateTwilioSignature({ logOnly: isDev }), twilioRouter);
+
+  // Google OAuth integration routes
+  app.use("/api/integrations/google", googleAuthRouter);
 
   // tRPC API
   app.use(

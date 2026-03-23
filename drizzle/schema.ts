@@ -53,6 +53,7 @@ export const shops = mysqlTable("shops", {
   businessHours: json("businessHours").$type<Record<string, { open: string; close: string; closed: boolean }>>(),
   serviceCatalog: json("serviceCatalog").$type<Array<{ name: string; category: string; price?: number; description?: string }>>(),
   isActive: boolean("isActive").default(true).notNull(),
+  smsFollowUpEnabled: boolean("smsFollowUpEnabled").default(true).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
   twilioPhoneSid: varchar("twilioPhoneSid", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -109,6 +110,16 @@ export const callLogs = mysqlTable("call_logs", {
   qualityScore: decimal("qualityScore", { precision: 3, scale: 2 }),
   qaFlags: json("qaFlags").$type<string[]>(),
   estimatedRevenue: decimal("estimatedRevenue", { precision: 10, scale: 2 }),
+  scorecardData: json("scorecardData").$type<{
+    greeting: number;
+    problemId: number;
+    serviceRec: number;
+    upsell: number;
+    appointment: number;
+    closing: number;
+    overall: number;
+    suggestions: string[];
+  }>(),
   callStartedAt: timestamp("callStartedAt"),
   callEndedAt: timestamp("callEndedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -305,6 +316,7 @@ export const callerProfiles = mysqlTable("caller_profiles", {
   lastCalledAt: timestamp("lastCalledAt"),
   notes: text("notes"),
   doNotSell: boolean("doNotSell").default(false).notNull(),
+  smsOptOut: boolean("smsOptOut").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
@@ -324,3 +336,34 @@ export const contactSubmissions = mysqlTable("contact_submissions", {
 
 export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
+
+// ─── Shop Integrations ──────────────────────────────────────────────
+export const shopIntegrations = mysqlTable("shop_integrations", {
+  id: int("id").autoincrement().primaryKey(),
+  shopId: int("shopId").notNull(),
+  provider: mysqlEnum("integrationProvider", ["google_calendar", "google_sheets", "shopmonkey", "tekmetric", "hubspot"]).notNull(),
+  accessToken: text("accessToken"),
+  refreshToken: text("refreshToken"),
+  tokenExpiresAt: timestamp("tokenExpiresAt"),
+  externalAccountId: varchar("externalAccountId", { length: 255 }),
+  settings: json("settings").$type<Record<string, unknown>>(),
+  isActive: boolean("isActive").default(true).notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+});
+export type ShopIntegration = typeof shopIntegrations.$inferSelect;
+export type InsertShopIntegration = typeof shopIntegrations.$inferInsert;
+
+// ─── Integration Sync Logs ─────────────────────────────────────────
+export const integrationSyncLogs = mysqlTable("integration_sync_logs", {
+  id: int("id").autoincrement().primaryKey(),
+  shopId: int("shopId").notNull(),
+  provider: varchar("provider", { length: 64 }).notNull(),
+  action: varchar("action", { length: 64 }).notNull(),
+  status: mysqlEnum("syncStatus", ["success", "failed"]).notNull(),
+  errorMessage: text("errorMessage"),
+  metadata: json("metadata").$type<Record<string, unknown>>(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+});
+export type IntegrationSyncLog = typeof integrationSyncLogs.$inferSelect;
+export type InsertIntegrationSyncLog = typeof integrationSyncLogs.$inferInsert;
