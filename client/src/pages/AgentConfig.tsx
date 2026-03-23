@@ -8,7 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
+import { ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp, Zap, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
@@ -74,12 +75,35 @@ function AgentConfigContent() {
     }
   }, [config]);
 
+  const { data: agentStatus, refetch: refetchStatus } = trpc.shop.getAgentStatus.useQuery(
+    { shopId },
+    { enabled: shopId > 0 }
+  );
+
+  const utils = trpc.useUtils();
+
   const saveConfig = trpc.shop.saveAgentConfig.useMutation({
     onSuccess: () => {
       toast.success("Agent configuration saved");
+      refetchStatus();
     },
     onError: (err) => {
       toast.error(err.message || "Failed to save configuration");
+    },
+  });
+
+  const provisionAgent = trpc.shop.provisionAgent.useMutation({
+    onSuccess: (data) => {
+      toast.success(
+        data.action === "created"
+          ? "AI agent created and ready to take calls!"
+          : "AI agent updated with latest config."
+      );
+      refetchStatus();
+      utils.shop.getAgentConfig.invalidate({ shopId });
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to provision AI agent");
     },
   });
 
@@ -134,6 +158,65 @@ Always be helpful and never pushy. If you don't know something, offer to have th
           {saveConfig.isPending ? "Saving..." : "Save Changes"}
         </Button>
       </div>
+
+      {/* Agent Status Banner */}
+      {agentStatus && (
+        <Card className={agentStatus.isLive
+          ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30"
+          : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+        }>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                {agentStatus.isLive ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
+                ) : (
+                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
+                )}
+                <div>
+                  <p className="text-sm font-medium">
+                    {agentStatus.isLive
+                      ? "Agent is live and answering calls"
+                      : !agentStatus.hasAgent
+                        ? "AI agent not provisioned yet — calls will go to voicemail"
+                        : !agentStatus.hasPhone
+                          ? "No phone number assigned — provision one in Shop Settings"
+                          : "Agent needs configuration"}
+                  </p>
+                  <div className="flex items-center gap-3 mt-1">
+                    <Badge variant="outline" className={`text-xs ${agentStatus.hasConfig ? "text-green-600" : "text-muted-foreground"}`}>
+                      {agentStatus.hasConfig ? "Config saved" : "No config"}
+                    </Badge>
+                    <Badge variant="outline" className={`text-xs ${agentStatus.hasAgent ? "text-green-600" : "text-muted-foreground"}`}>
+                      {agentStatus.hasAgent ? "Agent provisioned" : "No agent"}
+                    </Badge>
+                    <Badge variant="outline" className={`text-xs ${agentStatus.hasPhone ? "text-green-600" : "text-muted-foreground"}`}>
+                      {agentStatus.hasPhone ? agentStatus.phoneNumber : "No phone"}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+              <Button
+                onClick={() => provisionAgent.mutate({ shopId })}
+                disabled={provisionAgent.isPending || !agentStatus.hasConfig}
+                size="sm"
+                variant={agentStatus.hasAgent ? "outline" : "default"}
+              >
+                {provisionAgent.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4 mr-2" />
+                )}
+                {provisionAgent.isPending
+                  ? "Provisioning..."
+                  : agentStatus.hasAgent
+                    ? "Update Agent"
+                    : "Go Live"}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Voice & Identity */}
       <Card>
