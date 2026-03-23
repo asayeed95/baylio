@@ -18,7 +18,24 @@ import {
   Zap,
   Building2,
   Calculator,
+  Handshake,
+  Users,
+  BadgeDollarSign,
+  Gift,
 } from "lucide-react";
+
+/**
+ * Resolve the partners portal URL.
+ * On production (baylio.io / www.baylio.io) → partners.baylio.io
+ * On dev preview → same origin with ?portal=partners
+ */
+function getPartnersUrl(): string {
+  const hostname = window.location.hostname;
+  if (hostname === "baylio.io" || hostname === "www.baylio.io") {
+    return "https://partners.baylio.io";
+  }
+  return `${window.location.origin}?portal=partners`;
+}
 
 /**
  * Landing Page — Public, sales-focused
@@ -290,6 +307,13 @@ export default function Landing() {
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
+            <a
+              href={getPartnersUrl()}
+              className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+            >
+              <Handshake className="h-3.5 w-3.5" />
+              Partners
+            </a>
           </div>
           <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
@@ -474,6 +498,100 @@ export default function Landing() {
         </div>
       </section>
 
+      {/* ─── Partner Program CTA ─── */}
+      <section id="partners" className="border-y bg-gradient-to-br from-primary/5 via-background to-primary/10">
+        <div className="container py-20">
+          <div className="max-w-5xl mx-auto">
+            <div className="text-center mb-12">
+              <Badge variant="secondary" className="mb-4">
+                <Handshake className="h-3 w-3 mr-1" />
+                Partner Program
+              </Badge>
+              <h2 className="text-3xl md:text-4xl font-bold mb-4">
+                Earn Up to 30% Commission.
+                <br />
+                <span className="text-primary">Refer Shops. Get Paid Every Month.</span>
+              </h2>
+              <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
+                Know auto repair shop owners? Refer them to Baylio and earn recurring commissions
+                every month they stay subscribed — for as long as they're a customer.
+              </p>
+            </div>
+
+            <div className="grid md:grid-cols-3 gap-6 mb-12">
+              {[
+                {
+                  icon: BadgeDollarSign,
+                  title: "20–30% Recurring Commission",
+                  desc: "Earn a percentage of every monthly subscription your referrals pay. Not a one-time bonus — every single month, on autopilot.",
+                },
+                {
+                  icon: Users,
+                  title: "Unlimited Referrals",
+                  desc: "No cap on how many shops you can refer. Refer 10 shops on the Pro plan and earn $700+/month in passive income.",
+                },
+                {
+                  icon: Gift,
+                  title: "Free to Join. No Minimums.",
+                  desc: "Sign up in 60 seconds. Get your unique referral link. Start sharing. No quotas, no fees, no fine print.",
+                },
+              ].map((item, i) => (
+                <Card key={i} className="border bg-card text-center">
+                  <CardHeader className="pb-3">
+                    <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                      <item.icon className="h-6 w-6 text-primary" />
+                    </div>
+                    <CardTitle className="text-base">{item.title}</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Earnings example table */}
+            <div className="bg-muted/50 border rounded-2xl p-6 md:p-8 mb-10">
+              <p className="text-center text-sm font-semibold text-muted-foreground mb-6 uppercase tracking-wide">Example monthly earnings</p>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
+                {[
+                  { referrals: "5 shops", tier: "Starter ($199)", monthly: "$199/mo", rate: "20%" },
+                  { referrals: "10 shops", tier: "Pro ($349)", monthly: "$698/mo", rate: "20%" },
+                  { referrals: "20 shops", tier: "Pro ($349)", monthly: "$1,745/mo", rate: "25%" },
+                  { referrals: "50 shops", tier: "Mixed", monthly: "$5,000+/mo", rate: "30%" },
+                ].map((ex, i) => (
+                  <div key={i}>
+                    <p className="text-2xl font-bold text-primary">{ex.monthly}</p>
+                    <p className="text-sm font-medium mt-1">{ex.referrals}</p>
+                    <p className="text-xs text-muted-foreground">{ex.tier} · {ex.rate}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="text-center">
+              <Button
+                size="lg"
+                className="text-base px-10"
+                onClick={() => { window.location.href = getPartnersUrl(); }}
+              >
+                Become a Partner — It's Free
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <p className="text-sm text-muted-foreground mt-3">
+                Already a partner?{" "}
+                <a
+                  href={getPartnersUrl()}
+                  className="text-primary hover:underline font-medium"
+                >
+                  Sign in to your portal →
+                </a>
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ─── Final CTA ─── */}
       <section className="container py-20">
         <div className="max-w-3xl mx-auto text-center">
@@ -505,6 +623,7 @@ export default function Landing() {
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Support</a>
+              <a href={getPartnersUrl()} className="text-sm text-primary hover:text-primary/80 font-medium">Partners</a>
             </div>
           </div>
         </div>
