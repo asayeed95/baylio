@@ -50,8 +50,11 @@ function detectPortal(): "admin" | "partners" | "main" {
  */
 function PartnersLandingOrDashboard() {
   const { isAuthenticated, loading } = useAuth();
-  if (loading) return null;
+  // While auth is resolving, show the landing page (no flash of login wall)
+  if (loading) return <PartnersLanding />;
+  // Authenticated partners go straight to their dashboard
   if (isAuthenticated) return <PartnersPortal />;
+  // Everyone else sees the public landing page
   return <PartnersLanding />;
 }
 
