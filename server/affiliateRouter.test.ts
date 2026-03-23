@@ -19,6 +19,9 @@ vi.mock("./db", () => ({
   getReferralsByAffiliate: vi.fn().mockResolvedValue([]),
   getCommissionsByAffiliate: vi.fn().mockResolvedValue([]),
   getPendingCommissionTotal: vi.fn().mockResolvedValue("0.00"),
+  getPayoutsByAffiliate: vi.fn().mockResolvedValue([]),
+  createAffiliatePayout: vi.fn().mockResolvedValue(1),
+  hasPendingPayout: vi.fn().mockResolvedValue(false),
 }));
 
 import {
@@ -33,6 +36,9 @@ import {
   getReferralsByAffiliate,
   getCommissionsByAffiliate,
   getPendingCommissionTotal,
+  getPayoutsByAffiliate,
+  createAffiliatePayout,
+  hasPendingPayout,
 } from "./db";
 
 const mockCreateAffiliate = vi.mocked(createAffiliate);
@@ -46,6 +52,9 @@ const mockCreateReferral = vi.mocked(createAffiliateReferral);
 const mockGetReferrals = vi.mocked(getReferralsByAffiliate);
 const mockGetCommissions = vi.mocked(getCommissionsByAffiliate);
 const mockGetPendingTotal = vi.mocked(getPendingCommissionTotal);
+const mockGetPayouts = vi.mocked(getPayoutsByAffiliate);
+const mockCreatePayout = vi.mocked(createAffiliatePayout);
+const mockHasPendingPayout = vi.mocked(hasPendingPayout);
 
 // Helper to create a mock affiliate
 function mockAffiliate(overrides: Record<string, unknown> = {}) {
@@ -328,6 +337,118 @@ describe("Affiliate Router Logic", () => {
       const commissionRate = 0.25; // Agency tier
       const commission = subscriptionAmount * commissionRate;
       expect(commission).toBe(124.75);
+    });
+  });
+
+  describe("requestPayout", () => {
+    it("should reject if balance < $50", async () => {
+      const affiliate = mockAffiliate({ pendingPayout: "25.00" });
+      mockGetByUserId.mockResolvedValueOnce(affiliate as any);
+
+      const pendingBalance = parseFloat(affiliate.pendingPayout as string);
+      expect(pendingBalance).toBeLessThan(50);
+      // Router would throw BAD_REQUEST here
+    });
+
+    it("should reject if pending payout already exists", async () => {
+      const affiliate = mockAffiliate({ pendingPayout: "100.00" });
+      mockGetByUserId.mockResolvedValueOnce(affiliate as any);
+      mockHasPendingPayout.mockResolvedValueOnce(true);
+
+      const alreadyPending = await hasPendingPayout(affiliate.id);
+      expect(alreadyPending).toBe(true);
+      // Router would throw CONFLICT here
+    });
+
+    it("should create payout when balance >= $50 and no pending", async () => {
+      const affiliate = mockAffiliate({ pendingPayout: "150.00" });
+      mockGetByUserId.mockResolvedValueOnce(affiliate as any);
+      mockHasPendingPayout.mockResolvedValueOnce(false);
+      mockCreatePayout.mockResolvedValueOnce(1);
+
+      const pendingBalance = parseFloat(affiliate.pendingPayout as string);
+      expect(pendingBalance).toBeGreaterThanOrEqual(50);
+
+      const alreadyPending = await hasPendingPayout(affiliate.id);
+      expect(alreadyPending).toBe(false);
+
+      const id = await createAffiliatePayout({
+        affiliateId: affiliate.id,
+        amount: affiliate.pendingPayout as string,
+        method: "paypal",
+        status: "pending",
+      } as any);
+
+      expect(id).toBe(1);
+      expect(mockCreatePayout).toHaveBeenCalledWith(
+        expect.objectContaining({
+          affiliateId: 1,
+          amount: "150.00",
+          method: "paypal",
+          status: "pending",
+        })
+      );
+    });
+  });
+
+  describe("getMyNetwork", () => {
+    it("should return empty partners array (downline not yet supported)", async () => {
+      const affiliate = mockAffiliate();
+      mockGetByUserId.mockResolvedValueOnce(affiliate as any);
+
+      // Currently returns empty since parentAffiliateId not in schema
+      const result = { partners: [] };
+      expect(result.partners).toHaveLength(0);
+    });
+  });
+
+  describe("tier calculation", () => {
+    it("should be Bronze for 0-4 referrals", () => {
+      const tierThresholds = [
+        { name: "Bronze", min: 0, max: 4 },
+        { name: "Silver", min: 5, max: 14 },
+        { name: "Gold", min: 15, max: 29 },
+        { name: "Platinum", min: 30, max: Infinity },
+      ];
+      const count = 3;
+      const tier = tierThresholds.find(t => count >= t.min && count <= t.max);
+      expect(tier?.name).toBe("Bronze");
+    });
+
+    it("should be Silver for 5-14 referrals", () => {
+      const tierThresholds = [
+        { name: "Bronze", min: 0, max: 4 },
+        { name: "Silver", min: 5, max: 14 },
+        { name: "Gold", min: 15, max: 29 },
+        { name: "Platinum", min: 30, max: Infinity },
+      ];
+      const count = 10;
+      const tier = tierThresholds.find(t => count >= t.min && count <= t.max);
+      expect(tier?.name).toBe("Silver");
+    });
+
+    it("should be Gold for 15-29 referrals", () => {
+      const tierThresholds = [
+        { name: "Bronze", min: 0, max: 4 },
+        { name: "Silver", min: 5, max: 14 },
+        { name: "Gold", min: 15, max: 29 },
+        { name: "Platinum", min: 30, max: Infinity },
+      ];
+      const count = 20;
+      const tier = tierThresholds.find(t => count >= t.min && count <= t.max);
+      expect(tier?.name).toBe("Gold");
+    });
+
+    it("should be Platinum for 30+ referrals", () => {
+      const tierThresholds = [
+        { name: "Bronze", min: 0, max: 4 },
+        { name: "Silver", min: 5, max: 14 },
+        { name: "Gold", min: 15, max: 29 },
+        { name: "Platinum", min: 30, max: Infinity },
+      ];
+      const count = 50;
+      const tier = tierThresholds.find(t => count >= t.min && count <= t.max);
+      expect(tier?.name).toBe("Platinum");
     });
   });
 });

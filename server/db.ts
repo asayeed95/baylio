@@ -380,11 +380,13 @@ import {
   affiliates,
   affiliateReferrals,
   affiliateCommissions,
+  affiliatePayouts,
 } from "../drizzle/schema";
 import type {
   InsertAffiliate,
   InsertAffiliateReferral,
   InsertAffiliateCommission,
+  InsertAffiliatePayout,
 } from "../drizzle/schema";
 
 /** Create a new affiliate and return its ID. */
@@ -508,4 +510,51 @@ export async function getPendingCommissionTotal(affiliateId: number) {
       eq(affiliateCommissions.status, "pending"),
     ));
   return result[0]?.total ?? "0.00";
+}
+
+// ─── Affiliate Network (Downline) ───────────────────────────────────
+
+/** Get affiliates recruited by a given affiliate (their downline). */
+export async function getAffiliatesByParent(parentUserId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  // Find the parent affiliate record first
+  const parent = await getAffiliateByUserId(parentUserId);
+  if (!parent) return [];
+  // parentAffiliateId doesn't exist in schema — use a convention:
+  // We don't have parentAffiliateId in schema, so downline is not supported yet.
+  // Return empty for now until schema is extended.
+  return [];
+}
+
+// ─── Affiliate Payouts ──────────────────────────────────────────────
+
+/** Create a payout request. */
+export async function createAffiliatePayout(data: InsertAffiliatePayout) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(affiliatePayouts).values(data);
+  return result[0].insertId;
+}
+
+/** Get payouts for an affiliate. */
+export async function getPayoutsByAffiliate(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db.select().from(affiliatePayouts)
+    .where(eq(affiliatePayouts.affiliateId, affiliateId))
+    .orderBy(desc(affiliatePayouts.createdAt));
+}
+
+/** Check if affiliate has a pending payout. */
+export async function hasPendingPayout(affiliateId: number) {
+  const db = await getDb();
+  if (!db) return false;
+  const result = await db.select({ id: affiliatePayouts.id }).from(affiliatePayouts)
+    .where(and(
+      eq(affiliatePayouts.affiliateId, affiliateId),
+      eq(affiliatePayouts.status, "pending"),
+    ))
+    .limit(1);
+  return result.length > 0;
 }
