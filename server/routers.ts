@@ -9,6 +9,7 @@ import { subscriptionRouter } from "./subscriptionRouter";
 import { organizationRouter } from "./organizationRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
 import { partnerRouter } from "./partnerRouter";
+import { analyticsRouter } from "./analyticsRouter";
 
 /**
  * Baylio App Router
@@ -43,6 +44,7 @@ export const appRouter = router({
   organization: organizationRouter,
   stripe: stripeRouter,
   partner: partnerRouter,
+  analytics: analyticsRouter,
 });
 
 export type AppRouter = typeof appRouter;
