@@ -1,7 +1,6 @@
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { Users } from "lucide-react";
 import { useState } from "react";
 import PartnersPortalLayout from "@/components/PartnersPortalLayout";

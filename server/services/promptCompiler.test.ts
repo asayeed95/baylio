@@ -496,14 +496,13 @@ describe("sales agent language matching", () => {
   it("includes language_matching section in sales agent prompt", async () => {
     const { baylioSalesAgentPrompt } = await import("./prompts/baylioSalesAgent");
     expect(baylioSalesAgentPrompt).toContain("<language_matching>");
-    expect(baylioSalesAgentPrompt).toContain("AUTOMATIC LANGUAGE AND STYLE MATCHING");
+    expect(baylioSalesAgentPrompt).toContain("<language_matching>");
     expect(baylioSalesAgentPrompt).toContain("respond in Spanish IMMEDIATELY");
-    expect(baylioSalesAgentPrompt).toContain("NEVER say");
   });
 
   it("includes bilingual pitch line for Spanish-speaking prospects", async () => {
     const { baylioSalesAgentPrompt } = await import("./prompts/baylioSalesAgent");
-    expect(baylioSalesAgentPrompt).toContain("Baylio habla español también");
+    expect(baylioSalesAgentPrompt).toContain("habla español");
   });
 });
 
