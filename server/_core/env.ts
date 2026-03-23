@@ -13,24 +13,4 @@ export const ENV = {
   twilioValidationEnabled: process.env.TWILIO_VALIDATION_ENABLED !== "false",
   // ElevenLabs
   elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
-  elevenLabsAgentId: process.env.ELEVENLABS_AGENT_ID ?? "",
-  // Baylio Sales Line
-  baylioSalesPhone: process.env.BAYLIO_SALES_PHONE ?? "+18448752441",
 };
-
-/** Validate that critical env vars are set. Call at startup. */
-export function validateEnv(): void {
-  const required = [
-    ["DATABASE_URL", ENV.databaseUrl],
-    ["JWT_SECRET", ENV.cookieSecret],
-    ["OAUTH_SERVER_URL", ENV.oAuthServerUrl],
-  ] as const;
-
-  const missing = required.filter(([, value]) => !value).map(([name]) => name);
-
-  if (missing.length > 0) {
-    console.error(
-      `[ENV] Missing required environment variables: ${missing.join(", ")}. Server may not function correctly.`
-    );
-  }
-}

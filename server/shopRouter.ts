@@ -1,5 +1,4 @@
 import { z } from "zod";
-import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
   createShop,
@@ -18,48 +17,42 @@ import {
   releasePhoneNumber,
   getAccountBalance,
 } from "./services/twilioProvisioning";
-import { createOrUpdateContact, createDeal } from "./services/hubspotService";
 
 const shopInput = z.object({
   name: z.string().min(1).max(255),
-  phone: z.string().max(32).optional(),
-  address: z.string().max(500).optional(),
-  city: z.string().max(128).optional(),
-  state: z.string().max(64).optional(),
-  zip: z.string().max(16).optional(),
-  timezone: z.string().max(64).default("America/New_York"),
-  organizationId: z.number().min(1).optional(),
-  businessHours: z.record(z.string(), z.object({
-    open: z.string().max(16),
-    close: z.string().max(16),
-    closed: z.boolean(),
-  })).optional(),
+  phone: z.string().optional(),
+  address: z.string().optional(),
+  city: z.string().optional(),
+  state: z.string().optional(),
+  zip: z.string().optional(),
+  timezone: z.string().default("America/New_York"),
+  organizationId: z.number().optional(),
+  businessHours: z.any().optional(),
   serviceCatalog: z.array(z.object({
-    name: z.string().max(255),
-    category: z.string().max(128),
-    price: z.number().min(0).max(100000).optional(),
-    description: z.string().max(1000).optional(),
-  })).max(100).optional(),
-  emailMarketingConsent: z.boolean().optional(),
+    name: z.string(),
+    category: z.string(),
+    price: z.number().optional(),
+    description: z.string().optional(),
+  })).optional(),
 });
 
 const agentConfigInput = z.object({
-  shopId: z.number().min(1),
-  voiceId: z.string().max(128).optional(),
-  voiceName: z.string().max(128).optional(),
-  agentName: z.string().max(128).default("Baylio"),
-  systemPrompt: z.string().max(10000).optional(),
-  greeting: z.string().max(1000).optional(),
+  shopId: z.number(),
+  voiceId: z.string().optional(),
+  voiceName: z.string().optional(),
+  agentName: z.string().default("Baylio"),
+  systemPrompt: z.string().optional(),
+  greeting: z.string().optional(),
   upsellEnabled: z.boolean().default(true),
   upsellRules: z.array(z.object({
-    symptom: z.string().max(255),
-    service: z.string().max(255),
-    adjacent: z.string().max(255),
-    confidence: z.number().min(0).max(1),
-  })).max(50).optional(),
-  confidenceThreshold: z.string().max(10).default("0.80"),
-  maxUpsellsPerCall: z.number().min(0).max(10).default(1),
-  language: z.string().max(16).default("en"),
+    symptom: z.string(),
+    service: z.string(),
+    adjacent: z.string(),
+    confidence: z.number(),
+  })).optional(),
+  confidenceThreshold: z.string().default("0.80"),
+  maxUpsellsPerCall: z.number().default(1),
+  language: z.string().default("en"),
 });
 
 export const shopRouter = router({
@@ -81,35 +74,6 @@ export const shopRouter = router({
     .input(shopInput)
     .mutation(async ({ ctx, input }) => {
       const id = await createShop({ ...input, ownerId: ctx.user.id });
-
-      // Sync shop owner to HubSpot as a contact
-      try {
-        const user = ctx.user;
-        const email = user.email || "unknown@baylio.io";
-        const nameParts = user.name?.split(" ") || ["Shop", "Owner"];
-        const city = input.city || "Unknown";
-        const state = input.state || "Unknown";
-        await createOrUpdateContact(email, {
-          firstname: nameParts[0],
-          lastname: nameParts.slice(1).join(" ") || "Owner",
-          phone: input.phone,
-          company: input.name,
-          lifecyclestage: "customer",
-          hs_lead_status: "baylio_shop_signup",
-          emailMarketingConsent: input.emailMarketingConsent ?? true,
-        });
-
-        // Create a deal for the shop signup
-        await createDeal(`Shop Signup: ${input.name}`, email, {
-          dealstage: "appointmentscheduled",
-          amount: 149,
-          description: `New shop signup via Baylio. Location: ${city}, ${state}`,
-        });
-      } catch (hubspotError) {
-        console.warn("[HubSpot] Warning: Failed to sync shop signup to HubSpot", hubspotError);
-        // Don't fail the shop creation if HubSpot sync fails
-      }
-
       return { id };
     }),
 
@@ -118,9 +82,9 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.id);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
+        throw new Error("Shop not found or unauthorized");
       }
-      await updateShop(input.id, input.data);
+      await updateShop(input.id, input.data as any);
       return { success: true };
     }),
 
@@ -129,7 +93,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.id);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
+        throw new Error("Shop not found or unauthorized");
       }
       await deleteShop(input.id);
       return { success: true };
@@ -149,7 +113,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
+        throw new Error("Shop not found or unauthorized");
       }
       const id = await upsertAgentConfig(input);
       return { id };
@@ -204,7 +168,7 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
+        throw new Error("Shop not found or unauthorized");
       }
 
       const provisioned = await purchasePhoneNumber(
@@ -218,7 +182,7 @@ export const shopRouter = router({
       await updateShop(input.shopId, {
         twilioPhoneNumber: provisioned.phoneNumber,
         twilioPhoneSid: provisioned.sid,
-      });
+      } as any);
 
       return provisioned;
     }),
@@ -229,12 +193,12 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or access denied" });
+        throw new Error("Shop not found or unauthorized");
       }
 
-      const phoneSid = shop.twilioPhoneSid;
+      const phoneSid = (shop as any).twilioPhoneSid;
       if (!phoneSid) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No Twilio phone number assigned to this shop" });
+        throw new Error("No Twilio phone number assigned to this shop");
       }
 
       await releasePhoneNumber(phoneSid);
@@ -243,7 +207,7 @@ export const shopRouter = router({
       await updateShop(input.shopId, {
         twilioPhoneNumber: null,
         twilioPhoneSid: null,
-      });
+      } as any);
 
       return { success: true };
     }),

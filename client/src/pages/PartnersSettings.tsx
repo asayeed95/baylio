@@ -1,182 +1,283 @@
-import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import PartnersPortalLayout from "@/components/PartnersPortalLayout";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Copy } from "lucide-react";
+import { Switch } from "@/components/ui/switch";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { trpc } from "@/lib/trpc";
+import { Save, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
-import PartnersPortalLayout from "@/components/PartnersPortalLayout";
 
 export default function PartnersSettings() {
-  const { data: affiliate, isLoading } = trpc.affiliate.me.useQuery();
+  const { data: profile, isLoading } = trpc.partner.getProfile.useQuery();
   const utils = trpc.useUtils();
 
-  const [paypalEmail, setPaypalEmail] = useState("");
-  const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
+  const [website, setWebsite] = useState("");
+  const [payoutEmail, setPayoutEmail] = useState("");
+  const [payoutMethod, setPayoutMethod] = useState("stripe");
+  const [notifyReferrals, setNotifyReferrals] = useState(true);
+  const [notifyPayouts, setNotifyPayouts] = useState(true);
+  const [notifyNewsletter, setNotifyNewsletter] = useState(true);
 
   useEffect(() => {
-    if (affiliate) {
-      setPaypalEmail(affiliate.paypalEmail ?? "");
-      setName(affiliate.name ?? "");
-      setPhone(affiliate.phone ?? "");
+    if (profile) {
+      setCompanyName(profile.companyName || "");
+      setWebsite(profile.website || "");
+      setPayoutEmail(profile.payoutEmail || "");
+      setPayoutMethod(profile.payoutMethod || "stripe");
+      setNotifyReferrals(profile.notifyReferrals ?? true);
+      setNotifyPayouts(profile.notifyPayouts ?? true);
+      setNotifyNewsletter(profile.notifyNewsletter ?? true);
     }
-  }, [affiliate]);
+  }, [profile]);
 
-  const updateSettings = trpc.affiliate.updateSettings.useMutation({
+  const updateSettings = trpc.partner.updateSettings.useMutation({
     onSuccess: () => {
-      toast.success("Settings updated!");
-      utils.affiliate.me.invalidate();
+      toast.success("Settings saved");
+      utils.partner.getProfile.invalidate();
     },
     onError: (err) => {
-      toast.error(err.message || "Failed to update settings");
+      toast.error(err.message);
     },
   });
 
-  const copyCode = () => {
-    if (affiliate?.code) {
-      navigator.clipboard.writeText(affiliate.code);
-      toast.success("Referral code copied!");
-    }
+  const handleSave = () => {
+    updateSettings.mutate({
+      companyName: companyName || undefined,
+      website: website || undefined,
+      payoutEmail: payoutEmail || undefined,
+      payoutMethod: payoutMethod as "stripe" | "paypal" | "bank_transfer",
+      notifyReferrals,
+      notifyPayouts,
+      notifyNewsletter,
+    });
   };
 
   if (isLoading) {
     return (
-      <PartnersPortalLayout title="Settings">
-        <div className="flex items-center justify-center py-20">
-          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+      <PartnersPortalLayout>
+        <div className="space-y-6 animate-pulse">
+          <div className="h-10 w-48 bg-zinc-800 rounded-lg" />
+          <div className="h-64 bg-zinc-800 rounded-xl" />
+          <div className="h-48 bg-zinc-800 rounded-xl" />
+        </div>
+      </PartnersPortalLayout>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <PartnersPortalLayout>
+        <div className="flex items-center justify-center min-h-[40vh]">
+          <p className="text-zinc-400">
+            You need to enroll as a partner first.
+          </p>
         </div>
       </PartnersPortalLayout>
     );
   }
 
   return (
-    <PartnersPortalLayout title="Settings">
-      <div className="max-w-2xl mx-auto">
-        <h1 className="text-xl font-bold text-white mb-6">Account Settings</h1>
+    <PartnersPortalLayout>
+      <div className="space-y-6 max-w-2xl">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-white">
+              Settings
+            </h1>
+            <p className="text-zinc-400 mt-1">
+              Manage your partner profile and preferences.
+            </p>
+          </div>
+          <Button
+            onClick={handleSave}
+            disabled={updateSettings.isPending}
+            className="bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            {updateSettings.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Changes
+          </Button>
+        </div>
 
-        {/* Profile */}
-        <Card className="bg-[#0D0D14] border-white/10 mb-6">
+        {/* Profile Info */}
+        <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-lg text-white">Profile</CardTitle>
-            <CardDescription className="text-slate-400">Update your partner profile information.</CardDescription>
+            <CardTitle className="text-white text-lg">
+              Partner Profile
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name" className="text-slate-300">Name</Label>
-              <Input
-                id="name"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
-              />
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label className="text-zinc-300">Company Name</Label>
+                <Input
+                  value={companyName}
+                  onChange={(e) => setCompanyName(e.target.value)}
+                  placeholder="Your company name"
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="text-zinc-300">Website</Label>
+                <Input
+                  value={website}
+                  onChange={(e) => setWebsite(e.target.value)}
+                  placeholder="https://yourcompany.com"
+                  className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600"
+                />
+              </div>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="phone" className="text-slate-300">Phone</Label>
-              <Input
-                id="phone"
-                type="tel"
-                value={phone}
-                onChange={(e) => setPhone(e.target.value)}
-                className="bg-white/5 border-white/10 text-white"
-              />
+
+            <div className="p-3 rounded-lg bg-zinc-800 border border-zinc-700">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-zinc-400">Referral Code</p>
+                  <p className="text-white font-mono font-medium">
+                    {profile.referralCode}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-400">Partner Tier</p>
+                  <p className="text-white capitalize font-medium">
+                    {profile.tier}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm text-zinc-400">Commission Rate</p>
+                  <p className="text-emerald-400 font-medium">
+                    {(
+                      parseFloat(profile.commissionRate?.toString() || "0.20") *
+                      100
+                    ).toFixed(0)}
+                    %
+                  </p>
+                </div>
+              </div>
             </div>
           </CardContent>
         </Card>
 
-        {/* Payout Info */}
-        <Card className="bg-[#0D0D14] border-white/10 mb-6">
+        {/* Payout Settings */}
+        <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-lg text-white">Payout Information</CardTitle>
-            <CardDescription className="text-slate-400">Where commissions are sent.</CardDescription>
+            <CardTitle className="text-white text-lg">
+              Payout Settings
+            </CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="paypal" className="text-slate-300">PayPal Email</Label>
+              <Label className="text-zinc-300">Payout Method</Label>
+              <Select value={payoutMethod} onValueChange={setPayoutMethod}>
+                <SelectTrigger className="bg-zinc-800 border-zinc-700 text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-zinc-900 border-zinc-700">
+                  <SelectItem value="stripe">Stripe</SelectItem>
+                  <SelectItem value="paypal">PayPal</SelectItem>
+                  <SelectItem value="bank_transfer">
+                    Bank Transfer (ACH)
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-zinc-300">Payout Email</Label>
               <Input
-                id="paypal"
                 type="email"
-                value={paypalEmail}
-                onChange={(e) => setPaypalEmail(e.target.value)}
-                placeholder="paypal@example.com"
-                className="bg-white/5 border-white/10 text-white"
+                value={payoutEmail}
+                onChange={(e) => setPayoutEmail(e.target.value)}
+                placeholder="your@email.com"
+                className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600"
               />
-              <p className="text-xs text-slate-500">Commissions are paid monthly via PayPal.</p>
+              <p className="text-xs text-zinc-500">
+                This email will receive payout notifications and payment
+                processing details.
+              </p>
             </div>
           </CardContent>
         </Card>
 
-        {/* Save Button */}
-        <Button
-          className="w-full mb-6 bg-emerald-600 hover:bg-emerald-700"
-          onClick={() => updateSettings.mutate({
-            paypalEmail: paypalEmail || undefined,
-            name: name || undefined,
-            phone: phone || undefined,
-          })}
-          disabled={updateSettings.isPending}
-        >
-          {updateSettings.isPending ? "Saving..." : "Save Changes"}
-        </Button>
-
-        {/* Referral Code */}
-        <Card className="bg-[#0D0D14] border-white/10 mb-6">
+        {/* Notification Preferences */}
+        <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-lg text-white">Referral Code</CardTitle>
+            <CardTitle className="text-white text-lg">
+              Notifications
+            </CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="flex items-center gap-3">
-              <code className="flex-1 bg-white/5 border border-white/10 rounded-md px-4 py-2 text-amber-400 font-mono">
-                {affiliate?.code ?? "—"}
-              </code>
-              <Button size="sm" variant="outline" onClick={copyCode} className="border-white/10 text-slate-300 hover:text-white">
-                <Copy className="h-4 w-4" />
-              </Button>
+          <CardContent className="space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-zinc-200">Referral Updates</p>
+                <p className="text-xs text-zinc-500">
+                  Get notified when someone signs up through your link
+                </p>
+              </div>
+              <Switch
+                checked={notifyReferrals}
+                onCheckedChange={setNotifyReferrals}
+                className="data-[state=checked]:bg-emerald-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-zinc-200">Payout Notifications</p>
+                <p className="text-xs text-zinc-500">
+                  Get notified when payouts are processed
+                </p>
+              </div>
+              <Switch
+                checked={notifyPayouts}
+                onCheckedChange={setNotifyPayouts}
+                className="data-[state=checked]:bg-emerald-600"
+              />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm text-zinc-200">Partner Newsletter</p>
+                <p className="text-xs text-zinc-500">
+                  Monthly updates on new features, promotions, and tips
+                </p>
+              </div>
+              <Switch
+                checked={notifyNewsletter}
+                onCheckedChange={setNotifyNewsletter}
+                className="data-[state=checked]:bg-emerald-600"
+              />
             </div>
           </CardContent>
         </Card>
 
-        {/* Account Status */}
-        <Card className="bg-[#0D0D14] border-white/10">
-          <CardHeader>
-            <CardTitle className="text-lg text-white">Account Status</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Status</span>
-              <Badge
-                variant="outline"
-                className={
-                  affiliate?.status === "active" ? "bg-emerald-500/10 text-emerald-400 border-emerald-500/30" :
-                  affiliate?.status === "pending" ? "bg-amber-500/10 text-amber-400 border-amber-500/30" :
-                  "bg-red-500/10 text-red-400 border-red-500/30"
-                }
-              >
-                {affiliate?.status ?? "unknown"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Tier</span>
-              <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 capitalize">
-                {affiliate?.tier ?? "affiliate"}
-              </Badge>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Commission Rate</span>
-              <span className="text-sm text-white font-medium">
-                {(Number(affiliate?.commissionRate ?? 0.2) * 100).toFixed(0)}%
-              </span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-slate-400">Member Since</span>
-              <span className="text-sm text-slate-300">
-                {affiliate?.createdAt ? new Date(affiliate.createdAt).toLocaleDateString() : "—"}
-              </span>
-            </div>
-          </CardContent>
-        </Card>
+        {/* Save Button (mobile) */}
+        <div className="sm:hidden">
+          <Button
+            onClick={handleSave}
+            disabled={updateSettings.isPending}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
+          >
+            {updateSettings.isPending ? (
+              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            ) : (
+              <Save className="h-4 w-4 mr-2" />
+            )}
+            Save Changes
+          </Button>
+        </div>
       </div>
     </PartnersPortalLayout>
   );

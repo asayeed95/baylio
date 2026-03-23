@@ -27,12 +27,11 @@ import {
   PanelLeft,
   Phone,
   Store,
-
+  BarChart3,
   ClipboardCheck,
   CreditCard,
   Bell,
-  Users,
-  Target,
+  Handshake,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -56,11 +55,7 @@ const menuItems = [
   { icon: ClipboardCheck, label: "Missed Call Audits", path: "/audits" },
   { icon: CreditCard, label: "Subscriptions", path: "/subscriptions" },
   { icon: Bell, label: "Notifications", path: "/notifications" },
-];
-
-const adminMenuItems = [
-  { icon: Users, label: "Affiliates", path: "/admin/affiliates" },
-  { icon: Target, label: "Lead Intelligence", path: "/admin/leads" },
+  { icon: Handshake, label: "Partners", path: "/partners" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";
@@ -234,29 +229,6 @@ function DashboardLayoutContent({
                   </SidebarMenuItem>
                 );
               })}
-              {user?.role === "admin" && adminMenuItems.length > 0 && (
-                <>
-                  <div className="my-2 mx-2 border-t" />
-                  {adminMenuItems.map(item => {
-                    const isActive = location.startsWith(item.path);
-                    return (
-                      <SidebarMenuItem key={item.path}>
-                        <SidebarMenuButton
-                          isActive={isActive}
-                          onClick={() => setLocation(item.path)}
-                          tooltip={item.label}
-                          className={`h-10 transition-all font-normal`}
-                        >
-                          <item.icon
-                            className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
-                          />
-                          <span>{item.label}</span>
-                        </SidebarMenuButton>
-                      </SidebarMenuItem>
-                    );
-                  })}
-                </>
-              )}
             </SidebarMenu>
           </SidebarContent>
 

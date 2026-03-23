@@ -6,14 +6,10 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { registerOAuthRoutes } from "./oauth";
 import { appRouter } from "../routers";
 import { createContext } from "./context";
-import { validateEnv } from "./env";
 import { serveStatic, setupVite } from "./vite";
 import { twilioRouter } from "../services/twilioWebhooks";
 import { validateTwilioSignature } from "../middleware/twilioValidation";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
-import { onboardRouter } from "../routes/onboardRoute";
-import { agencyflowRouter } from "../agencyflowRouter";
-import { startFollowUpCron } from "../services/followUpScheduler";
 
 function isPortAvailable(port: number): Promise<boolean> {
   return new Promise(resolve => {
@@ -35,7 +31,6 @@ async function findAvailablePort(startPort: number = 3000): Promise<number> {
 }
 
 async function startServer() {
-  validateEnv();
   const app = express();
   const server = createServer(app);
   // Configure body parser with larger size limit for file uploads
@@ -46,12 +41,6 @@ async function startServer() {
   app.use(express.urlencoded({ limit: "50mb", extended: true }));
   // OAuth callback under /api/oauth/callback
   registerOAuthRoutes(app);
-
-  // Onboard endpoint — called by ElevenLabs custom tool during sales calls
-  app.use("/api/onboard", onboardRouter);
-
-  // AgencyFlow → Baylio lead intelligence API (API key authenticated)
-  app.use("/api/agencyflow", agencyflowRouter);
 
   // Twilio webhook routes (with signature validation middleware)
   // The validation middleware checks X-Twilio-Signature before any
@@ -83,21 +72,8 @@ async function startServer() {
     console.log(`Port ${preferredPort} is busy, using port ${port} instead`);
   }
 
-  // Add outbound voice endpoint for Alex's follow-up callbacks
-  app.post("/api/twilio/outbound-voice", express.urlencoded({ extended: false }), (_req, res) => {
-    const twiml = `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="wss://api.elevenlabs.io/v1/convai/twilio-media-stream" />
-  </Connect>
-</Response>`;
-    res.type("text/xml").send(twiml);
-  });
-
   server.listen(port, () => {
     console.log(`Server running on http://localhost:${port}/`);
-    // Start the follow-up call cron job after server is ready
-    startFollowUpCron();
   });
 }
 

@@ -13,11 +13,9 @@
  * (Bull, BullMQ, or n8n webhooks).
  */
 import { getDb } from "../db";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
-import { extractAndSaveMemory } from "./callerMemoryService";
-import { extractFollowUpIntent, scheduleFollowUpCall } from "./followUpScheduler";
 
 /**
  * Analyze a call transcription using LLM.
@@ -172,7 +170,6 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
     const call = callResults[0];
 
     // Step 1: Analyze transcription if available
-    let analysisRevenue = 0;
     if (call.transcription) {
       // Get shop's service catalog for context
       const shopResults = await db
@@ -182,16 +179,13 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         .limit(1);
 
       const shop = shopResults[0];
-      const rawCatalog = (shop?.serviceCatalog ?? []) as Array<{ name: string; category: string; price?: number; description?: string }>;
-      const catalog = rawCatalog.map((s) => s.name);
+      const catalog = ((shop?.serviceCatalog as any) || []).map((s: any) => s.name);
 
       const analysis = await analyzeTranscription(
         call.transcription,
         shop?.name || "Auto Repair Shop",
         catalog
       );
-
-      analysisRevenue = analysis.estimatedRevenue;
 
       // Step 2: Update call log with analysis
       await db
@@ -246,49 +240,24 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
           overageCharge: overageCharge.toFixed(2),
         });
 
-        // P0 FIX: Atomic SQL increment prevents race condition on concurrent calls
-        // Non-atomic read-modify-write would under-bill if two calls complete simultaneously
+        // Update subscription used minutes
         await db
           .update(subscriptions)
-          .set({ usedMinutes: sql`${subscriptions.usedMinutes} + ${minutesUsed}` })
+          .set({ usedMinutes: sub.usedMinutes + minutesUsed })
           .where(eq(subscriptions.id, sub.id));
       }
     }
 
     // Step 4: Send notification for high-value leads
-    // Use analysis result directly instead of re-querying the DB
-    if (analysisRevenue > 200) {
+    if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
       await db.insert(notifications).values({
         userId: call.ownerId,
         shopId: call.shopId,
         type: "high_value_lead",
         title: "High-Value Lead Detected",
-        message: `A caller inquired about services worth an estimated $${analysisRevenue.toFixed(2)}. Review the call log for details.`,
-        metadata: { callLogId, estimatedRevenue: analysisRevenue },
+        message: `A caller inquired about services worth an estimated $${call.estimatedRevenue}. Review the call log for details.`,
+        metadata: { callLogId, estimatedRevenue: call.estimatedRevenue },
       });
-    }
-
-    // Step 5: Extract and save caller memory from transcript (sales line calls)
-    // This enables the AI to remember the caller by name/role/shop on future calls.
-    if (call.transcription && call.callerPhone) {
-      const callSid = (call as { callSid?: string }).callSid || "";
-      // Run memory extraction non-blocking — don't let it delay other steps
-      extractAndSaveMemory(call.callerPhone, call.transcription, callSid).catch((err) =>
-        console.error(`[POST-CALL] Memory extraction failed for call ${callLogId}:`, err)
-      );
-
-      // Step 6: Extract follow-up scheduling intent ("call me back in 2 hours", "talk next week")
-      // If the caller asked for a callback, schedule it automatically.
-      extractFollowUpIntent(call.transcription, call.callerPhone)
-        .then(async (intent) => {
-          if (intent.hasFollowUp) {
-            console.log(`[POST-CALL] Follow-up intent detected for ${call.callerPhone}: ${intent.reason}`);
-            await scheduleFollowUpCall(call.callerPhone ?? "", intent);
-          }
-        })
-        .catch((err) =>
-          console.error(`[POST-CALL] Follow-up extraction failed for call ${callLogId}:`, err)
-        );
     }
 
     console.log(`[POST-CALL] Completed processing for call ${callLogId}`);

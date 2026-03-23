@@ -1,6 +1,6 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -31,13 +31,13 @@ import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/
 import {
   ArrowLeft,
   Phone,
-
-
-
-
-
-
-
+  PhoneIncoming,
+  PhoneOutgoing,
+  PhoneMissed,
+  Calendar,
+  Clock,
+  DollarSign,
+  TrendingUp,
   Search,
   Filter,
 } from "lucide-react";
@@ -66,7 +66,7 @@ function CallLogsContent() {
   const shopId = parseInt(params.id || "0", 10);
   const [, setLocation] = useLocation();
 
-  const [statusFilter, setStatusFilter] = useState<"all" | "completed" | "missed" | "voicemail" | "transferred" | "failed">("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
   const [searchTerm, setSearchTerm] = useState("");
   const [page, setPage] = useState(0);
   const [selectedCall, setSelectedCall] = useState<any>(null);
@@ -128,7 +128,7 @@ function CallLogsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" aria-label="Back to shop details" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -150,7 +150,7 @@ function CallLogsContent() {
                 className="pl-9"
               />
             </div>
-            <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as typeof statusFilter)}>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[160px]">
                 <Filter className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Status" />
@@ -201,11 +201,8 @@ function CallLogsContent() {
                 {filteredCalls.map((call) => (
                   <TableRow
                     key={call.id}
-                    tabIndex={0}
-                    role="button"
-                    className="cursor-pointer focus-visible:ring-2 focus-visible:ring-ring"
+                    className="cursor-pointer"
                     onClick={() => setSelectedCall(call)}
-                    onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedCall(call); } }}
                   >
                     <TableCell>
                       <div>

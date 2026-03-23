@@ -130,7 +130,7 @@ function ShopSettingsContent() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" aria-label="Back to shop details" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
@@ -457,14 +457,10 @@ function TwilioPhoneCard({
                     {availableNumbers.map((num) => (
                       <div
                         key={num.phoneNumber}
-                        role="option"
-                        tabIndex={0}
-                        aria-selected={selectedNumber === num.phoneNumber}
                         onClick={() => setSelectedNumber(
                           selectedNumber === num.phoneNumber ? null : num.phoneNumber
                         )}
-                        onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setSelectedNumber(selectedNumber === num.phoneNumber ? null : num.phoneNumber); } }}
-                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-ring ${
+                        className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                           selectedNumber === num.phoneNumber
                             ? "border-primary bg-primary/10"
                             : "border-border hover:border-primary/50 hover:bg-muted/50"

@@ -52,7 +52,8 @@ function timingSafeCompare(a: string, b: string): boolean {
   if (a.length !== b.length) {
     // Still do a comparison to maintain constant time
     const bufA = Buffer.from(a, "utf-8");
-    crypto.timingSafeEqual(bufA, bufA);
+    const bufB = Buffer.from(a, "utf-8"); // intentionally same length
+    crypto.timingSafeEqual(bufA, bufB);
     return false;
   }
   const bufA = Buffer.from(a, "utf-8");

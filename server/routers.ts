@@ -8,11 +8,7 @@ import { notificationRouter } from "./notificationRouter";
 import { subscriptionRouter } from "./subscriptionRouter";
 import { organizationRouter } from "./organizationRouter";
 import { stripeRouter } from "./stripe/stripeRouter";
-import { voiceRouter } from "./voiceRouter";
-import { contactRouter } from "./contactRouter";
-import { affiliateRouter } from "./affiliateRouter";
-import { leadsRouter } from "./leadsRouter";
-import { teamRouter } from "./teamRouter";
+import { partnerRouter } from "./partnerRouter";
 
 /**
  * Baylio App Router
@@ -27,7 +23,6 @@ import { teamRouter } from "./teamRouter";
  * - subscription:  Tier management, usage tracking, billing
  * - organization:  Multi-location grouping
  * - stripe:        Checkout sessions, billing portal, tier info
- * - contact:       Public contact form submissions
  */
 export const appRouter = router({
   system: systemRouter,
@@ -47,11 +42,7 @@ export const appRouter = router({
   subscription: subscriptionRouter,
   organization: organizationRouter,
   stripe: stripeRouter,
-  voice: voiceRouter,
-  contact: contactRouter,
-  affiliate: affiliateRouter,
-  leads: leadsRouter,
-  team: teamRouter,
+  partner: partnerRouter,
 });
 
 export type AppRouter = typeof appRouter;

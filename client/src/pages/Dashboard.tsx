@@ -17,17 +17,16 @@ import { Label } from "@/components/ui/label";
 import {
   Store,
   Plus,
-
-
-
-
+  Phone,
+  BarChart3,
+  Bot,
+  Settings,
   ArrowRight,
-
-
-
+  PhoneCall,
+  Calendar,
+  DollarSign,
 } from "lucide-react";
 import { useState } from "react";
-import { Checkbox } from "@/components/ui/checkbox";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 
@@ -53,7 +52,6 @@ function DashboardContent() {
   const [createOpen, setCreateOpen] = useState(false);
   const [newShopName, setNewShopName] = useState("");
   const [newShopPhone, setNewShopPhone] = useState("");
-  const [emailConsent, setEmailConsent] = useState(true);
 
   const { data: shops, isLoading, refetch } = trpc.shop.list.useQuery();
   const createShop = trpc.shop.create.useMutation({
@@ -62,7 +60,6 @@ function DashboardContent() {
       setCreateOpen(false);
       setNewShopName("");
       setNewShopPhone("");
-      setEmailConsent(true);
       refetch();
     },
     onError: (err) => {
@@ -78,7 +75,6 @@ function DashboardContent() {
     createShop.mutate({
       name: newShopName.trim(),
       phone: newShopPhone.trim() || undefined,
-      emailMarketingConsent: emailConsent,
     });
   };
 
@@ -138,22 +134,6 @@ function DashboardContent() {
                   onChange={(e) => setNewShopPhone(e.target.value)}
                 />
               </div>
-              <div className="flex items-start space-x-3 rounded-md border p-3 bg-muted/30">
-                <Checkbox
-                  id="email-consent"
-                  checked={emailConsent}
-                  onCheckedChange={(v) => setEmailConsent(v === true)}
-                  className="mt-0.5"
-                />
-                <div className="space-y-1">
-                  <Label htmlFor="email-consent" className="text-sm font-medium cursor-pointer">
-                    Send me product updates &amp; tips
-                  </Label>
-                  <p className="text-xs text-muted-foreground">
-                    Occasional emails about new features, promotions, and best practices for your shop. Unsubscribe anytime.
-                  </p>
-                </div>
-              </div>
               <Button
                 className="w-full"
                 onClick={handleCreateShop}
@@ -190,11 +170,8 @@ function DashboardContent() {
           {shops.map((shop) => (
             <Card
               key={shop.id}
-              role="link"
-              tabIndex={0}
-              className="cursor-pointer hover:shadow-md transition-shadow border focus-visible:ring-2 focus-visible:ring-ring"
+              className="cursor-pointer hover:shadow-md transition-shadow border"
               onClick={() => setLocation(`/shops/${shop.id}`)}
-              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setLocation(`/shops/${shop.id}`); } }}
             >
               <CardHeader className="pb-3">
                 <div className="flex items-start justify-between">

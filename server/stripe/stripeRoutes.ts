@@ -4,7 +4,7 @@
  * Handles:
  * 1. Checkout session creation for new subscriptions and setup fees
  * 2. Webhook processing for payment events
- * 3. Auto-provisioning for AI sales pipeline (checkout.session.completed with onboard_ metadata)
+ * 3. Customer portal session creation for self-service billing
  * 
  * The webhook endpoint MUST be registered BEFORE express.json() middleware
  * because Stripe signature verification requires the raw request body.
@@ -14,16 +14,15 @@ import express from "express";
 import Stripe from "stripe";
 import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
-import { subscriptions } from "../../drizzle/schema";
-import { getTierConfig } from "./products";
-import { autoProvisionAccount, type ProvisionRequest } from "../services/autoProvisionService";
+import { subscriptions, shops, users } from "../../drizzle/schema";
+import { TIERS, SETUP_FEES, getTierConfig } from "./products";
 
 const router = express.Router();
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
   if (!key) throw new Error("STRIPE_SECRET_KEY not configured");
-  return new Stripe(key, { apiVersion: "2025-03-31.basil" as Stripe.LatestApiVersion });
+  return new Stripe(key, { apiVersion: "2025-03-31.basil" as any });
 }
 
 async function getDb() {
@@ -102,15 +101,6 @@ router.post(
 // ─── Webhook Event Handlers ─────────────────────────────────────────
 
 async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
-  // ── Check if this is an AI sales pipeline onboard ──────────────
-  // These sessions have onboard_* metadata set by the onboardService
-  if (session.metadata?.onboard_source === "ai_sales_call") {
-    console.log(`[Stripe Webhook] AI sales onboard detected: ${session.id}`);
-    await handleOnboardCheckout(session);
-    return;
-  }
-
-  // ── Legacy flow: existing user upgrading/subscribing ───────────
   const db = await getDb();
   if (!db) return;
 
@@ -171,56 +161,16 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   console.log(`[Stripe] Subscription created: shop=${shopId}, tier=${tier}`);
 }
 
-// ─── AI Sales Pipeline: Auto-Provision on Checkout ──────────────────
-
-async function handleOnboardCheckout(session: Stripe.Checkout.Session) {
-  const meta = session.metadata!;
-
-  const provisionReq: ProvisionRequest = {
-    shopName: meta.onboard_shop_name,
-    ownerName: meta.onboard_owner_name,
-    email: meta.onboard_email,
-    phone: meta.onboard_phone,
-    tier: meta.onboard_tier as "starter" | "pro" | "elite",
-    stripeCustomerId: session.customer as string,
-    stripeSubscriptionId: session.subscription as string,
-    stripeSessionId: session.id,
-    isTrial: session.subscription
-      ? false  // Will check trial status from subscription object
-      : false,
-  };
-
-  // Check if this is a trial subscription
-  if (session.subscription) {
-    try {
-      const stripe = getStripe();
-      const sub = await stripe.subscriptions.retrieve(session.subscription as string);
-      provisionReq.isTrial = sub.status === "trialing";
-    } catch (err) {
-      console.warn("[Stripe Webhook] Could not check trial status:", err);
-    }
-  }
-
-  const result = await autoProvisionAccount(provisionReq);
-
-  if (result.success) {
-    console.log(`[Stripe Webhook] ✅ Auto-provisioned: user=${result.userId}, shop=${result.shopId}, number=${result.twilioNumber}`);
-  } else {
-    console.error(`[Stripe Webhook] ❌ Auto-provision failed: ${result.error}`);
-    // TODO: Queue for manual review / retry
-  }
-}
-
-// ─── Other Webhook Handlers (unchanged) ─────────────────────────────
-
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const db = await getDb();
   if (!db) return;
 
+  // Stripe v2025 API changes: subscription is now nested under parent
   const invoiceAny = invoice as any;
   const subscriptionId = (invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription) as string;
   if (!subscriptionId) return;
 
+  // Reset usage minutes at the start of each billing period
   const subs = await db
     .select()
     .from(subscriptions)

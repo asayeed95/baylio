@@ -8,9 +8,8 @@ import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
-import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Save, Volume2, MessageSquare, TrendingUp, Play, Pause, Check, Mic } from "lucide-react";
-import { useEffect, useState, useRef, useCallback } from "react";
+import { ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp } from "lucide-react";
+import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 
@@ -18,11 +17,13 @@ import { toast } from "sonner";
  * AI Agent Configuration Page
  * 
  * Allows shop owners to customize their AI call agent:
- * - Voice selection with audio preview (ElevenLabs voices)
+ * - Voice selection (ElevenLabs voice ID)
  * - Agent name and greeting message
  * - System prompt (personality, behavior rules)
  * - Upsell settings (enable/disable, rules, confidence threshold)
  * - Language preference
+ * 
+ * Changes are saved via the shop.saveAgentConfig tRPC mutation.
  */
 export default function AgentConfig() {
   return (
@@ -31,177 +32,6 @@ export default function AgentConfig() {
     </DashboardLayout>
   );
 }
-
-// ─── Voice Picker Component ────────────────────────────────────────
-
-interface VoiceOption {
-  voiceId: string;
-  name: string;
-  accent: string;
-  gender: string;
-  useCase: string;
-  description: string;
-  previewUrl: string;
-}
-
-function VoicePicker({
-  selectedVoiceId,
-  onSelect,
-}: {
-  selectedVoiceId: string;
-  onSelect: (voiceId: string, voiceName: string) => void;
-}) {
-  const { data: voices, isLoading } = trpc.voice.list.useQuery();
-  const [playingId, setPlayingId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<"all" | "male" | "female" | "neutral">("all");
-  const audioRef = useRef<HTMLAudioElement | null>(null);
-
-  const handlePlay = useCallback((voice: VoiceOption) => {
-    // Stop current playback
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current = null;
-    }
-
-    if (playingId === voice.voiceId) {
-      setPlayingId(null);
-      return;
-    }
-
-    if (!voice.previewUrl) {
-      toast.error("No preview available for this voice");
-      return;
-    }
-
-    const audio = new Audio(voice.previewUrl);
-    audio.onended = () => setPlayingId(null);
-    audio.onerror = () => {
-      setPlayingId(null);
-      toast.error("Failed to play voice preview");
-    };
-    audio.play();
-    audioRef.current = audio;
-    setPlayingId(voice.voiceId);
-  }, [playingId]);
-
-  // Cleanup audio on unmount
-  useEffect(() => {
-    return () => {
-      if (audioRef.current) {
-        audioRef.current.pause();
-      }
-    };
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {[1, 2, 3, 4].map((i) => (
-          <Skeleton key={i} className="h-16 w-full" />
-        ))}
-      </div>
-    );
-  }
-
-  const filteredVoices = (voices || []).filter((v) => {
-    if (filter === "all") return true;
-    return v.gender === filter;
-  });
-
-  const genderCounts = {
-    all: voices?.length || 0,
-    male: voices?.filter((v) => v.gender === "male").length || 0,
-    female: voices?.filter((v) => v.gender === "female").length || 0,
-    neutral: voices?.filter((v) => v.gender === "neutral").length || 0,
-  };
-
-  return (
-    <div className="space-y-4">
-      {/* Filter tabs */}
-      <div className="flex gap-2">
-        {(["all", "male", "female", "neutral"] as const).map((g) => (
-          <Button
-            key={g}
-            variant={filter === g ? "default" : "outline"}
-            size="sm"
-            onClick={() => setFilter(g)}
-            className="capitalize"
-          >
-            {g} ({genderCounts[g]})
-          </Button>
-        ))}
-      </div>
-
-      {/* Voice list */}
-      <div className="grid gap-2 max-h-[400px] overflow-y-auto pr-1">
-        {filteredVoices.map((voice) => {
-          const isSelected = voice.voiceId === selectedVoiceId;
-          const isPlaying = playingId === voice.voiceId;
-
-          return (
-            <div
-              key={voice.voiceId}
-              className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                isSelected
-                  ? "border-primary bg-primary/5 ring-1 ring-primary"
-                  : "border-border hover:border-primary/50 hover:bg-muted/50"
-              }`}
-              onClick={() => onSelect(voice.voiceId, voice.name)}
-            >
-              {/* Play button */}
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-9 w-9 shrink-0"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  handlePlay(voice);
-                }}
-              >
-                {isPlaying ? (
-                  <Pause className="h-4 w-4" />
-                ) : (
-                  <Play className="h-4 w-4" />
-                )}
-              </Button>
-
-              {/* Voice info */}
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-sm truncate">{voice.name}</span>
-                  {isSelected && (
-                    <Check className="h-4 w-4 text-primary shrink-0" />
-                  )}
-                </div>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <Badge variant="secondary" className="text-[10px] px-1.5 py-0 capitalize">
-                    {voice.gender}
-                  </Badge>
-                  <Badge variant="outline" className="text-[10px] px-1.5 py-0 capitalize">
-                    {voice.accent}
-                  </Badge>
-                  {voice.useCase && (
-                    <span className="text-[10px] text-muted-foreground capitalize truncate">
-                      {voice.useCase.replace(/_/g, " ")}
-                    </span>
-                  )}
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {filteredVoices.length === 0 && (
-        <p className="text-sm text-muted-foreground text-center py-4">
-          No voices found for this filter.
-        </p>
-      )}
-    </div>
-  );
-}
-
-// ─── Main Content ──────────────────────────────────────────────────
 
 function AgentConfigContent() {
   const params = useParams<{ id: string }>();
@@ -305,43 +135,15 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         </Button>
       </div>
 
-      {/* Voice Selection */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Mic className="h-5 w-5 text-primary" />
-            <CardTitle>Voice Selection</CardTitle>
-          </div>
-          <CardDescription>
-            Choose the voice your AI agent uses on calls. Click play to preview, then click to select.
-            {voiceName && (
-              <span className="block mt-1 text-primary font-medium">
-                Currently selected: {voiceName}
-              </span>
-            )}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <VoicePicker
-            selectedVoiceId={voiceId}
-            onSelect={(id, name) => {
-              setVoiceId(id);
-              setVoiceName(name);
-              toast.info(`Voice set to "${name}" — save to apply`);
-            }}
-          />
-        </CardContent>
-      </Card>
-
-      {/* Agent Identity */}
+      {/* Voice & Identity */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <Volume2 className="h-5 w-5 text-primary" />
-            <CardTitle>Agent Identity</CardTitle>
+            <CardTitle>Voice & Identity</CardTitle>
           </div>
           <CardDescription>
-            Configure how your AI agent introduces itself and what language it speaks.
+            Configure how your AI agent sounds and introduces itself.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -365,6 +167,29 @@ Always be helpful and never pushy. If you don't know something, offer to have th
                 placeholder="en"
               />
               <p className="text-xs text-muted-foreground">ISO language code (e.g., en, es, fr).</p>
+            </div>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="voice-id">ElevenLabs Voice ID</Label>
+              <Input
+                id="voice-id"
+                value={voiceId}
+                onChange={(e) => setVoiceId(e.target.value)}
+                placeholder="e.g., 21m00Tcm4TlvDq8ikWAM"
+              />
+              <p className="text-xs text-muted-foreground">
+                Get this from your ElevenLabs dashboard.
+              </p>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="voice-name">Voice Name (for reference)</Label>
+              <Input
+                id="voice-name"
+                value={voiceName}
+                onChange={(e) => setVoiceName(e.target.value)}
+                placeholder="e.g., Rachel, Josh"
+              />
             </div>
           </div>
           <div className="space-y-2">

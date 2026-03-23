@@ -1,1 +1,0 @@
-ALTER TABLE `subscriptions` MODIFY COLUMN `tier` enum('pilot','starter','pro','elite') NOT NULL DEFAULT 'starter';

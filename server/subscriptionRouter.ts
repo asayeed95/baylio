@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import {
   getSubscriptionByShop,
   createSubscription,
@@ -12,8 +12,7 @@ import {
 /**
  * Subscription & Billing Router
  * 
- * Manages the four-tier subscription model:
- * - Pilot:   $149/mo, 150 minutes, after-hours only, 30-day no-commitment trial
+ * Manages the three-tier subscription model:
  * - Starter: $199/mo, 300 minutes included
  * - Pro:     $349/mo, 750 minutes included, calendar integration
  * - Elite:   $599/mo, 1500 minutes included, CRM + upsell engine
@@ -23,14 +22,16 @@ import {
  * - Usage tracking and overage calculation
  * - Tier upgrades/downgrades
  * - Billing cycle management (monthly/annual)
+ * 
+ * Stripe integration will be added via webdev_add_feature("stripe")
+ * and will hook into these endpoints for payment processing.
  */
 
-const TIER_CONFIG: Record<string, { includedMinutes: number; monthlyPrice: number; setupFee: number; afterHoursOnly: boolean; trialDays: number }> = {
-  pilot: { includedMinutes: 150, monthlyPrice: 149, setupFee: 0, afterHoursOnly: true, trialDays: 30 },
-  starter: { includedMinutes: 300, monthlyPrice: 199, setupFee: 500, afterHoursOnly: false, trialDays: 7 },
-  pro: { includedMinutes: 750, monthlyPrice: 349, setupFee: 1000, afterHoursOnly: false, trialDays: 7 },
-  elite: { includedMinutes: 1500, monthlyPrice: 599, setupFee: 2000, afterHoursOnly: false, trialDays: 7 },
-};
+const TIER_CONFIG = {
+  starter: { includedMinutes: 300, monthlyPrice: 199, setupFee: 500 },
+  pro: { includedMinutes: 750, monthlyPrice: 349, setupFee: 1000 },
+  elite: { includedMinutes: 1500, monthlyPrice: 599, setupFee: 2000 },
+} as const;
 
 export const subscriptionRouter = router({
   /**
@@ -50,7 +51,7 @@ export const subscriptionRouter = router({
         ...sub,
         overageMinutes,
         overageCharge: overageCharge.toFixed(2),
-        tierConfig: TIER_CONFIG[sub.tier] ?? TIER_CONFIG.starter,
+        tierConfig: TIER_CONFIG[sub.tier],
         usagePercent: sub.includedMinutes > 0
           ? Math.min(100, Math.round((sub.usedMinutes / sub.includedMinutes) * 100))
           : 0,
@@ -80,7 +81,7 @@ export const subscriptionRouter = router({
   create: protectedProcedure
     .input(z.object({
       shopId: z.number(),
-      tier: z.enum(["pilot", "starter", "pro", "elite"]).default("starter"),
+      tier: z.enum(["starter", "pro", "elite"]).default("starter"),
       billingCycle: z.enum(["monthly", "annual"]).default("monthly"),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -93,7 +94,7 @@ export const subscriptionRouter = router({
       if (existing) {
         throw new Error("Subscription already exists for this shop. Use upgrade instead.");
       }
-      const config = TIER_CONFIG[input.tier] ?? TIER_CONFIG.starter;
+      const config = TIER_CONFIG[input.tier];
       const now = new Date();
       const periodEnd = new Date(now);
       periodEnd.setMonth(periodEnd.getMonth() + (input.billingCycle === "annual" ? 12 : 1));
@@ -119,7 +120,7 @@ export const subscriptionRouter = router({
   changeTier: protectedProcedure
     .input(z.object({
       shopId: z.number(),
-      newTier: z.enum(["pilot", "starter", "pro", "elite"]),
+      newTier: z.enum(["starter", "pro", "elite"]),
     }))
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
@@ -130,7 +131,7 @@ export const subscriptionRouter = router({
       if (!sub) {
         throw new Error("No active subscription found");
       }
-      const config = TIER_CONFIG[input.newTier] ?? TIER_CONFIG.starter;
+      const config = TIER_CONFIG[input.newTier];
       await updateSubscription(sub.id, {
         tier: input.newTier,
         includedMinutes: config.includedMinutes,

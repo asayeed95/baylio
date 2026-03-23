@@ -15,6 +15,8 @@
  * number if the shop doesn't have one provisioned yet).
  */
 
+import { ENV } from "../_core/env";
+
 interface SMSPayload {
   to: string;
   body: string;

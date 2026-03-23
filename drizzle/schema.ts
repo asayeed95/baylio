@@ -171,7 +171,7 @@ export const subscriptions = mysqlTable("subscriptions", {
   shopId: int("shopId").notNull(),
   ownerId: int("ownerId").notNull().default(0),
   organizationId: int("organizationId"),
-  tier: mysqlEnum("tier", ["pilot", "starter", "pro", "elite"]).default("starter").notNull(),
+  tier: mysqlEnum("tier", ["starter", "pro", "elite"]).default("starter").notNull(),
   status: mysqlEnum("subStatus", ["active", "past_due", "canceled", "trialing"]).default("active").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
@@ -230,214 +230,66 @@ export const notifications = mysqlTable("notifications", {
 
 export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
-// ─── Contact Submissions ────────────────────────────────────────────
-export const contactSubmissions = mysqlTable("contact_submissions", {
-  id: int("id").autoincrement().primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  phone: varchar("phone", { length: 32 }),
-  message: text("message").notNull(),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type ContactSubmission = typeof contactSubmissions.$inferSelect;
-export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
 
-// ─── Affiliates ─────────────────────────────────────────────────────
-export const affiliates = mysqlTable("affiliates", {
+// ─── Partners ───────────────────────────────────────────────────────
+export const partners = mysqlTable("partners", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull(),
-  code: varchar("code", { length: 32 }).notNull().unique(),
-  name: varchar("name", { length: 255 }).notNull(),
-  email: varchar("email", { length: 320 }).notNull(),
-  phone: varchar("phone", { length: 32 }),
-  paypalEmail: varchar("paypalEmail", { length: 320 }),
-  stripeConnectId: varchar("stripeConnectId", { length: 128 }),
-  tier: mysqlEnum("affiliateTier", ["affiliate", "pro", "agency"]).default("affiliate").notNull(),
+  referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
   commissionRate: decimal("commissionRate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
-  status: mysqlEnum("affiliateStatus", ["pending", "active", "suspended", "inactive"]).default("pending").notNull(),
-  totalClicks: int("totalClicks").default(0).notNull(),
-  totalSignups: int("totalSignups").default(0).notNull(),
+  tier: mysqlEnum("partnerTier", ["bronze", "silver", "gold", "platinum"]).default("bronze").notNull(),
+  status: mysqlEnum("partnerStatus", ["pending", "active", "suspended"]).default("pending").notNull(),
+  totalReferrals: int("totalReferrals").default(0).notNull(),
   totalEarnings: decimal("totalEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
-  pendingPayout: decimal("pendingPayout", { precision: 10, scale: 2 }).default("0.00").notNull(),
-  lastPayoutAt: timestamp("lastPayoutAt"),
+  pendingEarnings: decimal("pendingEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  payoutMethod: mysqlEnum("payoutMethod", ["stripe", "paypal", "bank_transfer"]).default("stripe"),
+  payoutEmail: varchar("payoutEmail", { length: 320 }),
+  companyName: varchar("companyName", { length: 255 }),
+  website: varchar("website", { length: 512 }),
+  notifyReferrals: boolean("notifyReferrals").default(true).notNull(),
+  notifyPayouts: boolean("notifyPayouts").default(true).notNull(),
+  notifyNewsletter: boolean("notifyNewsletter").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type Affiliate = typeof affiliates.$inferSelect;
-export type InsertAffiliate = typeof affiliates.$inferInsert;
+export type Partner = typeof partners.$inferSelect;
+export type InsertPartner = typeof partners.$inferInsert;
 
-// ─── Affiliate Referrals ────────────────────────────────────────────
-export const affiliateReferrals = mysqlTable("affiliate_referrals", {
+// ─── Referrals ──────────────────────────────────────────────────────
+export const referrals = mysqlTable("referrals", {
   id: int("id").autoincrement().primaryKey(),
-  affiliateId: int("affiliateId").notNull(),
-  shopId: int("shopId"),
-  shopOwnerId: int("shopOwnerId"),
+  partnerId: int("partnerId").notNull(),
+  referredUserId: int("referredUserId"),
+  referredShopId: int("referredShopId"),
   referredEmail: varchar("referredEmail", { length: 320 }),
   referredName: varchar("referredName", { length: 255 }),
-  status: mysqlEnum("referralStatus", ["clicked", "signed_up", "subscribed", "churned"]).default("clicked").notNull(),
-  subscribedTier: varchar("subscribedTier", { length: 32 }),
+  status: mysqlEnum("referralStatus", ["pending", "signed_up", "subscribed", "churned"]).default("pending").notNull(),
+  subscriptionTier: varchar("subscriptionTier", { length: 20 }),
   monthlyValue: decimal("monthlyValue", { precision: 10, scale: 2 }),
+  commissionEarned: decimal("commissionEarned", { precision: 10, scale: 2 }).default("0.00").notNull(),
   convertedAt: timestamp("convertedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });
 
-export type AffiliateReferral = typeof affiliateReferrals.$inferSelect;
-export type InsertAffiliateReferral = typeof affiliateReferrals.$inferInsert;
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = typeof referrals.$inferInsert;
 
-// ─── Affiliate Commissions ──────────────────────────────────────────
-export const affiliateCommissions = mysqlTable("affiliate_commissions", {
+// ─── Partner Payouts ────────────────────────────────────────────────
+export const partnerPayouts = mysqlTable("partner_payouts", {
   id: int("id").autoincrement().primaryKey(),
-  affiliateId: int("affiliateId").notNull(),
-  referralId: int("referralId").notNull(),
+  partnerId: int("partnerId").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 3 }).default("USD").notNull(),
-  status: mysqlEnum("commissionStatus", ["pending", "approved", "paid", "rejected"]).default("pending").notNull(),
-  periodStart: timestamp("periodStart"),
-  periodEnd: timestamp("periodEnd"),
-  paidAt: timestamp("paidAt"),
-  payoutMethod: varchar("payoutMethod", { length: 32 }),
-  payoutReference: varchar("payoutReference", { length: 255 }),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-
-export type AffiliateCommission = typeof affiliateCommissions.$inferSelect;
-export type InsertAffiliateCommission = typeof affiliateCommissions.$inferInsert;
-
-// ─── Caller Profiles (Sales AI Memory) ──────────────────────────────
-// Keyed by phone number. Stores everything the AI learns about a caller
-// across all calls so it can greet them by name, remember their role,
-// and pick up where the last conversation left off.
-export const callerProfiles = mysqlTable("caller_profiles", {
-  id: int("id").autoincrement().primaryKey(),
-  phone: varchar("phone", { length: 32 }).notNull().unique(),
-  name: varchar("name", { length: 255 }),
-  role: mysqlEnum("callerRole", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]).default("unknown").notNull(),
-  shopName: varchar("shopName", { length: 255 }),
-  shopCity: varchar("shopCity", { length: 128 }),
-  shopState: varchar("shopState", { length: 64 }),
-  callCount: int("callCount").default(0).notNull(),
-  lastCalledAt: timestamp("lastCalledAt"),
-  notes: text("notes"),           // Free-form notes the AI has accumulated
-  doNotSell: boolean("doNotSell").default(false).notNull(),  // Skip sales pitch
-  preferredLanguage: varchar("preferredLanguage", { length: 8 }).default("en"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-export type CallerProfile = typeof callerProfiles.$inferSelect;
-export type InsertCallerProfile = typeof callerProfiles.$inferInsert;
-
-// ─── Caller Memory Facts ─────────────────────────────────────────────
-// Structured facts extracted from each call transcript.
-// Examples: "mentioned_budget: $200/mo", "objection: too expensive",
-//           "interest: appointment booking", "follow_up: call back Thursday"
-export const callerMemoryFacts = mysqlTable("caller_memory_facts", {
-  id: int("id").autoincrement().primaryKey(),
-  callerProfileId: int("callerProfileId").notNull(),
-  factType: varchar("factType", { length: 64 }).notNull(),   // e.g. "objection", "interest", "budget", "follow_up"
-  factValue: text("factValue").notNull(),                     // e.g. "price too high", "wants appointment booking"
-  callSid: varchar("callSid", { length: 64 }),               // Twilio call SID for traceability
-  extractedAt: timestamp("extractedAt").defaultNow().notNull(),
-});
-export type CallerMemoryFact = typeof callerMemoryFacts.$inferSelect;
-export type InsertCallerMemoryFact = typeof callerMemoryFacts.$inferInsert;
-
-// ─── Affiliate Payouts ───────────────────────────────────────────────
-// Batch payout records — one per payout run per affiliate.
-export const affiliatePayouts = mysqlTable("affiliate_payouts", {
-  id: int("id").autoincrement().primaryKey(),
-  affiliateId: int("affiliateId").notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  currency: varchar("currency", { length: 8 }).default("usd").notNull(),
-  method: mysqlEnum("payoutMethod", ["paypal", "stripe", "bank", "manual"]).notNull(),
   status: mysqlEnum("payoutStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
-  reference: varchar("reference", { length: 128 }),
-  commissionIds: json("commissionIds"),
+  payoutMethod: varchar("payoutMethod", { length: 32 }),
+  payoutEmail: varchar("payoutEmail", { length: 320 }),
+  transactionId: varchar("transactionId", { length: 255 }),
+  notes: text("notes"),
+  requestedAt: timestamp("requestedAt").defaultNow().notNull(),
   processedAt: timestamp("processedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
-export type AffiliatePayout = typeof affiliatePayouts.$inferSelect;
-export type InsertAffiliatePayout = typeof affiliatePayouts.$inferInsert;
 
-// ─── Cold Lead Prospects ─────────────────────────────────────────────
-// Pre-loaded shop owner data for personalized outreach.
-// When Alex or Sam receives a call from a known prospect's number,
-// they greet them by name and reference their shop — no cold intro needed.
-export const prospects = mysqlTable("prospects", {
-  id: int("id").autoincrement().primaryKey(),
-  ownerName: varchar("ownerName", { length: 255 }).notNull(),
-  shopName: varchar("shopName", { length: 255 }).notNull(),
-  phone: varchar("phone", { length: 32 }).unique(),             // Primary contact number (for caller ID match)
-  email: varchar("email", { length: 320 }),
-  address: varchar("address", { length: 255 }),
-  city: varchar("city", { length: 128 }),
-  state: varchar("state", { length: 64 }),
-  zip: varchar("zip", { length: 16 }),
-  googlePlaceId: varchar("googlePlaceId", { length: 128 }),     // For enrichment via Google Places API
-  website: varchar("website", { length: 512 }),
-  estimatedMonthlyRevenue: varchar("estimatedMonthlyRevenue", { length: 64 }), // e.g. "$50k-$100k"
-  numTechnicians: int("numTechnicians"),
-  source: mysqlEnum("prospectSource", ["manual", "csv_import", "google_maps", "yelp", "referral", "cold_call"]).default("manual").notNull(),
-  outreachStatus: mysqlEnum("outreachStatus", ["not_contacted", "called", "voicemail", "interested", "demo_scheduled", "signed_up", "not_interested", "do_not_call"]).default("not_contacted").notNull(),
-  lastContactedAt: timestamp("lastContactedAt"),
-  convertedAt: timestamp("convertedAt"),                        // When they became a paying shop
-  convertedShopId: int("convertedShopId"),                      // Link to shops table after conversion
-  notes: text("notes"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-export type Prospect = typeof prospects.$inferSelect;
-export type InsertProspect = typeof prospects.$inferInsert;
-
-// ─── Prospect Notes ──────────────────────────────────────────────────
-// Chronological log of every interaction with a prospect.
-export const prospectNotes = mysqlTable("prospect_notes", {
-  id: int("id").autoincrement().primaryKey(),
-  prospectId: int("prospectId").notNull(),
-  note: text("note").notNull(),
-  createdBy: mysqlEnum("createdBy", ["human", "alex", "sam", "system"]).default("human").notNull(),
-  callSid: varchar("callSid", { length: 64 }),                  // Twilio call SID if note came from a call
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type ProspectNote = typeof prospectNotes.$inferSelect;
-export type InsertProspectNote = typeof prospectNotes.$inferInsert;
-
-// ─── Scheduled Follow-Up Calls ───────────────────────────────────────
-// When a caller says "call me back in 2 hours" or "let's talk next week",
-// Alex creates a scheduled call here. The cron job dials them at the right time.
-export const scheduledCalls = mysqlTable("scheduled_calls", {
-  id: int("id").autoincrement().primaryKey(),
-  phone: varchar("phone", { length: 32 }).notNull(),             // Number to call back
-  callerProfileId: int("callerProfileId"),                        // Link to caller_profiles if known
-  prospectId: int("prospectId"),                                  // Link to prospects if cold lead
-  scheduledAt: timestamp("scheduledAt").notNull(),                // When to make the call
-  reason: text("reason"),                                         // What the caller said ("call me after 4pm")
-  context: text("context"),                                       // Summary of previous conversation to inject
-  status: mysqlEnum("scheduleStatus", ["pending", "calling", "completed", "failed", "cancelled"]).default("pending").notNull(),
-  callSid: varchar("callSid", { length: 64 }),                    // Twilio SID of the outbound call when made
-  attempts: int("attempts").default(0).notNull(),                 // How many times we've tried
-  lastAttemptAt: timestamp("lastAttemptAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
-});
-export type ScheduledCall = typeof scheduledCalls.$inferSelect;
-export type InsertScheduledCall = typeof scheduledCalls.$inferInsert;
-
-// ─── Team Invites ─────────────────────────────────────────────────────
-// Tracks pending invitations to the admin portal.
-// When an admin invites a partner/employee, a record is created here.
-// In production, an email is sent with the token link.
-export const teamInvites = mysqlTable("team_invites", {
-  id: int("id").autoincrement().primaryKey(),
-  email: varchar("email", { length: 320 }).notNull(),
-  role: mysqlEnum("inviteRole", ["admin", "user"]).default("user").notNull(),
-  invitedBy: int("invitedBy").notNull(),           // user.id of the admin who sent the invite
-  token: varchar("token", { length: 128 }).notNull().unique(),
-  status: mysqlEnum("inviteStatus", ["pending", "accepted", "cancelled", "expired"]).default("pending").notNull(),
-  acceptedAt: timestamp("acceptedAt"),
-  expiresAt: timestamp("expiresAt"),
-  createdAt: timestamp("createdAt").defaultNow().notNull(),
-});
-export type TeamInvite = typeof teamInvites.$inferSelect;
-export type InsertTeamInvite = typeof teamInvites.$inferInsert;
+export type PartnerPayout = typeof partnerPayouts.$inferSelect;
+export type InsertPartnerPayout = typeof partnerPayouts.$inferInsert;

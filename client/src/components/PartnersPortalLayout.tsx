@@ -1,259 +1,358 @@
-import { Link, useLocation } from "wouter";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarInset,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar,
+} from "@/components/ui/sidebar";
+import { getLoginUrl } from "@/const";
+import { useIsMobile } from "@/hooks/useMobile";
 import {
   LayoutDashboard,
+  LogOut,
+  PanelLeft,
   Users,
   DollarSign,
   Network,
-  CreditCard,
   BookOpen,
   Settings,
-  LogOut,
   Handshake,
-  ChevronRight,
-  Bell,
+  ArrowLeft,
 } from "lucide-react";
+import { CSSProperties, useEffect, useRef, useState } from "react";
+import { useLocation } from "wouter";
+import { Button } from "./ui/button";
+import { Skeleton } from "./ui/skeleton";
 
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { trpc } from "@/lib/trpc";
-
-interface NavItem {
-  label: string;
-  path: string;
-  icon: React.ReactNode;
-  badge?: string;
-}
-
-const navItems: NavItem[] = [
-  {
-    label: "Dashboard",
-    path: "/",
-    icon: <LayoutDashboard className="w-4 h-4" />,
-  },
-  {
-    label: "My Referrals",
-    path: "/referrals",
-    icon: <Users className="w-4 h-4" />,
-  },
-  {
-    label: "Earnings",
-    path: "/earnings",
-    icon: <DollarSign className="w-4 h-4" />,
-  },
-  {
-    label: "My Network",
-    path: "/network",
-    icon: <Network className="w-4 h-4" />,
-  },
-  {
-    label: "Payouts",
-    path: "/payouts",
-    icon: <CreditCard className="w-4 h-4" />,
-  },
-  {
-    label: "Resources",
-    path: "/resources",
-    icon: <BookOpen className="w-4 h-4" />,
-  },
-  {
-    label: "Settings",
-    path: "/settings",
-    icon: <Settings className="w-4 h-4" />,
-  },
+/**
+ * Partners Portal Navigation
+ *
+ * Separate layout from the main Baylio dashboard — dark sidebar
+ * with emerald + gold accent branding for the partner/affiliate experience.
+ */
+const menuItems = [
+  { icon: LayoutDashboard, label: "Dashboard", path: "/partners" },
+  { icon: Users, label: "Referrals", path: "/partners/referrals" },
+  { icon: DollarSign, label: "Earnings", path: "/partners/earnings" },
+  { icon: Network, label: "Network", path: "/partners/network" },
+  { icon: BookOpen, label: "Resources", path: "/partners/resources" },
+  { icon: Settings, label: "Settings", path: "/partners/settings" },
 ];
 
-const TIER_COLORS: Record<string, { text: string; bg: string; border: string }> = {
-  bronze: { text: "text-orange-400", bg: "bg-orange-500/10", border: "border-orange-500/30" },
-  silver: { text: "text-slate-300", bg: "bg-slate-400/10", border: "border-slate-400/30" },
-  gold: { text: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30" },
-  platinum: { text: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/30" },
-  affiliate: { text: "text-emerald-400", bg: "bg-emerald-500/10", border: "border-emerald-500/30" },
-  pro: { text: "text-amber-400", bg: "bg-amber-500/10", border: "border-amber-500/30" },
-  agency: { text: "text-purple-400", bg: "bg-purple-500/10", border: "border-purple-500/30" },
-};
+const SIDEBAR_WIDTH_KEY = "partners-sidebar-width";
+const DEFAULT_WIDTH = 260;
+const MIN_WIDTH = 200;
+const MAX_WIDTH = 400;
 
-interface PartnersPortalLayoutProps {
-  children: React.ReactNode;
-  title?: string;
+function PartnersSkeleton() {
+  return (
+    <div className="flex min-h-screen bg-zinc-950">
+      <div className="w-[260px] border-r border-zinc-800 bg-zinc-950 p-4 space-y-6">
+        <div className="flex items-center gap-3 px-2">
+          <Skeleton className="h-8 w-8 rounded-md bg-zinc-800" />
+          <Skeleton className="h-4 w-28 bg-zinc-800" />
+        </div>
+        <div className="space-y-2 px-2">
+          <Skeleton className="h-10 w-full rounded-lg bg-zinc-800" />
+          <Skeleton className="h-10 w-full rounded-lg bg-zinc-800" />
+          <Skeleton className="h-10 w-full rounded-lg bg-zinc-800" />
+        </div>
+      </div>
+      <div className="flex-1 p-6 space-y-4 bg-zinc-950">
+        <Skeleton className="h-12 w-48 rounded-lg bg-zinc-800" />
+        <div className="grid gap-4 md:grid-cols-3">
+          <Skeleton className="h-32 rounded-xl bg-zinc-800" />
+          <Skeleton className="h-32 rounded-xl bg-zinc-800" />
+          <Skeleton className="h-32 rounded-xl bg-zinc-800" />
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function PartnersPortalLayout({
   children,
-  title,
-}: PartnersPortalLayoutProps) {
-  const { user, loading } = useAuth();
-  const [location] = useLocation();
-  const affiliateQuery = trpc.affiliate.me.useQuery(undefined, { enabled: !!user });
-  const logoutMutation = trpc.auth.logout.useMutation({
-    onSuccess: () => {
-      window.location.href = "/";
-    },
+}: {
+  children: React.ReactNode;
+}) {
+  const [sidebarWidth, setSidebarWidth] = useState(() => {
+    const saved = localStorage.getItem(SIDEBAR_WIDTH_KEY);
+    return saved ? parseInt(saved, 10) : DEFAULT_WIDTH;
   });
+  const { loading, user } = useAuth();
+
+  useEffect(() => {
+    localStorage.setItem(SIDEBAR_WIDTH_KEY, sidebarWidth.toString());
+  }, [sidebarWidth]);
 
   if (loading) {
+    return <PartnersSkeleton />;
+  }
+
+  if (!user) {
     return (
-      <div className="min-h-screen bg-[#0A0A0F] flex items-center justify-center">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
-          <p className="text-slate-400 text-sm">Loading partners portal...</p>
+      <div className="flex items-center justify-center min-h-screen bg-zinc-950">
+        <div className="flex flex-col items-center gap-8 p-8 max-w-md w-full">
+          <div className="flex flex-col items-center gap-6">
+            <div className="flex items-center gap-2 mb-2">
+              <Handshake className="h-8 w-8 text-emerald-400" />
+              <span className="text-2xl font-bold tracking-tight text-white">
+                Baylio Partners
+              </span>
+            </div>
+            <h1 className="text-2xl font-semibold tracking-tight text-center text-white">
+              Sign in to your partner portal
+            </h1>
+            <p className="text-sm text-zinc-400 text-center max-w-sm">
+              Track referrals, manage earnings, and grow your network.
+            </p>
+          </div>
+          <Button
+            onClick={() => {
+              window.location.href = getLoginUrl();
+            }}
+            size="lg"
+            className="w-full bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg hover:shadow-xl transition-all"
+          >
+            Sign in
+          </Button>
         </div>
       </div>
     );
   }
 
-  if (!user) {
-    window.location.href = "/login";
-    return null;
-  }
+  return (
+    <div className="partners-portal bg-zinc-950 text-zinc-100 min-h-screen">
+      <SidebarProvider
+        style={
+          {
+            "--sidebar-width": `${sidebarWidth}px`,
+          } as CSSProperties
+        }
+      >
+        <PartnersLayoutContent setSidebarWidth={setSidebarWidth}>
+          {children}
+        </PartnersLayoutContent>
+      </SidebarProvider>
+    </div>
+  );
+}
 
-  const affiliate = affiliateQuery.data;
-  const tier = affiliate?.tier ?? "affiliate";
-  const tierStyle = TIER_COLORS[tier] ?? TIER_COLORS.affiliate;
+type PartnersLayoutContentProps = {
+  children: React.ReactNode;
+  setSidebarWidth: (width: number) => void;
+};
 
-  const initials = user.name
-    ? user.name
-        .split(" ")
-        .map((n: string) => n[0])
-        .join("")
-        .toUpperCase()
-        .slice(0, 2)
-    : "PA";
+function PartnersLayoutContent({
+  children,
+  setSidebarWidth,
+}: PartnersLayoutContentProps) {
+  const { user, logout } = useAuth();
+  const [location, setLocation] = useLocation();
+  const { state, toggleSidebar } = useSidebar();
+  const isCollapsed = state === "collapsed";
+  const [isResizing, setIsResizing] = useState(false);
+  const sidebarRef = useRef<HTMLDivElement>(null);
+  const activeMenuItem = menuItems.find(
+    (item) =>
+      item.path === "/partners"
+        ? location === "/partners"
+        : location.startsWith(item.path)
+  );
+  const isMobile = useIsMobile();
 
-  const pendingBalance = affiliate?.pendingPayout ?? "0.00";
+  useEffect(() => {
+    if (isCollapsed) {
+      setIsResizing(false);
+    }
+  }, [isCollapsed]);
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return;
+      const sidebarLeft =
+        sidebarRef.current?.getBoundingClientRect().left ?? 0;
+      const newWidth = e.clientX - sidebarLeft;
+      if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
+        setSidebarWidth(newWidth);
+      }
+    };
+
+    const handleMouseUp = () => setIsResizing(false);
+
+    if (isResizing) {
+      document.addEventListener("mousemove", handleMouseMove);
+      document.addEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "col-resize";
+      document.body.style.userSelect = "none";
+    }
+
+    return () => {
+      document.removeEventListener("mousemove", handleMouseMove);
+      document.removeEventListener("mouseup", handleMouseUp);
+      document.body.style.cursor = "";
+      document.body.style.userSelect = "";
+    };
+  }, [isResizing, setSidebarWidth]);
 
   return (
-    <div className="min-h-screen bg-[#0A0A0F] flex">
-      {/* Sidebar */}
-      <aside className="w-60 bg-[#0D0D14] border-r border-white/5 flex flex-col fixed h-full z-10">
-        {/* Logo */}
-        <div className="px-5 py-5 border-b border-white/5">
-          <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 bg-emerald-500 rounded-md flex items-center justify-center">
-              <Handshake className="w-4 h-4 text-white" />
-            </div>
-            <div>
-              <p className="text-white font-semibold text-sm leading-none">
-                Baylio Partners
-              </p>
-              <p className="text-slate-500 text-xs mt-0.5">Affiliate Portal</p>
-            </div>
-          </div>
-        </div>
-
-        {/* Tier badge + pending balance */}
-        <div className="px-5 py-3 border-b border-white/5 space-y-2">
-          <Badge
-            variant="outline"
-            className={`text-xs ${tierStyle.border} ${tierStyle.text} ${tierStyle.bg} capitalize`}
-          >
-            {tier} Partner
-          </Badge>
-          {affiliate && (
-            <div>
-              <p className="text-slate-500 text-xs">Pending Balance</p>
-              <p className="text-amber-400 text-sm font-semibold">${pendingBalance}</p>
-            </div>
-          )}
-        </div>
-
-        {/* Nav */}
-        <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
-          {navItems.map((item) => {
-            const isActive =
-              item.path === "/"
-                ? location === "/" || location === "/dashboard"
-                : location.startsWith(item.path);
-
-            return (
-              <Link key={item.path} href={item.path}>
-                <a
-                  className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-all group ${
-                    isActive
-                      ? "bg-emerald-500/10 text-emerald-400 font-medium"
-                      : "text-slate-400 hover:text-slate-200 hover:bg-white/5"
-                  }`}
-                >
-                  <span
-                    className={
-                      isActive
-                        ? "text-emerald-400"
-                        : "text-slate-500 group-hover:text-slate-300"
-                    }
-                  >
-                    {item.icon}
+    <>
+      <div className="relative" ref={sidebarRef}>
+        <Sidebar
+          collapsible="icon"
+          className="border-r border-zinc-800 bg-zinc-950 [&_[data-sidebar=sidebar]]:bg-zinc-950"
+          disableTransition={isResizing}
+        >
+          <SidebarHeader className="h-16 justify-center">
+            <div className="flex items-center gap-3 px-2 transition-all w-full">
+              <button
+                onClick={toggleSidebar}
+                className="h-8 w-8 flex items-center justify-center hover:bg-zinc-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shrink-0"
+                aria-label="Toggle navigation"
+              >
+                <PanelLeft className="h-4 w-4 text-zinc-400" />
+              </button>
+              {!isCollapsed ? (
+                <div className="flex items-center gap-2 min-w-0">
+                  <Handshake className="h-5 w-5 text-emerald-400 shrink-0" />
+                  <span className="font-bold tracking-tight truncate text-white">
+                    Partners
                   </span>
-                  <span className="flex-1">{item.label}</span>
-                  {item.badge && (
-                    <Badge className="bg-amber-500/20 text-amber-400 text-xs border-0 h-5 px-1.5">
-                      {item.badge}
-                    </Badge>
-                  )}
-                  {isActive && (
-                    <ChevronRight className="w-3 h-3 text-emerald-400/50" />
-                  )}
-                </a>
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User footer */}
-        <div className="px-4 py-4 border-t border-white/5">
-          <div className="flex items-center gap-3">
-            <Avatar className="w-8 h-8">
-              <AvatarFallback className="bg-emerald-500/20 text-emerald-400 text-xs font-semibold">
-                {initials}
-              </AvatarFallback>
-            </Avatar>
-            <div className="flex-1 min-w-0">
-              <p className="text-white text-xs font-medium truncate">
-                {affiliate?.name || user.name || "Partner"}
-              </p>
-              <p className="text-slate-500 text-xs truncate">{user.email}</p>
+                  <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
+                    PRO
+                  </span>
+                </div>
+              ) : null}
             </div>
-            <button
-              onClick={() => logoutMutation.mutate()}
-              className="text-slate-500 hover:text-red-400 transition-colors"
-              title="Sign out"
-            >
-              <LogOut className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      </aside>
+          </SidebarHeader>
 
-      {/* Main content */}
-      <main className="flex-1 ml-60 flex flex-col min-h-screen">
-        {/* Top bar */}
-        <header className="h-14 border-b border-white/5 bg-[#0D0D14]/80 backdrop-blur-sm sticky top-0 z-10 flex items-center justify-between px-6">
-          <div className="flex items-center gap-2">
-            <span className="text-slate-500 text-sm">partners.baylio.io</span>
-            {title && (
-              <>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-600" />
-                <span className="text-white text-sm font-medium">{title}</span>
-              </>
-            )}
-          </div>
-          <div className="flex items-center gap-3">
-            <button className="text-slate-400 hover:text-white transition-colors relative">
-              <Bell className="w-4 h-4" />
-            </button>
-            <a
-              href="https://baylio.io"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-slate-500 hover:text-slate-300 text-xs transition-colors"
-            >
-              ← Back to baylio.io
-            </a>
-          </div>
-        </header>
+          <SidebarContent className="gap-0">
+            <SidebarMenu className="px-2 py-1">
+              {menuItems.map((item) => {
+                const isActive =
+                  item.path === "/partners"
+                    ? location === "/partners"
+                    : location.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.path}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      onClick={() => setLocation(item.path)}
+                      tooltip={item.label}
+                      className={`h-10 transition-all font-normal text-zinc-300 hover:text-white hover:bg-zinc-800 ${
+                        isActive
+                          ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-400"
+                          : ""
+                      }`}
+                    >
+                      <item.icon
+                        className={`h-4 w-4 ${
+                          isActive ? "text-emerald-400" : "text-zinc-400"
+                        }`}
+                      />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
 
-        {/* Page content */}
-        <div className="flex-1 p-6">{children}</div>
-      </main>
-    </div>
+            <div className="px-2 mt-4">
+              <SidebarMenu>
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    onClick={() => setLocation("/dashboard")}
+                    tooltip="Back to Baylio"
+                    className="h-10 font-normal text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+                  >
+                    <ArrowLeft className="h-4 w-4 text-zinc-500" />
+                    <span>Back to Baylio</span>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              </SidebarMenu>
+            </div>
+          </SidebarContent>
+
+          <SidebarFooter className="p-3">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-zinc-800 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                  <Avatar className="h-9 w-9 border border-zinc-700 shrink-0">
+                    <AvatarFallback className="text-xs font-medium bg-zinc-800 text-zinc-300">
+                      {user?.name?.charAt(0).toUpperCase()}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+                    <p className="text-sm font-medium truncate leading-none text-zinc-200">
+                      {user?.name || "-"}
+                    </p>
+                    <p className="text-xs text-zinc-500 truncate mt-1.5">
+                      Partner
+                    </p>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent
+                align="end"
+                className="w-48 bg-zinc-900 border-zinc-700"
+              >
+                <DropdownMenuItem
+                  onClick={() => setLocation("/dashboard")}
+                  className="cursor-pointer text-zinc-300 focus:text-white focus:bg-zinc-800"
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  <span>Back to Baylio</span>
+                </DropdownMenuItem>
+                <DropdownMenuItem
+                  onClick={logout}
+                  className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-zinc-800"
+                >
+                  <LogOut className="mr-2 h-4 w-4" />
+                  <span>Sign out</span>
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </SidebarFooter>
+        </Sidebar>
+        <div
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-emerald-500/30 transition-colors ${
+            isCollapsed ? "hidden" : ""
+          }`}
+          onMouseDown={() => {
+            if (isCollapsed) return;
+            setIsResizing(true);
+          }}
+          style={{ zIndex: 50 }}
+        />
+      </div>
+
+      <SidebarInset className="bg-zinc-950">
+        {isMobile && (
+          <div className="flex border-b border-zinc-800 h-14 items-center justify-between bg-zinc-950/95 px-2 backdrop-blur sticky top-0 z-40">
+            <div className="flex items-center gap-2">
+              <SidebarTrigger className="h-9 w-9 rounded-lg bg-zinc-900 text-zinc-300" />
+              <span className="tracking-tight text-zinc-100">
+                {activeMenuItem?.label ?? "Partners"}
+              </span>
+            </div>
+          </div>
+        )}
+        <main className="flex-1 p-4 md:p-6">{children}</main>
+      </SidebarInset>
+    </>
   );
 }

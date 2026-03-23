@@ -7,27 +7,18 @@ import { getLoginUrl } from "@/const";
 import {
   Phone,
   BarChart3,
-
+  Bot,
   Calendar,
   TrendingUp,
   Shield,
   Clock,
-
+  DollarSign,
   CheckCircle2,
   ArrowRight,
   Zap,
-
+  Building2,
   Calculator,
-  Users,
-  MessageSquare,
-  Globe,
-  PhoneOff,
-  Languages,
-  Headphones,
-  Menu,
-  X,
 } from "lucide-react";
-import { Link } from "wouter";
 
 /**
  * Landing Page — Public, sales-focused
@@ -49,67 +40,48 @@ import { Link } from "wouter";
 const FEATURES = [
   {
     icon: Phone,
-    title: "Answers Every Call in Under 2 Seconds",
-    description: "Day, night, weekend, holiday — Baylio picks up before voicemail does.",
+    title: "24/7 AI Receptionist",
+    description: "Never miss a call again. Baylio answers every call with a natural-sounding AI voice, even after hours, weekends, and holidays.",
   },
   {
     icon: Calendar,
-    title: "Books Appointments Without You",
-    description: "Captures vehicle info, asks the right questions, schedules into your calendar.",
+    title: "Automatic Appointment Booking",
+    description: "The AI captures vehicle info, understands the customer's needs, and books appointments directly into your schedule.",
   },
   {
     icon: TrendingUp,
-    title: "Turns Single-Service Calls into Multi-Service Visits",
-    description: "When someone calls about brakes, Baylio suggests a tire rotation or fluid check.",
-  },
-  {
-    icon: MessageSquare,
-    title: "Instant SMS Recap After Every Call",
-    description: "Caller name, what they need, what was booked. Sent to your phone instantly.",
-  },
-  {
-    icon: Globe,
-    title: "Speaks to Every Customer in Their Language",
-    description: "Handles calls in English and Spanish. Capture the Hispanic market your competitors are losing.",
+    title: "Intelligent Upselling",
+    description: "When a customer calls about brakes, Baylio knows to suggest a fluid flush. Smart, subtle, and effective.",
   },
   {
     icon: BarChart3,
-    title: "See Every Dollar You Have Recovered",
-    description: "Real-time call logs, booking confirmations, revenue recovered — all in one dashboard.",
+    title: "Call Analytics Dashboard",
+    description: "See every call, every outcome, every dollar recovered. Real-time insights into your shop's phone performance.",
+  },
+  {
+    icon: Bot,
+    title: "Custom AI Persona",
+    description: "Configure your AI's voice, name, greeting, and personality. It sounds like your best employee, not a robot.",
+  },
+  {
+    icon: Building2,
+    title: "Multi-Location Support",
+    description: "Manage multiple shops from one dashboard. Each location gets its own AI agent, phone number, and analytics.",
   },
 ];
 
 const PRICING_TIERS = [
   {
-    name: "Pilot",
-    price: 149,
-    description: "Try Baylio risk-free on your after-hours calls",
-    microcopy: "",
-    minutes: 150,
-    badge: "30-Day Trial",
-    features: [
-      "AI receptionist (150 min/mo)",
-      "After-hours coverage only",
-      "Call logging & transcription",
-      "SMS recap after every call",
-      "Cancel anytime — no contract",
-    ],
-    cta: "Start 30-Day Trial",
-    popular: false,
-  },
-  {
     name: "Starter",
     price: 199,
     description: "For single-location shops getting started",
-    microcopy: "Best for shops taking 5–20 calls/day. 300 min covers ~100–150 calls/month.",
     minutes: 300,
-    badge: null,
     features: [
       "AI receptionist (300 min/mo)",
-      "24/7 coverage (all hours)",
       "Call logging & transcription",
       "Basic analytics dashboard",
-      "Email + SMS notifications",
+      "Email notifications",
+      "Business hours configuration",
     ],
     cta: "Start Free Trial",
     popular: false,
@@ -118,14 +90,13 @@ const PRICING_TIERS = [
     name: "Pro",
     price: 349,
     description: "For busy shops that need more capacity",
-    microcopy: "Best for shops taking 20–50 calls/day who want full booking automation and SMS alerts. Most popular plan.",
     minutes: 750,
-    badge: null,
     features: [
       "Everything in Starter",
       "750 minutes per month",
       "Calendar integration",
       "Advanced analytics & trends",
+      "SMS notifications to owner",
       "Custom AI voice & persona",
     ],
     cta: "Start Free Trial",
@@ -135,9 +106,7 @@ const PRICING_TIERS = [
     name: "Elite",
     price: 599,
     description: "For multi-location operators and high-volume shops",
-    microcopy: "Best for high-volume or multi-location shops who need the intelligent upsell engine.",
     minutes: 1500,
-    badge: null,
     features: [
       "Everything in Pro",
       "1,500 minutes per month",
@@ -145,6 +114,7 @@ const PRICING_TIERS = [
       "CRM integration",
       "Multi-location management",
       "Priority support",
+      "Weekly performance reports",
     ],
     cta: "Contact Sales",
     popular: false,
@@ -307,18 +277,6 @@ function ROICalculator() {
 }
 
 export default function Landing() {
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-
-  const navLinks = [
-    { label: "Features", href: "#features", isAnchor: true },
-    { label: "Pricing", href: "#pricing", isAnchor: true },
-    { label: "How It Works", href: "#how-it-works", isAnchor: true },
-    { label: "FAQ", href: "/faq", isAnchor: false },
-    { label: "Contact", href: "/contact", isAnchor: false },
-  ];
-
-  const handleMobileNavClick = () => setMobileMenuOpen(false);
-
   return (
     <div className="min-h-screen bg-background">
       {/* ─── Navbar ─── */}
@@ -328,18 +286,12 @@ export default function Landing() {
             <Phone className="h-6 w-6 text-primary" />
             <span className="text-xl font-bold tracking-tight">Baylio</span>
           </div>
-
-          {/* Desktop nav */}
           <div className="hidden md:flex items-center gap-8">
-            {navLinks.map(link => link.isAnchor ? (
-              <a key={link.label} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</a>
-            ) : (
-              <Link key={link.label} href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">{link.label}</Link>
-            ))}
+            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
+            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
           </div>
-
-          {/* Desktop auth buttons */}
-          <div className="hidden md:flex items-center gap-3">
+          <div className="flex items-center gap-3">
             <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
               Sign In
             </Button>
@@ -347,86 +299,38 @@ export default function Landing() {
               Get Started
             </Button>
           </div>
-
-          {/* Mobile: Sign In + Hamburger */}
-          <div className="flex md:hidden items-center gap-2">
-            <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
-              Sign In
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="p-2"
-              onClick={() => setMobileMenuOpen(prev => !prev)}
-              aria-label="Toggle menu"
-            >
-              {mobileMenuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-            </Button>
-          </div>
         </div>
-
-        {/* Mobile dropdown menu */}
-        {mobileMenuOpen && (
-          <div className="md:hidden border-t bg-background/98 backdrop-blur">
-            <div className="container py-4 flex flex-col gap-1">
-              {navLinks.map(link => link.isAnchor ? (
-                <a
-                  key={link.label}
-                  href={link.href}
-                  onClick={handleMobileNavClick}
-                  className="px-3 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
-                >
-                  {link.label}
-                </a>
-              ) : (
-                <Link
-                  key={link.label}
-                  href={link.href}
-                  onClick={handleMobileNavClick}
-                  className="px-3 py-3 text-sm font-medium text-foreground hover:bg-muted rounded-md transition-colors"
-                >
-                  {link.label}
-                </Link>
-              ))}
-              <div className="pt-3 border-t mt-2">
-                <Button className="w-full" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
-                  Get Started Free
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
       </nav>
 
-      {/* ─── Hero (Dark) ─── */}
-      <section className="py-20 md:py-32" style={{ backgroundColor: "#1A1A2E" }}>
-        <div className="container">
-          <div className="max-w-4xl mx-auto text-center">
-            <Badge className="mb-6 bg-emerald-500/15 text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/20">
-              <Zap className="h-3 w-3 mr-1" />
-              AI-Powered Call Handling for Auto Repair Shops
-            </Badge>
-            <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight text-white">
-              Your Shop Loses <span style={{ color: "#10B981" }}>$28,000+</span> a Year to Missed Calls.
-              <br />
-              Baylio Answers Every Single One.
-            </h1>
-            <p className="text-lg md:text-xl mb-8 max-w-3xl mx-auto leading-relaxed" style={{ color: "#D1D5DB" }}>
-              Baylio is an AI phone system built for auto repair shops. It answers every call in under 2 seconds, books appointments, captures vehicle details, handles English and Spanish, and texts you a recap the moment each call ends — so you capture every repair order, even when your front desk can't pick up.
-            </p>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-                Get My Free Missed Call Audit
-                <ArrowRight className="ml-2 h-4 w-4" />
-              </Button>
-              <Button size="lg" variant="outline" className="text-base px-8 border-white/20 text-white hover:bg-white/10" onClick={() => { window.location.href = "tel:+18448752441"; }}>
-                Hear a Live Demo Call
-              </Button>
-            </div>
-            <p className="text-sm mt-4" style={{ color: "#9CA3AF" }}>
-              No credit card. Setup in under 10 minutes. Calls live the same day.
-            </p>
+      {/* ─── Hero ─── */}
+      <section className="container py-20 md:py-32">
+        <div className="max-w-4xl mx-auto text-center">
+          <Badge variant="secondary" className="mb-6">
+            <Zap className="h-3 w-3 mr-1" />
+            AI-Powered Call Handling for Auto Repair Shops
+          </Badge>
+          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
+            Stop Losing Customers
+            <br />
+            <span className="text-primary">To Missed Calls</span>
+          </h1>
+          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
+            Baylio is an AI receptionist that answers every call to your auto repair shop 24/7.
+            It books appointments, captures vehicle details, and intelligently upsells services — 
+            so you never lose another dollar to a ringing phone.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Start Free Trial
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button size="lg" variant="outline" className="text-base px-8">
+              Watch Demo
+            </Button>
           </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            No credit card required. 14-day free trial on all plans.
+          </p>
         </div>
       </section>
 
@@ -444,9 +348,6 @@ export default function Landing() {
               </div>
             ))}
           </div>
-          <p className="text-center text-xs mt-6" style={{ color: "#9CA3AF" }}>
-            Sources: AAA Auto Repair Industry Report, IBISWorld, BrightLocal — 2024
-          </p>
         </div>
       </section>
 
@@ -479,9 +380,9 @@ export default function Landing() {
       {/* ─── Features ─── */}
       <section id="features" className="border-y bg-muted/30">
         <div className="container py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">Built for Auto Repair Shops. Every Feature Earns Its Keep.</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">Everything Your Shop Needs</h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            No bloat. No gimmicks. Every feature exists to capture more revenue or save you more time.
+            Built specifically for auto repair shops. Every feature is designed to capture more revenue and save you time.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {FEATURES.map((feature, i) => (
@@ -501,87 +402,13 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── Human Handoff Trust Section (CHANGE 1) ─── */}
-      <section style={{ backgroundColor: "#1A1A2E" }} className="py-20">
-        <div className="container">
-          <div className="max-w-4xl mx-auto">
-            <h2 className="text-3xl md:text-4xl font-bold text-center mb-6 text-white">
-              What If a Customer Has a Problem the AI Can't Handle?
-            </h2>
-            <p className="text-center mb-12 max-w-3xl mx-auto leading-relaxed" style={{ color: "#D1D5DB" }}>
-              We get this question from every shop owner — and it is the right one to ask. Baylio handles 85–90% of all inbound shop calls: appointment requests, pricing questions, hours, service inquiries, and upsells. For everything else, it has a clear escalation path. If a caller is upset, has a complex warranty dispute, or specifically asks to speak to a person, Baylio immediately routes them to your designated phone number or takes a detailed message with a callback promise. Nothing falls through the cracks. You set the rules. You control the experience. Baylio enforces them, every call.
-            </p>
-            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 max-w-4xl mx-auto">
-              {[
-                "Answers in under 2 seconds on every inbound call",
-                "Human escalation on any call, at any time you configure",
-                "99.9% uptime SLA — if Baylio goes down, calls route to your backup",
-                "All calls logged, transcribed, and stored in your dashboard",
-                "CCPA-compliant data handling",
-                "Built on enterprise-grade voice infrastructure",
-              ].map((point, i) => (
-                <div key={i} className="flex items-start gap-3">
-                  <CheckCircle2 className="h-5 w-5 text-emerald-400 mt-0.5 shrink-0" />
-                  <span className="text-sm" style={{ color: "#E5E7EB" }}>{point}</span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ─── After-Hours / Bilingual Section (CHANGE 2) ─── */}
-      <section className="container py-20">
-        <h2 className="text-3xl md:text-4xl font-bold text-center mb-4">
-          Your Shop Closes. Your Phone Doesn't Have To.
-        </h2>
-        <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Baylio works when you can't — and when you're too busy to pick up.
-        </p>
-        <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-          <Card className="border bg-card">
-            <CardContent className="pt-6">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                <PhoneOff className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">After Hours</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Customers call at 7pm, 10pm, Saturday morning. Baylio answers every one. By Monday morning, your schedule is already full.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border bg-card">
-            <CardContent className="pt-6">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                <Headphones className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">Overflow Coverage</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                When your front desk is slammed, Baylio handles the calls they can't get to. No missed opportunities during your busiest hours.
-              </p>
-            </CardContent>
-          </Card>
-          <Card className="border bg-card">
-            <CardContent className="pt-6">
-              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                <Languages className="h-5 w-5 text-primary" />
-              </div>
-              <h3 className="text-lg font-semibold mb-2">English + Spanish</h3>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                Every call is handled in the customer's preferred language. Baylio detects language automatically — if a caller says <em>Hola</em>, Baylio responds in Spanish instantly. No switching, no asking. It even matches the caller's speaking style — Spanglish, mixed language, regional accents. Your customers feel like they are talking to one of their own.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* ─── Pricing (CHANGE 3 — microcopy added) ─── */}
+      {/* ─── Pricing ─── */}
       <section id="pricing" className="container py-20">
         <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Start with the Pilot to test Baylio risk-free on your after-hours calls. Upgrade anytime.
+          Choose the plan that fits your shop. All plans include a 14-day free trial. No contracts.
         </p>
-        <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-5 max-w-6xl mx-auto">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {PRICING_TIERS.map((tier) => (
             <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary shadow-lg" : ""}`}>
               {tier.popular && (
@@ -589,17 +416,9 @@ export default function Landing() {
                   <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
                 </div>
               )}
-              {tier.badge && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-emerald-500 text-white">{tier.badge}</Badge>
-                </div>
-              )}
               <CardHeader className="text-center pb-4">
                 <CardTitle className="text-xl">{tier.name}</CardTitle>
                 <p className="text-sm text-muted-foreground">{tier.description}</p>
-                {tier.microcopy && (
-                  <p className="text-xs text-muted-foreground/80 mt-1 italic">{tier.microcopy}</p>
-                )}
                 <div className="mt-4">
                   <span className="text-4xl font-bold">${tier.price}</span>
                   <span className="text-muted-foreground">/month</span>
@@ -626,61 +445,31 @@ export default function Landing() {
             </Card>
           ))}
         </div>
-        <p className="text-center text-sm text-muted-foreground mt-6">
+        <p className="text-center text-sm text-muted-foreground mt-8">
           Overage: $0.15/minute beyond your plan. Annual billing saves 20%.
-        </p>
-        <p className="text-center text-sm font-medium text-muted-foreground mt-2">
-          Setup takes under 10 minutes. Our team helps you go live the same day.
         </p>
       </section>
 
-      {/* ─── Credibility Section ─── */}
+      {/* ─── Trust / Social Proof ─── */}
       <section className="border-y bg-muted/30">
         <div className="container py-16">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Built for Shop Owners, by Operators Who Get It</h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            We didn't build Baylio in a lab. We built it because we saw how many shops were bleeding revenue from unanswered phones.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <Card className="border bg-card">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Shield className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Enterprise-Grade Voice Infrastructure</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Built on the same telephony platform used by major contact centers. 99.9% uptime SLA. If Baylio ever goes down, calls automatically route to your backup number.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border bg-card">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Clock className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Answers in Under 2 Seconds. Every Time.</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  No ringing. No hold music. No voicemail. Your customers hear a live, professional AI voice before the second ring completes.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border bg-card">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Be One of Our First 50 Shops</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  We are onboarding a small group of auto repair shops for hands-on launch support. Early adopters get direct access to our team, priority feature requests, and locked-in pricing.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="text-center mt-10">
-            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-              Apply for Early Access
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
+          <h2 className="text-2xl font-bold text-center mb-8">Trusted by Auto Repair Shops</h2>
+          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
+            {[
+              { quote: "We were missing 15+ calls a week. Baylio caught every single one. Our bookings went up 40% in the first month.", name: "Mike R.", shop: "Mike's Auto Care" },
+              { quote: "The upsell feature alone pays for the subscription. Customers don't mind when it's done right.", name: "Sarah T.", shop: "Precision Auto Works" },
+              { quote: "I manage 3 locations. Having one dashboard for all of them with individual AI agents is a game changer.", name: "James K.", shop: "Metro Auto Group" },
+            ].map((testimonial, i) => (
+              <Card key={i} className="border bg-card">
+                <CardContent className="pt-6">
+                  <p className="text-sm text-muted-foreground italic mb-4">"{testimonial.quote}"</p>
+                  <div>
+                    <p className="text-sm font-semibold">{testimonial.name}</p>
+                    <p className="text-xs text-muted-foreground">{testimonial.shop}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
           </div>
         </div>
       </section>
@@ -689,13 +478,13 @@ export default function Landing() {
       <section className="container py-20">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Every Day You Wait, You're Leaving Money on the Table.
+            Ready to Stop Losing Money to Missed Calls?
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            The average shop loses $28,000+ a year to missed calls. Baylio stops that. Start your 14-day free trial.
+            Start your 14-day free trial today. No credit card required. Setup takes 10 minutes.
           </p>
           <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-            Get My Free Missed Call Audit
+            Get Started Free
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
         </div>
@@ -713,10 +502,9 @@ export default function Landing() {
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
-              <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
+              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Support</a>
             </div>
           </div>
         </div>

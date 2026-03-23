@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { protectedProcedure, router } from "./_core/trpc";
+import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import {
   getCallLogsByShop,
   getCallLogCountByShop,
@@ -19,7 +19,7 @@ export const callRouter = router({
       offset: z.number().min(0).default(0),
       startDate: z.string().optional(),
       endDate: z.string().optional(),
-      status: z.enum(["completed", "missed", "voicemail", "transferred", "failed"]).optional(),
+      status: z.string().optional(),
     }))
     .query(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
@@ -64,11 +64,11 @@ export const callRouter = router({
 
   createAudit: protectedProcedure
     .input(z.object({
-      shopId: z.number().min(1).optional(),
-      prospectName: z.string().max(255).optional(),
-      prospectEmail: z.string().email().max(320).optional(),
-      prospectPhone: z.string().max(32).optional(),
-      shopName: z.string().max(255).optional(),
+      shopId: z.number().optional(),
+      prospectName: z.string().optional(),
+      prospectEmail: z.string().optional(),
+      prospectPhone: z.string().optional(),
+      shopName: z.string().optional(),
     }))
     .mutation(async ({ ctx, input }) => {
       const id = await createMissedCallAudit({ ...input, ownerId: ctx.user.id });
@@ -82,16 +82,11 @@ export const callRouter = router({
         status: z.enum(["pending", "active", "completed", "expired"]).optional(),
         totalMissedCalls: z.number().optional(),
         estimatedLostRevenue: z.string().optional(),
-        scorecardData: z.object({
-          callsByDayPart: z.record(z.string(), z.number()),
-          intentBreakdown: z.record(z.string(), z.number()),
-          urgencyBreakdown: z.record(z.string(), z.number()),
-          estimatedRevenueRange: z.object({ low: z.number(), high: z.number() }),
-        }).optional(),
+        scorecardData: z.any().optional(),
       }),
     }))
     .mutation(async ({ input }) => {
-      await updateMissedCallAudit(input.id, input.data);
+      await updateMissedCallAudit(input.id, input.data as any);
       return { success: true };
     }),
 

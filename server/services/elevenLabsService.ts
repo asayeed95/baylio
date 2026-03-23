@@ -137,29 +137,30 @@ export async function updateConversationalAgent(
   try {
     const client = createClient();
 
-    const conversationConfig: Record<string, unknown> = {};
+    const payload: Record<string, unknown> = {
+      conversation_config: {},
+    };
 
     if (params.systemPrompt || params.firstMessage || params.language) {
-      const agent: Record<string, unknown> = {};
+      (payload.conversation_config as any).agent = {};
       if (params.systemPrompt) {
-        agent.prompt = { prompt: params.systemPrompt };
+        (payload.conversation_config as any).agent.prompt = {
+          prompt: params.systemPrompt,
+        };
       }
       if (params.firstMessage) {
-        agent.first_message = params.firstMessage;
+        (payload.conversation_config as any).agent.first_message = params.firstMessage;
       }
       if (params.language) {
-        agent.language = params.language;
+        (payload.conversation_config as any).agent.language = params.language;
       }
-      conversationConfig.agent = agent;
     }
 
     if (params.voiceId) {
-      conversationConfig.tts = { voice_id: params.voiceId };
+      (payload.conversation_config as any).tts = {
+        voice_id: params.voiceId,
+      };
     }
-
-    const payload: Record<string, unknown> = {
-      conversation_config: conversationConfig,
-    };
 
     if (params.name) {
       payload.name = params.name;
@@ -225,30 +226,6 @@ export async function getSubscriptionInfo(): Promise<SubscriptionInfo> {
     const axiosError = error as AxiosError;
     console.error("[ElevenLabs] Error getting subscription:", axiosError.response?.data || axiosError.message);
     throw new Error(`Failed to get ElevenLabs subscription info: ${axiosError.message}`);
-  }
-}
-
-/**
- * Get the full transcript of a specific conversation by conversation_id.
- * Used post-call to extract caller memory from the ElevenLabs conversation.
- */
-export async function getConversationTranscript(conversationId: string): Promise<string | null> {
-  try {
-    const client = createClient();
-    const response = await client.get(`/v1/convai/conversations/${conversationId}`);
-    const messages = response.data?.transcript || [];
-    if (!messages.length) return null;
-
-    // Build a readable transcript string
-    const lines = messages
-      .filter((m: any) => m.message)
-      .map((m: any) => `${m.role === 'agent' ? 'Alex' : 'Caller'}: ${m.message}`)
-      .join('\n');
-    return lines || null;
-  } catch (error) {
-    const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error getting conversation transcript:", axiosError.response?.data || axiosError.message);
-    return null;
   }
 }
 

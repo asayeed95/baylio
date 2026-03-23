@@ -161,11 +161,11 @@ class ContextCache {
     this.shopContexts.delete(shopId);
     this.compiledPrompts.delete(shopId);
     // Also remove phone mapping if it points to this shop
-    for (const [phone, entry] of Array.from(this.phoneToShopId)) {
+    Array.from(this.phoneToShopId).forEach(([phone, entry]) => {
       if (entry.data === shopId) {
         this.phoneToShopId.delete(phone);
       }
-    }
+    });
     this.updateSize();
   }
 
@@ -204,17 +204,17 @@ class ContextCache {
     return phone.replace(/[^\d+]/g, "");
   }
 
-  private enforceMaxSize<K, T>(cache: Map<K, CacheEntry<T>>): void {
+  private enforceMaxSize<T>(cache: Map<any, CacheEntry<T>>): void {
     if (cache.size >= MAX_CACHE_SIZE) {
       // Evict oldest entry
-      let oldestKey: K | null = null;
+      let oldestKey: any = null;
       let oldestTime = Infinity;
-      for (const [key, entry] of Array.from(cache)) {
-        if (entry.createdAt < oldestTime) {
-          oldestTime = entry.createdAt;
-          oldestKey = key;
-        }
+    Array.from(cache).forEach(([key, entry]) => {
+      if (entry.createdAt < oldestTime) {
+        oldestTime = entry.createdAt;
+        oldestKey = key;
       }
+    });
       if (oldestKey !== null) {
         cache.delete(oldestKey);
         this.stats.evictions++;

@@ -1,161 +1,197 @@
-import { trpc } from "@/lib/trpc";
+import PartnersPortalLayout from "@/components/PartnersPortalLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Network, Users, Copy } from "lucide-react";
-import { toast } from "sonner";
-import { useMemo } from "react";
-import PartnersPortalLayout from "@/components/PartnersPortalLayout";
+import { trpc } from "@/lib/trpc";
+import {
+  Network,
+  Store,
+  TrendingUp,
+  DollarSign,
+  Clock,
+  CheckCircle,
+  XCircle,
+} from "lucide-react";
 
-const COMMISSION_TIERS = [
-  { tier: "Bronze", requirement: "0-4 referrals", direct: "20%", override: "5%" },
-  { tier: "Silver", requirement: "5-14 referrals", direct: "22%", override: "5%" },
-  { tier: "Gold", requirement: "15-29 referrals", direct: "25%", override: "7%" },
-  { tier: "Platinum", requirement: "30+ referrals", direct: "30%", override: "10%" },
-];
+const STATUS_ICONS = {
+  pending: { icon: Clock, color: "text-yellow-400", bg: "bg-yellow-500/10" },
+  signed_up: { icon: Store, color: "text-blue-400", bg: "bg-blue-500/10" },
+  subscribed: { icon: CheckCircle, color: "text-emerald-400", bg: "bg-emerald-500/10" },
+  churned: { icon: XCircle, color: "text-red-400", bg: "bg-red-500/10" },
+};
 
 export default function PartnersNetwork() {
-  const { data: networkData, isLoading } = trpc.affiliate.getMyNetwork.useQuery();
-  const { data: statsData } = trpc.affiliate.stats.useQuery();
+  const { data, isLoading } = trpc.partner.getMyNetwork.useQuery();
 
-  const recruitLink = useMemo(() => {
-    if (!statsData?.affiliate?.code) return "";
-    return `https://partners.baylio.io/?ref=${statsData.affiliate.code}`;
-  }, [statsData?.affiliate?.code]);
+  const network = data?.network || [];
+  const totalMRR = data?.totalMRR || 0;
 
-  const copyLink = () => {
-    navigator.clipboard.writeText(recruitLink);
-    toast.success("Recruitment link copied!");
-  };
-
-  const partners = networkData?.partners ?? [];
+  const activeShops = network.filter((n) => n.status === "subscribed");
+  const pendingShops = network.filter(
+    (n) => n.status === "pending" || n.status === "signed_up"
+  );
 
   return (
-    <PartnersPortalLayout title="My Network">
-      <div className="max-w-4xl mx-auto">
-        <h1 className="text-xl font-bold text-white mb-2">My Network</h1>
-        <p className="text-sm text-slate-400 mb-6">
-          Partners you've recruited into the Baylio affiliate program.
-          You earn override commissions on referrals made by your network.
-        </p>
+    <PartnersPortalLayout>
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-white">
+            Your Network
+          </h1>
+          <p className="text-zinc-400 mt-1">
+            Shops in your referral network and their subscription status.
+          </p>
+        </div>
 
-        {/* How it works */}
-        <Card className="bg-[#0D0D14] border-white/10 mb-6">
-          <CardContent className="p-5">
-            <h3 className="text-sm font-semibold text-white mb-3">2-Level Commission Structure</h3>
-            <div className="grid sm:grid-cols-2 gap-4 text-sm">
-              <div className="bg-emerald-500/5 border border-emerald-500/10 rounded-lg p-3">
-                <p className="text-emerald-400 font-medium mb-1">Level 1 — Direct Referrals</p>
-                <p className="text-slate-400 text-xs">You earn 20-30% on shops you refer directly.</p>
-              </div>
-              <div className="bg-amber-500/5 border border-amber-500/10 rounded-lg p-3">
-                <p className="text-amber-400 font-medium mb-1">Level 2 — Override Commission</p>
-                <p className="text-slate-400 text-xs">You earn 5-10% on shops referred by partners you recruit.</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Recruitment Link */}
-        {recruitLink && (
-          <Card className="bg-[#0D0D14] border-white/10 mb-6">
+        {/* Network Stats */}
+        <div className="grid gap-4 md:grid-cols-3">
+          <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-                <div className="flex items-center gap-2 shrink-0">
-                  <Network className="h-4 w-4 text-amber-400" />
-                  <span className="font-medium text-sm text-white">Recruitment Link:</span>
-                </div>
-                <div className="flex-1 flex items-center gap-2 w-full">
-                  <Input
-                    value={recruitLink}
-                    readOnly
-                    className="font-mono text-sm bg-white/5 border-white/10 text-slate-300"
-                  />
-                  <Button size="sm" variant="outline" onClick={copyLink} className="border-white/10 text-slate-300 hover:text-white">
-                    <Copy className="h-4 w-4" />
-                  </Button>
-                </div>
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-zinc-400">Network Size</p>
+                <Network className="h-4 w-4 text-zinc-500" />
               </div>
-              <p className="text-xs text-slate-500 mt-2">
-                Share this link to invite other partners. You'll earn override commissions on their referrals.
+              <p className="text-2xl font-bold text-white mt-2">
+                {network.length}
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                {activeShops.length} active, {pendingShops.length} pending
               </p>
             </CardContent>
           </Card>
-        )}
 
-        {/* Partners List */}
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-zinc-400">Network MRR</p>
+                <TrendingUp className="h-4 w-4 text-emerald-500" />
+              </div>
+              <p className="text-2xl font-bold text-emerald-400 mt-2">
+                ${totalMRR.toFixed(0)}
+                <span className="text-sm text-zinc-500">/mo</span>
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">
+                Total subscriptions value
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <p className="text-sm text-zinc-400">Your Monthly Cut</p>
+                <DollarSign className="h-4 w-4 text-amber-500" />
+              </div>
+              <p className="text-2xl font-bold text-amber-400 mt-2">
+                ${(totalMRR * 0.2).toFixed(0)}
+                <span className="text-sm text-zinc-500">/mo</span>
+              </p>
+              <p className="text-xs text-zinc-500 mt-1">20% commission</p>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Network Members */}
         {isLoading ? (
-          <div className="flex items-center justify-center py-20">
-            <div className="w-8 h-8 border-2 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+          <div className="space-y-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="h-24 bg-zinc-800 rounded-xl animate-pulse" />
+            ))}
           </div>
-        ) : partners.length === 0 ? (
-          <Card className="bg-[#0D0D14] border-white/10">
-            <CardContent className="p-12 text-center">
-              <Users className="h-12 w-12 text-slate-600 mx-auto mb-4" />
-              <p className="text-slate-400 mb-2">No partners in your network yet</p>
-              <p className="text-sm text-slate-500">Share your recruitment link to grow your network and earn override commissions.</p>
+        ) : network.length === 0 ? (
+          <Card className="bg-zinc-900 border-zinc-800">
+            <CardContent className="p-8 text-center">
+              <Network className="h-12 w-12 text-zinc-700 mx-auto mb-3" />
+              <p className="text-zinc-400 text-lg">
+                Your network is empty
+              </p>
+              <p className="text-sm text-zinc-600 mt-1">
+                Share your referral link to start building your partner
+                network and earning commissions.
+              </p>
             </CardContent>
           </Card>
         ) : (
-          <Card className="bg-[#0D0D14] border-white/10">
-            <CardContent className="p-0">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/10">
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Partner</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Tier</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Their Referrals</th>
-                    <th className="text-left py-3 px-4 text-slate-400 font-medium">Your Override Earnings</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {partners.map((p) => (
-                    <tr key={p.id} className="border-b border-white/5 last:border-0">
-                      <td className="py-3 px-4 text-white">{p.name}</td>
-                      <td className="py-3 px-4">
-                        <Badge variant="outline" className="bg-amber-500/10 text-amber-400 border-amber-500/30 capitalize">
-                          {p.tier}
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4 text-slate-300">{p.referralCount}</td>
-                      <td className="py-3 px-4 text-amber-400">${p.overrideEarnings}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </CardContent>
-          </Card>
-        )}
+          <div className="space-y-3">
+            {network.map((member) => {
+              const statusInfo =
+                STATUS_ICONS[member.status as keyof typeof STATUS_ICONS] ||
+                STATUS_ICONS.pending;
+              const StatusIcon = statusInfo.icon;
+              const monthlyValue = parseFloat(
+                member.monthlyValue?.toString() || "0"
+              );
+              const commission = parseFloat(
+                member.commissionEarned?.toString() || "0"
+              );
 
-        {/* Commission Tiers Reference */}
-        <Card className="bg-[#0D0D14] border-white/10 mt-6">
-          <CardHeader>
-            <CardTitle className="text-lg text-white">Commission Tiers</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Tier</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Requirement</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Direct</th>
-                  <th className="text-left py-3 px-4 text-slate-400 font-medium">Override (L2)</th>
-                </tr>
-              </thead>
-              <tbody>
-                {COMMISSION_TIERS.map((t) => (
-                  <tr key={t.tier} className="border-b border-white/5 last:border-0">
-                    <td className="py-3 px-4 text-amber-400 font-semibold">{t.tier}</td>
-                    <td className="py-3 px-4 text-slate-300">{t.requirement}</td>
-                    <td className="py-3 px-4 text-emerald-400">{t.direct}</td>
-                    <td className="py-3 px-4 text-slate-300">{t.override}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </CardContent>
-        </Card>
+              return (
+                <Card
+                  key={member.referralId}
+                  className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors"
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-center gap-4">
+                      <div
+                        className={`h-12 w-12 rounded-xl flex items-center justify-center shrink-0 ${statusInfo.bg}`}
+                      >
+                        <StatusIcon
+                          className={`h-6 w-6 ${statusInfo.color}`}
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-white font-medium truncate">
+                            {member.referredName || "Unknown Shop"}
+                          </p>
+                          <Badge
+                            variant="outline"
+                            className={`text-xs capitalize ${
+                              member.status === "subscribed"
+                                ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30"
+                                : member.status === "churned"
+                                  ? "bg-red-500/20 text-red-400 border-red-500/30"
+                                  : "bg-zinc-700/50 text-zinc-400 border-zinc-600"
+                            }`}
+                          >
+                            {member.status?.replace("_", " ")}
+                          </Badge>
+                        </div>
+                        <p className="text-sm text-zinc-500 mt-0.5">
+                          {member.referredEmail || "No email"}
+                          {member.subscriptionTier && (
+                            <span className="ml-2 capitalize">
+                              | {member.subscriptionTier} plan
+                            </span>
+                          )}
+                        </p>
+                      </div>
+
+                      <div className="text-right shrink-0">
+                        {member.status === "subscribed" && monthlyValue > 0 ? (
+                          <>
+                            <p className="text-emerald-400 font-medium">
+                              ${(monthlyValue * 0.2).toFixed(0)}/mo
+                            </p>
+                            <p className="text-xs text-zinc-500">
+                              ${monthlyValue.toFixed(0)}/mo plan
+                            </p>
+                          </>
+                        ) : commission > 0 ? (
+                          <p className="text-zinc-400 font-medium">
+                            ${commission.toFixed(2)} earned
+                          </p>
+                        ) : (
+                          <p className="text-zinc-600 text-sm">-</p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
       </div>
     </PartnersPortalLayout>
   );
