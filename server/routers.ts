@@ -15,9 +15,9 @@ import { integrationRouter } from "./integrationRouter";
 
 /**
  * Baylio App Router
- * 
+ *
  * All tRPC procedures are organized by domain:
- * 
+ *
  * - system:        Health checks, system info (built-in)
  * - auth:          Login/logout, session management (built-in)
  * - shop:          Shop CRUD, agent config, subscription info

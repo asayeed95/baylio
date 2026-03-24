@@ -133,11 +133,10 @@ function PartnersLayoutContent({
   const isCollapsed = state === "collapsed";
   const [isResizing, setIsResizing] = useState(false);
   const sidebarRef = useRef<HTMLDivElement>(null);
-  const activeMenuItem = menuItems.find(
-    (item) =>
-      item.path === "/partners"
-        ? location === "/partners"
-        : location.startsWith(item.path)
+  const activeMenuItem = menuItems.find(item =>
+    item.path === "/partners"
+      ? location === "/partners"
+      : location.startsWith(item.path)
   );
   const isMobile = useIsMobile();
 
@@ -150,8 +149,7 @@ function PartnersLayoutContent({
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
       if (!isResizing) return;
-      const sidebarLeft =
-        sidebarRef.current?.getBoundingClientRect().left ?? 0;
+      const sidebarLeft = sidebarRef.current?.getBoundingClientRect().left ?? 0;
       const newWidth = e.clientX - sidebarLeft;
       if (newWidth >= MIN_WIDTH && newWidth <= MAX_WIDTH) {
         setSidebarWidth(newWidth);
@@ -208,7 +206,7 @@ function PartnersLayoutContent({
 
           <SidebarContent className="gap-0">
             <SidebarMenu className="px-2 py-1">
-              {menuItems.map((item) => {
+              {menuItems.map(item => {
                 const isActive =
                   item.path === "/partners"
                     ? location === "/partners"

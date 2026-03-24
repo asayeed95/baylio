@@ -35,14 +35,22 @@ export async function createAppointment(
     const integration = await db
       .select()
       .from(shopIntegrations)
-      .where(and(eq(shopIntegrations.shopId, shopId), eq(shopIntegrations.provider, "google_calendar")))
+      .where(
+        and(
+          eq(shopIntegrations.shopId, shopId),
+          eq(shopIntegrations.provider, "google_calendar")
+        )
+      )
       .limit(1);
 
-    const calendarId = (integration[0]?.settings as any)?.calendarId || "primary";
+    const calendarId =
+      (integration[0]?.settings as any)?.calendarId || "primary";
 
     const calendar = google.calendar({ version: "v3", auth });
     const startDate = new Date(params.dateTime);
-    const endDate = new Date(startDate.getTime() + (params.duration || 60) * 60 * 1000);
+    const endDate = new Date(
+      startDate.getTime() + (params.duration || 60) * 60 * 1000
+    );
 
     const event = await calendar.events.insert({
       calendarId,
@@ -55,7 +63,9 @@ export async function createAppointment(
           params.notes ? `Notes: ${params.notes}` : "",
           "",
           "Booked by Baylio AI Call Assistant",
-        ].filter(Boolean).join("\n"),
+        ]
+          .filter(Boolean)
+          .join("\n"),
         start: { dateTime: startDate.toISOString() },
         end: { dateTime: endDate.toISOString() },
       },

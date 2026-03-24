@@ -9,12 +9,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { trpc } from "@/lib/trpc";
-import {
-  Phone,
-  Clock,
-  DollarSign,
-  TrendingUp,
-} from "lucide-react";
+import { Phone, Clock, DollarSign, TrendingUp } from "lucide-react";
 import {
   LineChart,
   Line,
@@ -88,7 +83,9 @@ export default function CostAnalytics() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Cost Analytics</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Cost Analytics
+          </h1>
           <p className="text-muted-foreground mt-1">
             Platform costs, revenue, and margin for the current month.
           </p>
@@ -99,12 +96,17 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Calls This Month</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  Calls This Month
+                </p>
                 <Phone className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-mono font-medium mt-2">{summary.callCount}</p>
+              <p className="text-2xl font-mono font-medium mt-2">
+                {summary.callCount}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                <span className="font-mono">{summary.totalMinutes}</span> total minutes
+                <span className="font-mono">{summary.totalMinutes}</span> total
+                minutes
               </p>
             </CardContent>
           </Card>
@@ -112,14 +114,23 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Total Cost</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  Total Cost
+                </p>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-mono font-medium mt-2">
                 ${summary.totalCost.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Twilio: <span className="font-mono">${summary.twilioCost.toFixed(2)}</span> | ElevenLabs: <span className="font-mono">${summary.elevenLabsCost.toFixed(2)}</span>
+                Twilio:{" "}
+                <span className="font-mono">
+                  ${summary.twilioCost.toFixed(2)}
+                </span>{" "}
+                | ElevenLabs:{" "}
+                <span className="font-mono">
+                  ${summary.elevenLabsCost.toFixed(2)}
+                </span>
               </p>
             </CardContent>
           </Card>
@@ -127,7 +138,9 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Cost Per Call</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  Cost Per Call
+                </p>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </div>
               <p className="text-2xl font-mono font-medium mt-2">
@@ -142,14 +155,22 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Gross Margin</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  Gross Margin
+                </p>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className={`text-2xl font-mono font-medium mt-2 ${summary.grossMargin >= 50 ? "text-primary" : summary.grossMargin >= 20 ? "text-foreground" : "text-destructive"}`}>
+              <p
+                className={`text-2xl font-mono font-medium mt-2 ${summary.grossMargin >= 50 ? "text-primary" : summary.grossMargin >= 20 ? "text-foreground" : "text-destructive"}`}
+              >
                 {summary.grossMargin.toFixed(1)}%
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Revenue: <span className="font-mono">${summary.revenue.toLocaleString()}</span>/mo
+                Revenue:{" "}
+                <span className="font-mono">
+                  ${summary.revenue.toLocaleString()}
+                </span>
+                /mo
               </p>
             </CardContent>
           </Card>
@@ -158,7 +179,9 @@ export default function CostAnalytics() {
         {/* Daily Call Volume Chart */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Daily Call Volume (30 days)</CardTitle>
+            <CardTitle className="text-lg">
+              Daily Call Volume (30 days)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {dailyData.length === 0 ? (
@@ -168,18 +191,21 @@ export default function CostAnalytics() {
             ) : (
               <ResponsiveContainer width="100%" height={280}>
                 <LineChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+                  <CartesianGrid
+                    strokeDasharray="3 3"
+                    className="stroke-muted"
+                  />
                   <XAxis
                     dataKey="date"
                     tick={{ fontSize: 12 }}
-                    tickFormatter={(d) => {
+                    tickFormatter={d => {
                       const date = new Date(d + "T00:00:00");
                       return `${date.getMonth() + 1}/${date.getDate()}`;
                     }}
                   />
                   <YAxis tick={{ fontSize: 12 }} allowDecimals={false} />
                   <Tooltip
-                    labelFormatter={(d) => {
+                    labelFormatter={d => {
                       const date = new Date(d + "T00:00:00");
                       return date.toLocaleDateString("en-US", {
                         month: "short",
@@ -244,7 +270,9 @@ export default function CostAnalytics() {
                         <TableCell className="font-mono text-sm">
                           {maskPhone(call.callerPhone)}
                         </TableCell>
-                        <TableCell className="font-mono">{formatDuration(call.duration)}</TableCell>
+                        <TableCell className="font-mono">
+                          {formatDuration(call.duration)}
+                        </TableCell>
                         <TableCell>
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${

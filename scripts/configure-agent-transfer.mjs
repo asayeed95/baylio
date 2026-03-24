@@ -82,7 +82,9 @@ const payload = {
 
 console.log("Patching Alex with transfer_to_agent tool...");
 console.log(`  Target agent: Ranvir (${RANVIR_AGENT_ID})`);
-console.log(`  Prompt updated: ${needsUpdate ? "yes" : "no (already contains transfer instructions)"}`);
+console.log(
+  `  Prompt updated: ${needsUpdate ? "yes" : "no (already contains transfer instructions)"}`
+);
 
 const response = await fetch(
   `https://api.elevenlabs.io/v1/convai/agents/${ALEX_AGENT_ID}`,
@@ -111,15 +113,14 @@ const verify = await fetch(
   { headers: { "xi-api-key": API_KEY } }
 );
 const verified = await verify.json();
-const tools =
-  verified.conversation_config?.agent?.prompt?.built_in_tools || [];
-const hasTransfer = tools.some((t) => t.name === "transfer_to_agent");
+const tools = verified.conversation_config?.agent?.prompt?.built_in_tools || [];
+const hasTransfer = tools.some(t => t.name === "transfer_to_agent");
 
 console.log("\n=== VERIFICATION ===");
 console.log("Transfer tool enabled:", hasTransfer);
 console.log(
   "Transfer target:",
-  tools.find((t) => t.name === "transfer_to_agent")?.params?.agent_id || "N/A"
+  tools.find(t => t.name === "transfer_to_agent")?.params?.agent_id || "N/A"
 );
 console.log(
   "Prompt includes transfer instructions:",

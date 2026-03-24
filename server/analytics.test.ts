@@ -22,7 +22,15 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
 
   const createChain = (): any => {
     const chain: any = {};
-    const methods = ["select", "from", "where", "limit", "offset", "orderBy", "groupBy"];
+    const methods = [
+      "select",
+      "from",
+      "where",
+      "limit",
+      "offset",
+      "orderBy",
+      "groupBy",
+    ];
     for (const method of methods) {
       chain[method] = vi.fn().mockReturnValue(chain);
     }
@@ -48,8 +56,14 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
 
   return {
     mockGetDb,
-    resetDbMock: () => { responses = []; callIndex = 0; },
-    setDbResponses: (r: Array<unknown[]>) => { responses = r; callIndex = 0; },
+    resetDbMock: () => {
+      responses = [];
+      callIndex = 0;
+    },
+    setDbResponses: (r: Array<unknown[]>) => {
+      responses = r;
+      callIndex = 0;
+    },
   };
 });
 
@@ -127,7 +141,10 @@ describe("analytics", () => {
       [{ id: 1 }], // userShops
       [{ callCount: 10, totalSeconds: 3000 }], // callStats (50 min)
       [{ tier: "pro" }], // activeSubs
-      [{ date: "2026-03-22", count: 5 }, { date: "2026-03-23", count: 5 }], // dailyCalls
+      [
+        { date: "2026-03-22", count: 5 },
+        { date: "2026-03-23", count: 5 },
+      ], // dailyCalls
       [], // recentCalls
     ]);
 

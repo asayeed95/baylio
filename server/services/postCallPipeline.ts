@@ -1,20 +1,28 @@
 /**
  * Post-Call Async Pipeline (Layer 2)
- * 
+ *
  * Handles all post-call processing that must NOT block the live call:
  * - Transcription analysis (intent extraction, sentiment, QA flags)
  * - Call summary generation
  * - Usage metering
  * - Notification dispatch
  * - Missed call audit entry creation
- * 
+ *
  * Architecture: Uses setImmediate/setTimeout for async processing.
  * In production, this would be replaced with a proper job queue
  * (Bull, BullMQ, or n8n webhooks).
  */
 import { getDb } from "../db";
 import { eq, and, sql } from "drizzle-orm";
-import { callLogs, subscriptions, usageRecords, notifications, missedCallAudits, auditCallEntries, shops } from "../../drizzle/schema";
+import {
+  callLogs,
+  subscriptions,
+  usageRecords,
+  notifications,
+  missedCallAudits,
+  auditCallEntries,
+  shops,
+} from "../../drizzle/schema";
 import { invokeLLM } from "../_core/llm";
 import { createAppointment } from "./calendarService";
 import { syncCallToSheet } from "./sheetsService";
@@ -26,7 +34,7 @@ import { callerProfiles } from "../../drizzle/schema";
 /**
  * Analyze a call transcription using LLM.
  * Extracts: intent, service requested, sentiment, QA flags, summary.
- * 
+ *
  * Uses structured JSON output for reliable parsing.
  */
 export async function analyzeTranscription(
@@ -67,24 +75,29 @@ export async function analyzeTranscription(
             properties: {
               customerIntent: {
                 type: "string",
-                description: "Primary reason for the call (e.g., 'brake repair inquiry', 'oil change appointment', 'pricing question')",
+                description:
+                  "Primary reason for the call (e.g., 'brake repair inquiry', 'oil change appointment', 'pricing question')",
               },
               serviceRequested: {
                 type: "string",
-                description: "Specific service the customer is requesting, must match catalog if possible",
+                description:
+                  "Specific service the customer is requesting, must match catalog if possible",
               },
               sentimentScore: {
                 type: "number",
-                description: "Customer sentiment from 0.0 (very negative) to 1.0 (very positive)",
+                description:
+                  "Customer sentiment from 0.0 (very negative) to 1.0 (very positive)",
               },
               qualityScore: {
                 type: "number",
-                description: "Call handling quality from 0.0 (poor) to 1.0 (excellent)",
+                description:
+                  "Call handling quality from 0.0 (poor) to 1.0 (excellent)",
               },
               qaFlags: {
                 type: "array",
                 items: { type: "string" },
-                description: "Quality assurance flags (e.g., 'customer_escalation_needed', 'pricing_discussed', 'competitor_mentioned', 'safety_concern')",
+                description:
+                  "Quality assurance flags (e.g., 'customer_escalation_needed', 'pricing_discussed', 'competitor_mentioned', 'safety_concern')",
               },
               summary: {
                 type: "string",
@@ -104,7 +117,8 @@ export async function analyzeTranscription(
               },
               estimatedRevenue: {
                 type: "number",
-                description: "Estimated revenue from this call in dollars (0 if no service booked)",
+                description:
+                  "Estimated revenue from this call in dollars (0 if no service booked)",
               },
             },
             required: [
@@ -130,7 +144,8 @@ export async function analyzeTranscription(
       throw new Error("No content in LLM response");
     }
 
-    const content = typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
+    const content =
+      typeof rawContent === "string" ? rawContent : JSON.stringify(rawContent);
     return JSON.parse(content);
   } catch (error) {
     console.error("[POST-CALL] Error analyzing transcription:", error);
@@ -152,7 +167,7 @@ export async function analyzeTranscription(
 
 /**
  * Process a completed call through the full async pipeline.
- * 
+ *
  * Steps:
  * 1. Analyze transcription (if available)
  * 2. Update call log with analysis results
@@ -185,7 +200,9 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         .limit(1);
 
       const shop = shopResults[0];
-      const catalog = ((shop?.serviceCatalog as any) || []).map((s: any) => s.name);
+      const catalog = ((shop?.serviceCatalog as any) || []).map(
+        (s: any) => s.name
+      );
 
       const analysis = await analyzeTranscription(
         call.transcription,
@@ -214,7 +231,10 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
       try {
         await runPostCallIntegrations(call.shopId, call, analysis);
       } catch (err) {
-        console.error("[POST-CALL] Integration pipeline error (non-fatal):", err);
+        console.error(
+          "[POST-CALL] Integration pipeline error (non-fatal):",
+          err
+        );
       }
     }
 
@@ -241,7 +261,8 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         const overageMinutes = isOverage
           ? sub.usedMinutes + minutesUsed - sub.includedMinutes
           : 0;
-        const overageCharge = overageMinutes * parseFloat(sub.overageRate?.toString() || "0.15");
+        const overageCharge =
+          overageMinutes * parseFloat(sub.overageRate?.toString() || "0.15");
 
         await db.insert(usageRecords).values({
           subscriptionId: sub.id,
@@ -256,13 +277,18 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
         // Update subscription used minutes
         await db
           .update(subscriptions)
-          .set({ usedMinutes: sql`${subscriptions.usedMinutes} + ${minutesUsed}` })
+          .set({
+            usedMinutes: sql`${subscriptions.usedMinutes} + ${minutesUsed}`,
+          })
           .where(eq(subscriptions.id, sub.id));
       }
     }
 
     // Step 4: Send notification for high-value leads
-    if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
+    if (
+      call.estimatedRevenue &&
+      parseFloat(call.estimatedRevenue.toString()) > 200
+    ) {
       await db.insert(notifications).values({
         userId: call.ownerId,
         shopId: call.shopId,
@@ -286,7 +312,14 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
 async function runPostCallIntegrations(
   shopId: number,
   callLog: any,
-  analysis: { appointmentBooked: boolean; serviceRequested: string; summary: string; upsellAttempted: boolean; upsellAccepted: boolean; estimatedRevenue: number }
+  analysis: {
+    appointmentBooked: boolean;
+    serviceRequested: string;
+    summary: string;
+    upsellAttempted: boolean;
+    upsellAccepted: boolean;
+    estimatedRevenue: number;
+  }
 ): Promise<void> {
   // Google Calendar: create appointment if booked
   if (analysis.appointmentBooked) {
@@ -344,7 +377,10 @@ async function runPostCallIntegrations(
     if (db && callLog.callerPhone) {
       // Check opt-out
       const profile = await db
-        .select({ smsOptOut: callerProfiles.smsOptOut, doNotSell: callerProfiles.doNotSell })
+        .select({
+          smsOptOut: callerProfiles.smsOptOut,
+          doNotSell: callerProfiles.doNotSell,
+        })
         .from(callerProfiles)
         .where(eq(callerProfiles.phone, callLog.callerPhone))
         .limit(1);
@@ -353,7 +389,11 @@ async function runPostCallIntegrations(
 
       // Check shop SMS setting
       const shopResult = await db
-        .select({ smsFollowUpEnabled: shops.smsFollowUpEnabled, name: shops.name, phone: shops.phone })
+        .select({
+          smsFollowUpEnabled: shops.smsFollowUpEnabled,
+          name: shops.name,
+          phone: shops.phone,
+        })
         .from(shops)
         .where(eq(shops.id, shopId))
         .limit(1);

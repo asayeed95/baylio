@@ -1,6 +1,6 @@
 /**
  * SMS Service
- * 
+ *
  * Sends SMS notifications to shop owners via Twilio.
  * Used for:
  * 1. Post-call recaps — After each AI-handled call, send a brief
@@ -10,7 +10,7 @@
  * 3. Weekly performance summaries — Digest of the week's call metrics
  * 4. Missed call audit alerts — During the 7-day audit, notify when
  *    calls are being missed
- * 
+ *
  * All SMS are sent from the shop's Twilio number (or a shared Baylio
  * number if the shop doesn't have one provisioned yet).
  */
@@ -38,11 +38,13 @@ interface PostCallRecap {
 
 /**
  * Send an SMS via Twilio REST API.
- * 
+ *
  * Requires TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, and TWILIO_PHONE_NUMBER
  * environment variables to be set.
  */
-export async function sendSMS(payload: SMSPayload): Promise<{ success: boolean; sid?: string; error?: string }> {
+export async function sendSMS(
+  payload: SMSPayload
+): Promise<{ success: boolean; sid?: string; error?: string }> {
   const accountSid = process.env.TWILIO_ACCOUNT_SID;
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   const defaultFrom = process.env.TWILIO_PHONE_NUMBER;
@@ -64,7 +66,7 @@ export async function sendSMS(payload: SMSPayload): Promise<{ success: boolean; 
     const response = await fetch(url, {
       method: "POST",
       headers: {
-        "Authorization": `Basic ${auth}`,
+        Authorization: `Basic ${auth}`,
         "Content-Type": "application/x-www-form-urlencoded",
       },
       body: new URLSearchParams({
@@ -80,7 +82,7 @@ export async function sendSMS(payload: SMSPayload): Promise<{ success: boolean; 
       return { success: false, error: `Twilio API error: ${response.status}` };
     }
 
-    const data = await response.json() as { sid: string };
+    const data = (await response.json()) as { sid: string };
     return { success: true, sid: data.sid };
   } catch (error) {
     console.error("[SMS] Failed to send:", error);
@@ -90,7 +92,7 @@ export async function sendSMS(payload: SMSPayload): Promise<{ success: boolean; 
 
 /**
  * Format and send a post-call recap SMS to the shop owner.
- * 
+ *
  * Example output:
  * "📞 New Call | Baylio
  * Caller: (555) 123-4567 - John
@@ -100,9 +102,11 @@ export async function sendSMS(payload: SMSPayload): Promise<{ success: boolean; 
  * Est. value: $485
  * Duration: 3m 42s"
  */
-export async function sendPostCallRecap(recap: PostCallRecap): Promise<{ success: boolean }> {
+export async function sendPostCallRecap(
+  recap: PostCallRecap
+): Promise<{ success: boolean }> {
   const duration = `${Math.floor(recap.callDuration / 60)}m ${recap.callDuration % 60}s`;
-  
+
   let body = `New Call | Baylio\n`;
   body += `Caller: ${recap.callerPhone}`;
   if (recap.callerName) body += ` - ${recap.callerName}`;
@@ -143,7 +147,7 @@ export async function sendHighValueAlert(
   shopOwnerPhone: string,
   callerPhone: string,
   reason: string,
-  estimatedValue: number,
+  estimatedValue: number
 ): Promise<{ success: boolean }> {
   const body = [
     `HIGH VALUE LEAD | Baylio`,
@@ -168,11 +172,12 @@ export async function sendWeeklySummary(
     appointmentsBooked: number;
     estimatedRevenue: number;
     missedCalls: number;
-  },
+  }
 ): Promise<{ success: boolean }> {
-  const answerRate = metrics.totalCalls > 0
-    ? Math.round((metrics.answeredByAI / metrics.totalCalls) * 100)
-    : 0;
+  const answerRate =
+    metrics.totalCalls > 0
+      ? Math.round((metrics.answeredByAI / metrics.totalCalls) * 100)
+      : 0;
 
   const body = [
     `Weekly Report | ${shopName}`,

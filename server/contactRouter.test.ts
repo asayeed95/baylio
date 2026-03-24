@@ -114,7 +114,7 @@ describe("contactRouter", () => {
     });
 
     // Give the fire-and-forget promise time to settle
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise(r => setTimeout(r, 10));
 
     expect(sendContactNotification).toHaveBeenCalledWith({
       name: "Jane Smith",
@@ -135,7 +135,7 @@ describe("contactRouter", () => {
       message: "Interested in the Pro plan.",
     });
 
-    await new Promise((r) => setTimeout(r, 10));
+    await new Promise(r => setTimeout(r, 10));
 
     expect(notifyOwner).toHaveBeenCalledWith(
       expect.objectContaining({

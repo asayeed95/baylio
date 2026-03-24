@@ -1,4 +1,5 @@
 import { useState, useMemo } from "react";
+import { usePostHog } from "@posthog/react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -78,32 +79,38 @@ const FEATURES = [
   {
     icon: Phone,
     title: "24/7 AI Receptionist",
-    description: "Answers every call with a natural voice. After hours, weekends, holidays — covered.",
+    description:
+      "Answers every call with a natural voice. After hours, weekends, holidays — covered.",
   },
   {
     icon: Calendar,
     title: "Automatic Appointment Booking",
-    description: "Captures vehicle info, understands the problem, books the appointment. No human needed.",
+    description:
+      "Captures vehicle info, understands the problem, books the appointment. No human needed.",
   },
   {
     icon: TrendingUp,
     title: "Intelligent Upselling",
-    description: "Brakes? Suggest a fluid flush. Oil change? Mention the tire rotation. Subtle and effective.",
+    description:
+      "Brakes? Suggest a fluid flush. Oil change? Mention the tire rotation. Subtle and effective.",
   },
   {
     icon: BarChart3,
     title: "Call Analytics Dashboard",
-    description: "Every call, every outcome, every dollar. Real-time visibility into phone performance.",
+    description:
+      "Every call, every outcome, every dollar. Real-time visibility into phone performance.",
   },
   {
     icon: Bot,
     title: "Custom AI Persona",
-    description: "Your AI sounds like your best employee. Configure voice, name, greeting, and personality.",
+    description:
+      "Your AI sounds like your best employee. Configure voice, name, greeting, and personality.",
   },
   {
     icon: Building2,
     title: "Multi-Location Support",
-    description: "One dashboard, multiple shops. Each location gets its own AI agent and analytics.",
+    description:
+      "One dashboard, multiple shops. Each location gets its own AI agent and analytics.",
   },
 ];
 
@@ -180,34 +187,67 @@ const SAMPLE_CALLS = [
   {
     icon: Wrench,
     title: "Brake Service Inquiry",
-    description: "Customer calls about squeaking brakes. Baylio identifies the issue, checks availability, and books a brake inspection.",
+    description:
+      "Customer calls about squeaking brakes. Baylio identifies the issue, checks availability, and books a brake inspection.",
     transcript: [
-      { role: "AI", text: "Thanks for calling Precision Auto! This is Alex, how can I help?" },
-      { role: "Caller", text: "Yeah, my brakes have been squeaking pretty bad." },
-      { role: "AI", text: "I can get you in for a brake inspection. What kind of car are you driving?" },
+      {
+        role: "AI",
+        text: "Thanks for calling Precision Auto! This is Alex, how can I help?",
+      },
+      {
+        role: "Caller",
+        text: "Yeah, my brakes have been squeaking pretty bad.",
+      },
+      {
+        role: "AI",
+        text: "I can get you in for a brake inspection. What kind of car are you driving?",
+      },
       { role: "Caller", text: "2019 Honda Civic, about 65,000 miles." },
     ],
   },
   {
     icon: Clock,
     title: "After-Hours Call",
-    description: "9:47 PM on a Tuesday. Instead of voicemail, Baylio answers, captures the problem, and schedules a morning callback.",
+    description:
+      "9:47 PM on a Tuesday. Instead of voicemail, Baylio answers, captures the problem, and schedules a morning callback.",
     transcript: [
-      { role: "AI", text: "Thanks for calling! We're closed for the evening, but I can help." },
-      { role: "Caller", text: "My check engine light just came on. Should I be worried?" },
-      { role: "AI", text: "I'll make a note and have our team call you first thing tomorrow morning. Can I get your name?" },
-      { role: "Caller", text: "Sure, it's Maria. My number is the one I'm calling from." },
+      {
+        role: "AI",
+        text: "Thanks for calling! We're closed for the evening, but I can help.",
+      },
+      {
+        role: "Caller",
+        text: "My check engine light just came on. Should I be worried?",
+      },
+      {
+        role: "AI",
+        text: "I'll make a note and have our team call you first thing tomorrow morning. Can I get your name?",
+      },
+      {
+        role: "Caller",
+        text: "Sure, it's Maria. My number is the one I'm calling from.",
+      },
     ],
   },
   {
     icon: Calendar,
     title: "Oil Change Booking",
-    description: "Quick and efficient. Baylio confirms the vehicle, finds an open slot, and books the appointment in under 90 seconds.",
+    description:
+      "Quick and efficient. Baylio confirms the vehicle, finds an open slot, and books the appointment in under 90 seconds.",
     transcript: [
-      { role: "AI", text: "Hi, this is Alex at Downtown Auto. How can I help you today?" },
-      { role: "Caller", text: "I need to schedule an oil change for my truck." },
+      {
+        role: "AI",
+        text: "Hi, this is Alex at Downtown Auto. How can I help you today?",
+      },
+      {
+        role: "Caller",
+        text: "I need to schedule an oil change for my truck.",
+      },
       { role: "AI", text: "Absolutely. What year and model is it?" },
-      { role: "Caller", text: "2021 Ford F-150. Can you do Thursday afternoon?" },
+      {
+        role: "Caller",
+        text: "2021 Ford F-150. Can you do Thursday afternoon?",
+      },
     ],
   },
 ];
@@ -217,19 +257,22 @@ const BLOG_POSTS = [
     slug: "missed-call-revenue-loss",
     title: "How Much Revenue Auto Repair Shops Lose From Missed Calls",
     category: "Revenue Recovery",
-    excerpt: "The average shop misses 62% of incoming calls. Here's what that costs you annually and how to fix it.",
+    excerpt:
+      "The average shop misses 62% of incoming calls. Here's what that costs you annually and how to fix it.",
   },
   {
     slug: "after-hours-calls",
     title: "After-Hours Calls: What Shop Owners Are Missing",
     category: "Operations",
-    excerpt: "35% of customer calls come outside business hours. Most go to voicemail. Most never call back.",
+    excerpt:
+      "35% of customer calls come outside business hours. Most go to voicemail. Most never call back.",
   },
   {
     slug: "ai-receptionist-for-shops",
     title: "How AI Receptionists Help Front Desks Book More Jobs",
     category: "Technology",
-    excerpt: "AI phone answering isn't science fiction. Here's how modern shops are using it to grow revenue.",
+    excerpt:
+      "AI phone answering isn't science fiction. Here's how modern shops are using it to grow revenue.",
   },
 ];
 
@@ -243,6 +286,7 @@ const BLOG_POSTS = [
  * - 85% of callers won't call back
  */
 function ROICalculator() {
+  const posthog = usePostHog();
   const [callsPerDay, setCallsPerDay] = useState([15]);
   const [missedPercent, setMissedPercent] = useState([40]);
   const [avgRepairOrder, setAvgRepairOrder] = useState([466]);
@@ -259,14 +303,15 @@ function ROICalculator() {
     const monthlyRevenueLost = potentialBookings * aro;
     const annualRevenueLost = monthlyRevenueLost * 12;
 
-    const capturedCalls = Math.round(monthlyMissed * 0.90);
+    const capturedCalls = Math.round(monthlyMissed * 0.9);
     const newBookings = Math.round(capturedCalls * conversionRate);
     const monthlyRecovered = newBookings * aro;
     const annualRecovered = monthlyRecovered * 12;
 
     const baylioCost = 349;
     const monthlyROI = monthlyRecovered - baylioCost;
-    const roiMultiple = monthlyRecovered > 0 ? Math.round(monthlyRecovered / baylioCost) : 0;
+    const roiMultiple =
+      monthlyRecovered > 0 ? Math.round(monthlyRecovered / baylioCost) : 0;
 
     return {
       dailyMissed,
@@ -283,7 +328,11 @@ function ROICalculator() {
   }, [callsPerDay, missedPercent, avgRepairOrder]);
 
   const formatCurrency = (n: number) =>
-    new Intl.NumberFormat("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 }).format(n);
+    new Intl.NumberFormat("en-US", {
+      style: "currency",
+      currency: "USD",
+      maximumFractionDigits: 0,
+    }).format(n);
 
   return (
     <section id="roi-calculator" className="container py-20">
@@ -304,26 +353,62 @@ function ROICalculator() {
             <div>
               <div className="flex justify-between mb-3">
                 <label className="text-sm font-medium">Calls per day</label>
-                <span className="text-sm font-bold text-primary">{callsPerDay[0]}</span>
+                <span className="text-sm font-bold text-primary">
+                  {callsPerDay[0]}
+                </span>
               </div>
-              <Slider value={callsPerDay} onValueChange={setCallsPerDay} min={5} max={60} step={1} />
+              <Slider
+                value={callsPerDay}
+                onValueChange={v => {
+                  setCallsPerDay(v);
+                  posthog?.capture("roi_calculator_used", { field: "calls_per_day", value: v[0] });
+                }}
+                min={5}
+                max={60}
+                step={1}
+              />
             </div>
             <div>
               <div className="flex justify-between mb-3">
                 <label className="text-sm font-medium">Missed call rate</label>
-                <span className="text-sm font-bold text-primary">{missedPercent[0]}%</span>
+                <span className="text-sm font-bold text-primary">
+                  {missedPercent[0]}%
+                </span>
               </div>
-              <Slider value={missedPercent} onValueChange={setMissedPercent} min={10} max={80} step={5} />
+              <Slider
+                value={missedPercent}
+                onValueChange={v => {
+                  setMissedPercent(v);
+                  posthog?.capture("roi_calculator_used", { field: "missed_percent", value: v[0] });
+                }}
+                min={10}
+                max={80}
+                step={5}
+              />
             </div>
             <div>
               <div className="flex justify-between mb-3">
-                <label className="text-sm font-medium">Average repair order</label>
-                <span className="text-sm font-bold text-primary">{formatCurrency(avgRepairOrder[0])}</span>
+                <label className="text-sm font-medium">
+                  Average repair order
+                </label>
+                <span className="text-sm font-bold text-primary">
+                  {formatCurrency(avgRepairOrder[0])}
+                </span>
               </div>
-              <Slider value={avgRepairOrder} onValueChange={setAvgRepairOrder} min={100} max={1200} step={25} />
+              <Slider
+                value={avgRepairOrder}
+                onValueChange={v => {
+                  setAvgRepairOrder(v);
+                  posthog?.capture("roi_calculator_used", { field: "avg_repair_order", value: v[0] });
+                }}
+                min={100}
+                max={1200}
+                step={25}
+              />
             </div>
             <p className="text-xs text-muted-foreground">
-              Industry average: $466 per repair order (AAA/IBISWorld). 35% call-to-appointment conversion rate.
+              Industry average: $466 per repair order (AAA/IBISWorld). 35%
+              call-to-appointment conversion rate.
             </p>
           </CardContent>
         </Card>
@@ -331,20 +416,30 @@ function ROICalculator() {
         <div className="space-y-4">
           <Card className="border border-destructive/30 bg-destructive/5">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground mb-1">Revenue you're losing monthly</p>
-              <p className="text-3xl font-mono font-bold text-destructive">{formatCurrency(calculations.monthlyRevenueLost)}</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                Revenue you're losing monthly
+              </p>
+              <p className="text-3xl font-mono font-bold text-destructive">
+                {formatCurrency(calculations.monthlyRevenueLost)}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {calculations.monthlyMissed} missed calls/mo &times; 35% conversion &times; {formatCurrency(avgRepairOrder[0])} avg order
+                {calculations.monthlyMissed} missed calls/mo &times; 35%
+                conversion &times; {formatCurrency(avgRepairOrder[0])} avg order
               </p>
             </CardContent>
           </Card>
 
           <Card className="border border-primary/30 bg-primary/5">
             <CardContent className="pt-6">
-              <p className="text-sm text-muted-foreground mb-1">Revenue Baylio recovers monthly</p>
-              <p className="text-3xl font-mono font-bold text-primary">{formatCurrency(calculations.monthlyRecovered)}</p>
+              <p className="text-sm text-muted-foreground mb-1">
+                Revenue Baylio recovers monthly
+              </p>
+              <p className="text-3xl font-mono font-bold text-primary">
+                {formatCurrency(calculations.monthlyRecovered)}
+              </p>
               <p className="text-xs text-muted-foreground mt-1">
-                {calculations.capturedCalls} calls captured &rarr; {calculations.newBookings} new bookings
+                {calculations.capturedCalls} calls captured &rarr;{" "}
+                {calculations.newBookings} new bookings
               </p>
             </CardContent>
           </Card>
@@ -353,18 +448,31 @@ function ROICalculator() {
             <CardContent className="pt-6">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Annual recovery</p>
-                  <p className="text-xl font-mono font-bold">{formatCurrency(calculations.annualRecovered)}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Annual recovery
+                  </p>
+                  <p className="text-xl font-mono font-bold">
+                    {formatCurrency(calculations.annualRecovered)}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">ROI multiple</p>
-                  <p className="text-xl font-mono font-bold text-primary">{calculations.roiMultiple}x return</p>
+                  <p className="text-xl font-mono font-bold text-primary">
+                    {calculations.roiMultiple}x return
+                  </p>
                 </div>
               </div>
             </CardContent>
           </Card>
 
-          <Button className="w-full" size="lg" onClick={() => { window.location.href = getLoginUrl(); }}>
+          <Button
+            className="w-full"
+            size="lg"
+            onClick={() => {
+              posthog?.capture("cta_clicked", { label: "Start Recovering Revenue", location: "roi_calculator" });
+              window.location.href = getLoginUrl();
+            }}
+          >
             Start Recovering Revenue
             <ArrowRight className="ml-2 h-4 w-4" />
           </Button>
@@ -377,22 +485,55 @@ function ROICalculator() {
 // ─── Page ────────────────────────────────────────────────────────────
 
 export default function Landing() {
+  const posthog = usePostHog();
   return (
-    <div className="min-h-screen bg-background">
+    <div className="dark min-h-screen bg-background text-foreground">
       {/* ─── 1. Navbar ─── */}
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary" />
-            <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+            <span className="font-semibold tracking-wider uppercase text-sm">
+              Baylio
+            </span>
           </div>
           <div className="hidden md:flex items-center gap-8">
-            <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
-            <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
-            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
-            <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
-            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
+            <a
+              href="#features"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Features
+            </a>
+            <a
+              href="#pricing"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Pricing
+            </a>
+            <a
+              href="#how-it-works"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              How It Works
+            </a>
+            <Link
+              href="/faq"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
+              href="/blog"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Blog
+            </Link>
+            <Link
+              href="/contact"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact
+            </Link>
             <a
               href={getPartnersUrl()}
               className="text-sm font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
@@ -411,12 +552,42 @@ export default function Landing() {
               </SheetTrigger>
               <SheetContent side="right" className="w-72 pt-10">
                 <nav className="flex flex-col gap-4">
-                  <a href="#features" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Features</a>
-                  <a href="#pricing" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Pricing</a>
-                  <a href="#how-it-works" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">How It Works</a>
-                  <Link href="/faq" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">FAQ</Link>
-                  <Link href="/blog" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Blog</Link>
-                  <Link href="/contact" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Contact</Link>
+                  <a
+                    href="#features"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Features
+                  </a>
+                  <a
+                    href="#pricing"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Pricing
+                  </a>
+                  <a
+                    href="#how-it-works"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    How It Works
+                  </a>
+                  <Link
+                    href="/faq"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    FAQ
+                  </Link>
+                  <Link
+                    href="/blog"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Blog
+                  </Link>
+                  <Link
+                    href="/contact"
+                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Contact
+                  </Link>
                   <a
                     href={getPartnersUrl()}
                     className="text-base font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-2 py-2"
@@ -425,19 +596,43 @@ export default function Landing() {
                     Become a Partner
                   </a>
                   <hr className="my-2" />
-                  <Button variant="outline" className="w-full" onClick={() => { window.location.href = getLoginUrl(); }}>
+                  <Button
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      window.location.href = getLoginUrl();
+                    }}
+                  >
                     Sign In
                   </Button>
-                  <Button className="w-full" onClick={() => { window.location.href = getLoginUrl(); }}>
+                  <Button
+                    className="w-full"
+                    onClick={() => {
+                      window.location.href = getLoginUrl();
+                    }}
+                  >
                     Book a Demo
                   </Button>
                 </nav>
               </SheetContent>
             </Sheet>
-            <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              className="hidden md:inline-flex"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Sign In
             </Button>
-            <Button size="sm" className="hidden md:inline-flex" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="sm"
+              className="hidden md:inline-flex"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Book a Demo
             </Button>
           </div>
@@ -454,19 +649,33 @@ export default function Landing() {
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
             Answer Every Call.
             <br />
-            <span className="text-primary">Book More Jobs. Recover Lost Revenue.</span>
+            <span className="text-primary">
+              Book More Jobs. Recover Lost Revenue.
+            </span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Baylio answers your shop's phone 24/7 with a human-sounding AI voice. It captures
-            caller details, books appointments, and makes sure you never lose a customer to a
-            missed call again.
+            Baylio answers your shop's phone 24/7 with a human-sounding AI
+            voice. It captures caller details, books appointments, and makes
+            sure you never lose a customer to a missed call again.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="lg"
+              className="text-base px-8"
+              onClick={() => {
+                posthog?.capture("cta_clicked", { label: "Book a Demo", location: "hero" });
+                window.location.href = getLoginUrl();
+              }}
+            >
               Book a Demo
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" className="text-base px-8" asChild>
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-base px-8"
+              asChild
+            >
               <a href="#how-it-works">See How It Works</a>
             </Button>
           </div>
@@ -479,9 +688,12 @@ export default function Landing() {
       {/* ─── 3. What Happens When a Customer Calls ─── */}
       <section id="how-it-works" className="border-y bg-muted/30">
         <div className="container py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">What Happens When a Customer Calls</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">
+            What Happens When a Customer Calls
+          </h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            From ring to resolution in seconds. No training. No staffing. No missed opportunities.
+            From ring to resolution in seconds. No training. No staffing. No
+            missed opportunities.
           </p>
           <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
@@ -509,7 +721,7 @@ export default function Landing() {
                 title: "You get the result",
                 desc: "Appointment booked, lead logged, or owner notified. Nothing falls through the cracks.",
               },
-            ].map((item) => (
+            ].map(item => (
               <Card key={item.step} className="border bg-card text-center">
                 <CardContent className="pt-6">
                   <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold mx-auto mb-3">
@@ -529,9 +741,12 @@ export default function Landing() {
 
       {/* ─── 4. Outcomes / Business Results ─── */}
       <section className="container py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">What Baylio Does for Your Bottom Line</h2>
+        <h2 className="text-3xl font-bold text-center mb-4">
+          What Baylio Does for Your Bottom Line
+        </h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          This isn't about software features. It's about the business results shop owners see.
+          This isn't about software features. It's about the business results
+          shop owners see.
         </p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {[
@@ -580,7 +795,9 @@ export default function Landing() {
       {/* ─── 6. Hear Baylio in Action ─── */}
       <section className="border-y bg-muted/30">
         <div className="container py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">Hear What Your Customers Will Experience</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Hear What Your Customers Will Experience
+          </h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
             Real scenarios. Real conversations. Real results.
           </p>
@@ -592,16 +809,22 @@ export default function Landing() {
                     <call.icon className="h-5 w-5 text-primary" />
                   </div>
                   <CardTitle className="text-base">{call.title}</CardTitle>
-                  <p className="text-xs text-muted-foreground">{call.description}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {call.description}
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <div className="space-y-2 bg-muted/50 rounded-lg p-3">
                     {call.transcript.map((line, j) => (
                       <div key={j} className="text-xs">
-                        <span className={`font-semibold ${line.role === "AI" ? "text-primary" : "text-foreground"}`}>
+                        <span
+                          className={`font-semibold ${line.role === "AI" ? "text-primary" : "text-foreground"}`}
+                        >
                           {line.role === "AI" ? "Baylio:" : "Caller:"}
                         </span>{" "}
-                        <span className="text-muted-foreground">{line.text}</span>
+                        <span className="text-muted-foreground">
+                          {line.text}
+                        </span>
                       </div>
                     ))}
                   </div>
@@ -610,7 +833,13 @@ export default function Landing() {
             ))}
           </div>
           <div className="text-center mt-10">
-            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="lg"
+              className="text-base px-8"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Book a Live Demo
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
@@ -620,9 +849,12 @@ export default function Landing() {
 
       {/* ─── 7. Features ─── */}
       <section id="features" className="container py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">Everything Your Shop Needs to Never Miss a Call</h2>
+        <h2 className="text-3xl font-bold text-center mb-4">
+          Everything Your Shop Needs to Never Miss a Call
+        </h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Built specifically for auto repair shops. Every feature earns its place.
+          Built specifically for auto repair shops. Every feature earns its
+          place.
         </p>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {FEATURES.map((feature, i) => (
@@ -634,7 +866,9 @@ export default function Landing() {
                 <CardTitle className="text-lg">{feature.title}</CardTitle>
               </CardHeader>
               <CardContent>
-                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">
+                  {feature.description}
+                </p>
               </CardContent>
             </Card>
           ))}
@@ -644,31 +878,51 @@ export default function Landing() {
       {/* ─── 8. Who Baylio Is For ─── */}
       <section className="border-y bg-muted/30">
         <div className="container py-16">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">Built for Shops That Can't Afford to Miss the Phone</h2>
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
+            Built for Shops That Can't Afford to Miss the Phone
+          </h2>
           <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-4">
             {[
               { icon: Wrench, text: "Independent auto repair shops" },
               { icon: Phone, text: "Busy front desks drowning in phone calls" },
-              { icon: Building2, text: "Multi-location operators who need consistency" },
-              { icon: Clock, text: "Shops losing revenue to after-hours calls" },
-              { icon: BarChart3, text: "Owners who want visibility into phone performance" },
-              { icon: Target, text: "Shops ready to grow without adding headcount" },
+              {
+                icon: Building2,
+                text: "Multi-location operators who need consistency",
+              },
+              {
+                icon: Clock,
+                text: "Shops losing revenue to after-hours calls",
+              },
+              {
+                icon: BarChart3,
+                text: "Owners who want visibility into phone performance",
+              },
+              {
+                icon: Target,
+                text: "Shops ready to grow without adding headcount",
+              },
             ].map((item, i) => (
-              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+              <div
+                key={i}
+                className="flex items-center gap-3 p-3 rounded-lg bg-card border"
+              >
                 <item.icon className="h-5 w-5 text-primary shrink-0" />
                 <span className="text-sm font-medium">{item.text}</span>
               </div>
             ))}
           </div>
           <p className="text-center text-xs text-muted-foreground mt-8 max-w-xl mx-auto">
-            Not built for generic call centers or retail. Baylio is purpose-built for automotive service businesses.
+            Not built for generic call centers or retail. Baylio is
+            purpose-built for automotive service businesses.
           </p>
         </div>
       </section>
 
       {/* ─── 9. Trust / Credibility ─── */}
       <section className="container py-20">
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">Why Shop Owners Trust Baylio</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
+          Why Shop Owners Trust Baylio
+        </h2>
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
           {[
             {
@@ -702,7 +956,10 @@ export default function Landing() {
               desc: "Same telephony platform used by major contact centers. 99.9% uptime SLA.",
             },
           ].map((item, i) => (
-            <div key={i} className="flex gap-4 p-4 rounded-lg bg-muted/30 border">
+            <div
+              key={i}
+              className="flex gap-4 p-4 rounded-lg bg-muted/30 border"
+            >
               <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                 <item.icon className="h-5 w-5 text-primary" />
               </div>
@@ -718,31 +975,47 @@ export default function Landing() {
       {/* ─── 10. Pricing ─── */}
       <section id="pricing" className="border-y bg-muted/30">
         <div className="container py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">
+            Simple, Transparent Pricing
+          </h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Choose the plan that fits your shop. All plans include a 14-day free trial. No contracts.
+            Choose the plan that fits your shop. All plans include a 14-day free
+            trial. No contracts.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
             {PRICING_TIERS.map((tier: any) => (
-              <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary" : ""}`}>
+              <Card
+                key={tier.name}
+                className={`relative border ${tier.popular ? "border-primary" : ""}`}
+              >
                 {tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground font-mono text-xs">MOST POPULAR</Badge>
+                    <Badge className="bg-primary text-primary-foreground font-mono text-xs">
+                      MOST POPULAR
+                    </Badge>
                   </div>
                 )}
                 {tier.badge && !tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge variant="secondary" className="font-mono text-xs">{tier.badge}</Badge>
+                    <Badge variant="secondary" className="font-mono text-xs">
+                      {tier.badge}
+                    </Badge>
                   </div>
                 )}
                 <CardHeader className="text-center pb-4">
                   <CardTitle className="text-xl">{tier.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {tier.description}
+                  </p>
                   <div className="mt-4">
-                    <span className="text-4xl font-mono font-bold">${tier.price}</span>
+                    <span className="text-4xl font-mono font-bold">
+                      ${tier.price}
+                    </span>
                     <span className="text-muted-foreground">/month</span>
                   </div>
-                  <p className="text-xs text-muted-foreground mt-1">{tier.minutes} minutes included</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    {tier.minutes} minutes included
+                  </p>
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3 mb-6">
@@ -756,7 +1029,11 @@ export default function Landing() {
                   <Button
                     className="w-full"
                     variant={tier.popular ? "default" : "outline"}
-                    onClick={() => { window.location.href = getLoginUrl(); }}
+                    onClick={() => {
+                      posthog?.capture("pricing_tier_selected", { tier: tier.name, price: tier.price, cta: tier.cta });
+                      posthog?.capture("cta_clicked", { label: tier.cta, location: "pricing", tier: tier.name });
+                      window.location.href = getLoginUrl();
+                    }}
                   >
                     {tier.cta}
                   </Button>
@@ -772,18 +1049,33 @@ export default function Landing() {
 
       {/* ─── 11. Blog / Resources Preview ─── */}
       <section className="container py-20">
-        <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Resources for Shop Owners</h2>
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
+          Resources for Shop Owners
+        </h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Phone strategy, missed-call recovery, front-desk efficiency, and AI for repair shops.
+          Phone strategy, missed-call recovery, front-desk efficiency, and AI
+          for repair shops.
         </p>
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {BLOG_POSTS.map((post) => (
-            <Card key={post.slug} className="border bg-card hover:border-primary/30 transition-colors">
+          {BLOG_POSTS.map(post => (
+            <Card
+              key={post.slug}
+              className="border bg-card hover:border-primary/30 transition-colors"
+            >
               <CardContent className="pt-6">
-                <Badge variant="secondary" className="mb-3 text-xs">{post.category}</Badge>
-                <h3 className="text-base font-semibold mb-2 leading-snug">{post.title}</h3>
-                <p className="text-sm text-muted-foreground mb-4">{post.excerpt}</p>
-                <Link href={`/blog/${post.slug}`} className="text-sm text-primary font-medium hover:underline inline-flex items-center gap-1">
+                <Badge variant="secondary" className="mb-3 text-xs">
+                  {post.category}
+                </Badge>
+                <h3 className="text-base font-semibold mb-2 leading-snug">
+                  {post.title}
+                </h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {post.excerpt}
+                </p>
+                <Link
+                  href={`/blog/${post.slug}`}
+                  className="text-sm text-primary font-medium hover:underline inline-flex items-center gap-1"
+                >
                   Read More <ArrowRight className="h-3 w-3" />
                 </Link>
               </CardContent>
@@ -801,7 +1093,10 @@ export default function Landing() {
       </section>
 
       {/* ─── 12. Partner Program CTA ─── */}
-      <section id="partners" className="border-y bg-gradient-to-br from-primary/5 via-background to-primary/10">
+      <section
+        id="partners"
+        className="border-y bg-gradient-to-br from-primary/5 via-background to-primary/10"
+      >
         <div className="container py-20">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
@@ -812,11 +1107,14 @@ export default function Landing() {
               <h2 className="text-3xl md:text-4xl font-bold mb-4">
                 Earn Up to 30% Commission.
                 <br />
-                <span className="text-primary">Refer Shops. Get Paid Every Month.</span>
+                <span className="text-primary">
+                  Refer Shops. Get Paid Every Month.
+                </span>
               </h2>
               <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-                Know auto repair shop owners? Refer them to Baylio and earn recurring commissions
-                every month they stay subscribed — for as long as they're a customer.
+                Know auto repair shop owners? Refer them to Baylio and earn
+                recurring commissions every month they stay subscribed — for as
+                long as they're a customer.
               </p>
             </div>
 
@@ -846,25 +1144,53 @@ export default function Landing() {
                     <CardTitle className="text-base">{item.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
+                    <p className="text-sm text-muted-foreground leading-relaxed">
+                      {item.desc}
+                    </p>
                   </CardContent>
                 </Card>
               ))}
             </div>
 
             <div className="bg-muted/50 border rounded-sm p-6 md:p-8 mb-10">
-              <p className="text-center text-sm font-semibold text-muted-foreground mb-6 uppercase tracking-wide">Example monthly earnings</p>
+              <p className="text-center text-sm font-semibold text-muted-foreground mb-6 uppercase tracking-wide">
+                Example monthly earnings
+              </p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                 {[
-                  { referrals: "5 shops", tier: "Starter ($199)", monthly: "$199/mo", rate: "20%" },
-                  { referrals: "10 shops", tier: "Pro ($349)", monthly: "$698/mo", rate: "20%" },
-                  { referrals: "20 shops", tier: "Pro ($349)", monthly: "$1,745/mo", rate: "25%" },
-                  { referrals: "50 shops", tier: "Mixed", monthly: "$5,000+/mo", rate: "30%" },
+                  {
+                    referrals: "5 shops",
+                    tier: "Starter ($199)",
+                    monthly: "$199/mo",
+                    rate: "20%",
+                  },
+                  {
+                    referrals: "10 shops",
+                    tier: "Pro ($349)",
+                    monthly: "$698/mo",
+                    rate: "20%",
+                  },
+                  {
+                    referrals: "20 shops",
+                    tier: "Pro ($349)",
+                    monthly: "$1,745/mo",
+                    rate: "25%",
+                  },
+                  {
+                    referrals: "50 shops",
+                    tier: "Mixed",
+                    monthly: "$5,000+/mo",
+                    rate: "30%",
+                  },
                 ].map((ex, i) => (
                   <div key={i}>
-                    <p className="text-2xl font-mono font-bold text-primary">{ex.monthly}</p>
+                    <p className="text-2xl font-mono font-bold text-primary">
+                      {ex.monthly}
+                    </p>
                     <p className="text-sm font-medium mt-1">{ex.referrals}</p>
-                    <p className="text-xs text-muted-foreground">{ex.tier} · {ex.rate}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {ex.tier} · {ex.rate}
+                    </p>
                   </div>
                 ))}
               </div>
@@ -874,7 +1200,11 @@ export default function Landing() {
               <Button
                 size="lg"
                 className="text-base px-10"
-                onClick={() => { window.location.href = getPartnersUrl(); }}
+                onClick={() => {
+                  posthog?.capture("partner_signup_intent", { location: "partner_section" });
+                  posthog?.capture("cta_clicked", { label: "Become a Partner", location: "partner_section" });
+                  window.location.href = getPartnersUrl();
+                }}
               >
                 Become a Partner — It's Free
                 <ArrowRight className="ml-2 h-4 w-4" />
@@ -900,14 +1230,30 @@ export default function Landing() {
             Stop Losing Customers to Missed Calls
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Join the shops that answer every call, book more jobs, and recover thousands in lost revenue.
+            Join the shops that answer every call, book more jobs, and recover
+            thousands in lost revenue.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="lg"
+              className="text-base px-8"
+              onClick={() => {
+                posthog?.capture("cta_clicked", { label: "Start Your Free Trial", location: "final_cta" });
+                window.location.href = getLoginUrl();
+              }}
+            >
               Start Your Free Trial
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="lg"
+              variant="outline"
+              className="text-base px-8"
+              onClick={() => {
+                posthog?.capture("cta_clicked", { label: "Book a Demo", location: "final_cta" });
+                window.location.href = getLoginUrl();
+              }}
+            >
               Book a Demo
             </Button>
           </div>
@@ -923,18 +1269,50 @@ export default function Landing() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+              <span className="font-semibold tracking-wider uppercase text-sm">
+                Baylio
+              </span>
             </div>
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
             <div className="flex flex-wrap gap-6 justify-center">
-              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
-              <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
-              <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground">Blog</Link>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
-              <a href={getPartnersUrl()} className="text-sm text-primary hover:text-primary/80 font-medium">Partners</a>
+              <Link
+                href="/contact"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Contact
+              </Link>
+              <Link
+                href="/faq"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                FAQ
+              </Link>
+              <Link
+                href="/blog"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Blog
+              </Link>
+              <a
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Terms
+              </a>
+              <a
+                href={getPartnersUrl()}
+                className="text-sm text-primary hover:text-primary/80 font-medium"
+              >
+                Partners
+              </a>
             </div>
           </div>
         </div>

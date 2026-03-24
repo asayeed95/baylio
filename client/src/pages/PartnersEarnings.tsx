@@ -48,7 +48,7 @@ export default function PartnersEarnings() {
 
   const utils = trpc.useUtils();
   const requestPayout = trpc.partner.requestPayout.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Payout of $${data.amount} requested successfully`);
       setDialogOpen(false);
       setPayoutAmount("");
@@ -56,7 +56,7 @@ export default function PartnersEarnings() {
       utils.partner.getEarnings.invalidate();
       utils.partner.dashboard.invalidate();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message);
     },
   });
@@ -108,9 +108,7 @@ export default function PartnersEarnings() {
             </DialogTrigger>
             <DialogContent className="bg-zinc-900 border-zinc-700">
               <DialogHeader>
-                <DialogTitle className="text-white">
-                  Request Payout
-                </DialogTitle>
+                <DialogTitle className="text-white">Request Payout</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 pt-2">
                 <div>
@@ -129,7 +127,7 @@ export default function PartnersEarnings() {
                     max={pendingEarnings}
                     step="0.01"
                     value={payoutAmount}
-                    onChange={(e) => setPayoutAmount(e.target.value)}
+                    onChange={e => setPayoutAmount(e.target.value)}
                     placeholder="Minimum $50"
                     className="bg-zinc-800 border-zinc-700 text-white"
                   />
@@ -151,9 +149,7 @@ export default function PartnersEarnings() {
                   }
                   className="w-full bg-emerald-600 hover:bg-emerald-700 text-white"
                 >
-                  {requestPayout.isPending
-                    ? "Processing..."
-                    : "Submit Request"}
+                  {requestPayout.isPending ? "Processing..." : "Submit Request"}
                 </Button>
               </div>
             </DialogContent>
@@ -165,7 +161,9 @@ export default function PartnersEarnings() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Total Earned</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+                  Total Earned
+                </p>
                 <DollarSign className="h-4 w-4 text-emerald-500" />
               </div>
               <p className="text-2xl font-mono font-medium text-emerald-400 mt-2">
@@ -178,7 +176,9 @@ export default function PartnersEarnings() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Available to Withdraw</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+                  Available to Withdraw
+                </p>
                 <Wallet className="h-4 w-4 text-amber-500" />
               </div>
               <p className="text-2xl font-mono font-medium text-amber-400 mt-2">
@@ -195,7 +195,9 @@ export default function PartnersEarnings() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Commission Rate</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+                  Commission Rate
+                </p>
                 <TrendingUp className="h-4 w-4 text-blue-500" />
               </div>
               <p className="text-2xl font-mono font-medium text-white mt-2">
@@ -218,7 +220,7 @@ export default function PartnersEarnings() {
             </CardHeader>
             <CardContent>
               <div className="grid gap-3 sm:grid-cols-3">
-                {tierData.map((t) => (
+                {tierData.map(t => (
                   <div
                     key={t.tier || "unknown"}
                     className="p-4 rounded-lg bg-zinc-800 border border-zinc-700"
@@ -249,10 +251,10 @@ export default function PartnersEarnings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
-                {monthlyData.slice(-6).map((m) => {
+                {monthlyData.slice(-6).map(m => {
                   const earned = parseFloat(m.earned || "0");
                   const maxEarned = Math.max(
-                    ...monthlyData.map((d) => parseFloat(d.earned || "0")),
+                    ...monthlyData.map(d => parseFloat(d.earned || "0")),
                     1
                   );
                   return (
@@ -282,9 +284,7 @@ export default function PartnersEarnings() {
         {/* Payout History */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white text-lg">
-              Payout History
-            </CardTitle>
+            <CardTitle className="text-white text-lg">Payout History</CardTitle>
           </CardHeader>
           <CardContent className="p-0">
             {!payouts || payouts.length === 0 ? (
@@ -306,7 +306,7 @@ export default function PartnersEarnings() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {payouts.map((payout) => (
+                  {payouts.map(payout => (
                     <TableRow
                       key={payout.id}
                       className="border-zinc-800 hover:bg-zinc-800/50"
@@ -315,7 +315,10 @@ export default function PartnersEarnings() {
                         {new Date(payout.requestedAt).toLocaleDateString()}
                       </TableCell>
                       <TableCell className="text-emerald-400 font-mono font-medium">
-                        ${parseFloat(payout.amount?.toString() || "0").toFixed(2)}
+                        $
+                        {parseFloat(payout.amount?.toString() || "0").toFixed(
+                          2
+                        )}
                       </TableCell>
                       <TableCell className="text-zinc-400 capitalize">
                         {payout.payoutMethod || "stripe"}

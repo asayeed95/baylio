@@ -1,14 +1,14 @@
 /**
  * Scorecard PDF Generator
- * 
+ *
  * Generates a professional missed call audit scorecard that can be
  * presented to shop owners during door-to-door sales. The scorecard
  * is designed to be a "leave-behind" document that makes the case
  * for Baylio with hard data from their own phone lines.
- * 
+ *
  * Output: HTML string that can be rendered as a PDF or displayed
  * in the browser. Uses inline styles for maximum compatibility.
- * 
+ *
  * Revenue estimates use RANGES (not fake precision) to avoid the
  * "made up number" objection from shop owners.
  */
@@ -32,7 +32,7 @@ export function generateScorecardHTML(scorecard: AuditScorecard): string {
 
   const peakRows = scorecard.peakCallAnalysis
     .map(
-      (p) => `
+      p => `
     <tr>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-transform: capitalize;">${p.dayPart}</td>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb; text-align: center;">${p.count}</td>
@@ -43,7 +43,7 @@ export function generateScorecardHTML(scorecard: AuditScorecard): string {
 
   const dailyRows = scorecard.dailyBreakdown
     .map(
-      (d) => `
+      d => `
     <tr>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${d.dayOfWeek}</td>
       <td style="padding: 8px 12px; border-bottom: 1px solid #e5e7eb;">${d.date}</td>
@@ -53,7 +53,7 @@ export function generateScorecardHTML(scorecard: AuditScorecard): string {
     .join("");
 
   const recommendationItems = scorecard.topRecommendations
-    .map((r) => `<li style="margin-bottom: 8px; line-height: 1.5;">${r}</li>`)
+    .map(r => `<li style="margin-bottom: 8px; line-height: 1.5;">${r}</li>`)
     .join("");
 
   return `<!DOCTYPE html>

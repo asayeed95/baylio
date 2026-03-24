@@ -29,7 +29,11 @@ export const partnerRouter = router({
    */
   getProfile: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    if (!db)
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
 
     const result = await db
       .select()
@@ -53,7 +57,11 @@ export const partnerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const existing = await db
         .select()
@@ -84,7 +92,11 @@ export const partnerRouter = router({
    */
   dashboard: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
-    if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+    if (!db)
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Database unavailable",
+      });
 
     const partner = await db
       .select()
@@ -135,11 +147,15 @@ export const partnerRouter = router({
    */
   listReferrals: protectedProcedure
     .input(
-      z.object({
-        status: z.enum(["all", "pending", "signed_up", "subscribed", "churned"]).default("all"),
-        limit: z.number().min(1).max(100).default(50),
-        offset: z.number().min(0).default(0),
-      }).optional()
+      z
+        .object({
+          status: z
+            .enum(["all", "pending", "signed_up", "subscribed", "churned"])
+            .default("all"),
+          limit: z.number().min(1).max(100).default(50),
+          offset: z.number().min(0).default(0),
+        })
+        .optional()
     )
     .query(async ({ ctx, input }) => {
       const db = await getDb();
@@ -215,7 +231,9 @@ export const partnerRouter = router({
         count: sql<number>`COUNT(*)`,
       })
       .from(referrals)
-      .where(and(eq(referrals.partnerId, p.id), eq(referrals.status, "subscribed")))
+      .where(
+        and(eq(referrals.partnerId, p.id), eq(referrals.status, "subscribed"))
+      )
       .groupBy(referrals.subscriptionTier);
 
     return {
@@ -259,8 +277,11 @@ export const partnerRouter = router({
       .orderBy(desc(referrals.createdAt));
 
     const totalMRR = network
-      .filter((n) => n.status === "subscribed")
-      .reduce((sum, n) => sum + parseFloat(n.monthlyValue?.toString() || "0"), 0);
+      .filter(n => n.status === "subscribed")
+      .reduce(
+        (sum, n) => sum + parseFloat(n.monthlyValue?.toString() || "0"),
+        0
+      );
 
     return { network, totalMRR };
   }),
@@ -276,7 +297,11 @@ export const partnerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const partner = await db
         .select()
@@ -285,7 +310,10 @@ export const partnerRouter = router({
         .limit(1);
 
       if (partner.length === 0) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Partner profile not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Partner profile not found",
+        });
       }
 
       const p = partner[0];
@@ -356,7 +384,11 @@ export const partnerRouter = router({
     )
     .mutation(async ({ ctx, input }) => {
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       const partner = await db
         .select()
@@ -365,17 +397,26 @@ export const partnerRouter = router({
         .limit(1);
 
       if (partner.length === 0) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Partner profile not found" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Partner profile not found",
+        });
       }
 
       const updateData: Record<string, unknown> = {};
-      if (input.payoutMethod !== undefined) updateData.payoutMethod = input.payoutMethod;
-      if (input.payoutEmail !== undefined) updateData.payoutEmail = input.payoutEmail;
-      if (input.companyName !== undefined) updateData.companyName = input.companyName;
+      if (input.payoutMethod !== undefined)
+        updateData.payoutMethod = input.payoutMethod;
+      if (input.payoutEmail !== undefined)
+        updateData.payoutEmail = input.payoutEmail;
+      if (input.companyName !== undefined)
+        updateData.companyName = input.companyName;
       if (input.website !== undefined) updateData.website = input.website;
-      if (input.notifyReferrals !== undefined) updateData.notifyReferrals = input.notifyReferrals;
-      if (input.notifyPayouts !== undefined) updateData.notifyPayouts = input.notifyPayouts;
-      if (input.notifyNewsletter !== undefined) updateData.notifyNewsletter = input.notifyNewsletter;
+      if (input.notifyReferrals !== undefined)
+        updateData.notifyReferrals = input.notifyReferrals;
+      if (input.notifyPayouts !== undefined)
+        updateData.notifyPayouts = input.notifyPayouts;
+      if (input.notifyNewsletter !== undefined)
+        updateData.notifyNewsletter = input.notifyNewsletter;
 
       if (Object.keys(updateData).length > 0) {
         await db

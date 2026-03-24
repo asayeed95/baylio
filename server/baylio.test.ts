@@ -4,10 +4,10 @@ import type { TrpcContext } from "./_core/context";
 
 /**
  * Baylio Router Tests
- * 
+ *
  * Tests all tRPC procedures using the createCaller pattern.
  * Database calls are mocked to test router logic in isolation.
- * 
+ *
  * Coverage:
  * - auth.me / auth.logout
  * - shop.list / shop.create / shop.update / shop.delete / shop.getById
@@ -20,7 +20,14 @@ import type { TrpcContext } from "./_core/context";
 
 // ─── Mock Data Factories (must be inside vi.mock or use vi.hoisted) ─────
 
-const { mockShop, mockAgentConfig, mockSubscription, mockNotification, mockOrg, mockCallLog } = vi.hoisted(() => {
+const {
+  mockShop,
+  mockAgentConfig,
+  mockSubscription,
+  mockNotification,
+  mockOrg,
+  mockCallLog,
+} = vi.hoisted(() => {
   const now = new Date();
   return {
     mockShop: {
@@ -301,8 +308,11 @@ describe("calls", () => {
 
   it("calls.list returns empty for unauthorized shop", async () => {
     const { getShopById } = await import("./db");
-    (getShopById as ReturnType<typeof vi.fn>).mockResolvedValueOnce({ ...mockShop, ownerId: 999 });
-    
+    (getShopById as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+      ...mockShop,
+      ownerId: 999,
+    });
+
     const caller = appRouter.createCaller(createContext());
     const result = await caller.calls.list({ shopId: 1 });
     expect(result.calls).toHaveLength(0);
@@ -412,7 +422,9 @@ describe("subscription", () => {
 
   it("subscription.create creates a new subscription", async () => {
     const { getSubscriptionByShop } = await import("./db");
-    (getSubscriptionByShop as ReturnType<typeof vi.fn>).mockResolvedValueOnce(null);
+    (getSubscriptionByShop as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+      null
+    );
 
     const caller = appRouter.createCaller(createContext());
     const result = await caller.subscription.create({

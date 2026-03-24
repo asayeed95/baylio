@@ -49,7 +49,11 @@ async function startServer() {
   // for safe rollout (log-only mode when disabled).
   // In development, run in logOnly mode so test calls aren't rejected.
   const isDev = process.env.NODE_ENV !== "production";
-  app.use("/api/twilio", validateTwilioSignature({ logOnly: isDev }), twilioRouter);
+  app.use(
+    "/api/twilio",
+    validateTwilioSignature({ logOnly: isDev }),
+    twilioRouter
+  );
 
   // Google OAuth integration routes
   app.use("/api/integrations/google", googleAuthRouter);

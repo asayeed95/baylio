@@ -23,7 +23,12 @@ export const integrationRouter = router({
       return db
         .select()
         .from(shopIntegrations)
-        .where(and(eq(shopIntegrations.shopId, input.shopId), eq(shopIntegrations.isActive, true)));
+        .where(
+          and(
+            eq(shopIntegrations.shopId, input.shopId),
+            eq(shopIntegrations.isActive, true)
+          )
+        );
     }),
 
   /** Disconnect an integration */
@@ -36,7 +41,11 @@ export const integrationRouter = router({
       }
 
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       await db
         .update(shopIntegrations)
@@ -48,12 +57,20 @@ export const integrationRouter = router({
 
   /** Save integration settings (API keys, calendar ID, sheet ID, etc.) */
   saveSettings: protectedProcedure
-    .input(z.object({
-      shopId: z.number(),
-      provider: z.enum(["google_calendar", "google_sheets", "shopmonkey", "tekmetric", "hubspot"]),
-      settings: z.record(z.string(), z.unknown()).optional(),
-      accessToken: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        shopId: z.number(),
+        provider: z.enum([
+          "google_calendar",
+          "google_sheets",
+          "shopmonkey",
+          "tekmetric",
+          "hubspot",
+        ]),
+        settings: z.record(z.string(), z.unknown()).optional(),
+        accessToken: z.string().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
@@ -61,7 +78,11 @@ export const integrationRouter = router({
       }
 
       const db = await getDb();
-      if (!db) throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Database unavailable" });
+      if (!db)
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Database unavailable",
+        });
 
       await db
         .insert(shopIntegrations)
@@ -85,7 +106,12 @@ export const integrationRouter = router({
 
   /** Get recent sync logs for a shop */
   getSyncLogs: protectedProcedure
-    .input(z.object({ shopId: z.number(), limit: z.number().min(1).max(100).default(20) }))
+    .input(
+      z.object({
+        shopId: z.number(),
+        limit: z.number().min(1).max(100).default(20),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) return [];

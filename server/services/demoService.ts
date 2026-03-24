@@ -4,9 +4,17 @@
  */
 import { eq } from "drizzle-orm";
 import { getDb } from "../db";
-import { shops, agentConfigs, callLogs, callerProfiles, subscriptions } from "../../drizzle/schema";
+import {
+  shops,
+  agentConfigs,
+  callLogs,
+  callerProfiles,
+  subscriptions,
+} from "../../drizzle/schema";
 
-export async function seedDemoShop(ownerId: number): Promise<number | undefined> {
+export async function seedDemoShop(
+  ownerId: number
+): Promise<number | undefined> {
   const db = await getDb();
   if (!db) return undefined;
 
@@ -32,8 +40,18 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
       sunday: { open: "00:00", close: "00:00", closed: true },
     },
     serviceCatalog: [
-      { name: "Oil Change", category: "Maintenance", price: 49, description: "Conventional or synthetic" },
-      { name: "Brake Pad Replacement", category: "Brakes", price: 199, description: "Front or rear" },
+      {
+        name: "Oil Change",
+        category: "Maintenance",
+        price: 49,
+        description: "Conventional or synthetic",
+      },
+      {
+        name: "Brake Pad Replacement",
+        category: "Brakes",
+        price: 199,
+        description: "Front or rear",
+      },
       { name: "Tire Rotation", category: "Tires", price: 29 },
       { name: "Engine Diagnostic", category: "Diagnostics", price: 99 },
       { name: "Transmission Flush", category: "Maintenance", price: 179 },
@@ -59,8 +77,10 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
     agentName: "Alex",
     voiceId: "cjVigY5qzO86Huf0OWal",
     voiceName: "Charlie",
-    greeting: "Thanks for calling Demo Auto Repair! This is Alex, how can I help you today?",
-    systemPrompt: "You are Alex, the friendly AI receptionist for Demo Auto Repair. You help customers book appointments and answer questions about auto repair services.",
+    greeting:
+      "Thanks for calling Demo Auto Repair! This is Alex, how can I help you today?",
+    systemPrompt:
+      "You are Alex, the friendly AI receptionist for Demo Auto Repair. You help customers book appointments and answer questions about auto repair services.",
     upsellEnabled: true,
     confidenceThreshold: "0.80",
     maxUpsellsPerCall: 1,
@@ -83,9 +103,31 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
   });
 
   // Seed sample call logs (20 calls over 30 days)
-  const statuses = ["completed", "completed", "completed", "completed", "missed"] as const;
-  const services = ["Oil Change", "Brake Pad Replacement", "Engine Diagnostic", "Tire Rotation", "AC Repair", "Battery Replacement"];
-  const names = ["John Smith", "Maria Garcia", "Robert Johnson", "Sarah Williams", "James Brown", "Jennifer Davis", "Michael Wilson", "Emily Martinez"];
+  const statuses = [
+    "completed",
+    "completed",
+    "completed",
+    "completed",
+    "missed",
+  ] as const;
+  const services = [
+    "Oil Change",
+    "Brake Pad Replacement",
+    "Engine Diagnostic",
+    "Tire Rotation",
+    "AC Repair",
+    "Battery Replacement",
+  ];
+  const names = [
+    "John Smith",
+    "Maria Garcia",
+    "Robert Johnson",
+    "Sarah Williams",
+    "James Brown",
+    "Jennifer Davis",
+    "Michael Wilson",
+    "Emily Martinez",
+  ];
 
   for (let i = 0; i < 20; i++) {
     const daysAgo = Math.floor(Math.random() * 30);
@@ -93,7 +135,8 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
     const status = statuses[Math.floor(Math.random() * statuses.length)];
     const service = services[Math.floor(Math.random() * services.length)];
     const name = names[Math.floor(Math.random() * names.length)];
-    const duration = status === "completed" ? 60 + Math.floor(Math.random() * 300) : 0;
+    const duration =
+      status === "completed" ? 60 + Math.floor(Math.random() * 300) : 0;
     const booked = status === "completed" && Math.random() > 0.4;
     const upsellAttempted = booked && Math.random() > 0.5;
     const upsellAccepted = upsellAttempted && Math.random() > 0.6;
@@ -108,7 +151,10 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
       direction: "inbound",
       status,
       duration,
-      summary: status === "completed" ? `${name} called about ${service.toLowerCase()}. ${booked ? "Appointment booked." : "Took a message."}` : undefined,
+      summary:
+        status === "completed"
+          ? `${name} called about ${service.toLowerCase()}. ${booked ? "Appointment booked." : "Took a message."}`
+          : undefined,
       customerIntent: service.toLowerCase().replace(/ /g, "_"),
       serviceRequested: service,
       appointmentBooked: booked,
@@ -133,7 +179,9 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
         name,
         callerRole: "prospect",
         callCount: 1 + Math.floor(Math.random() * 5),
-        lastCalledAt: new Date(Date.now() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000),
+        lastCalledAt: new Date(
+          Date.now() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000
+        ),
       })
       .onDuplicateKeyUpdate({ set: { callCount: 1 } });
   }
@@ -144,6 +192,10 @@ export async function seedDemoShop(ownerId: number): Promise<number | undefined>
 export async function isDemoShop(shopId: number): Promise<boolean> {
   const db = await getDb();
   if (!db) return false;
-  const result = await db.select({ name: shops.name }).from(shops).where(eq(shops.id, shopId)).limit(1);
+  const result = await db
+    .select({ name: shops.name })
+    .from(shops)
+    .where(eq(shops.id, shopId))
+    .limit(1);
   return result[0]?.name === "Demo Auto Repair";
 }

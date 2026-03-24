@@ -1,14 +1,14 @@
 /**
  * Prompt Compilation Layer
- * 
+ *
  * Compiles shop-specific context into a structured system prompt for the
  * AI voice agent. Implements the 3-Stage Reasoning Architecture from the
  * market research:
- * 
+ *
  * Stage 1: Symptom Extraction — Listen and identify what the customer describes
  * Stage 2: Catalog Mapping — ONLY match to shop-approved services (strict enforcement)
  * Stage 3: Natural Offer — Present recommendation + one adjacent upsell
- * 
+ *
  * Critical constraint: The LLM must NEVER offer services not in the shop's
  * approved catalog. No discounts. No made-up services. No hallucination.
  */
@@ -21,7 +21,10 @@ export interface ShopContext {
   city: string;
   state: string;
   timezone: string;
-  businessHours: Record<string, { open: string; close: string; closed: boolean }>;
+  businessHours: Record<
+    string,
+    { open: string; close: string; closed: boolean }
+  >;
   serviceCatalog: Array<{
     name: string;
     category: string;
@@ -47,7 +50,15 @@ export interface ShopContext {
 function formatBusinessHours(
   hours: Record<string, { open: string; close: string; closed: boolean }>
 ): string {
-  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  const days = [
+    "monday",
+    "tuesday",
+    "wednesday",
+    "thursday",
+    "friday",
+    "saturday",
+    "sunday",
+  ];
   const lines: string[] = [];
 
   for (const day of days) {
@@ -55,7 +66,9 @@ function formatBusinessHours(
     if (!h || h.closed) {
       lines.push(`  ${day.charAt(0).toUpperCase() + day.slice(1)}: CLOSED`);
     } else {
-      lines.push(`  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${h.open} - ${h.close}`);
+      lines.push(
+        `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${h.open} - ${h.close}`
+      );
     }
   }
 
@@ -66,14 +79,12 @@ function formatBusinessHours(
  * Format the service catalog as a strict JSON reference for the LLM.
  * This is the ONLY source of truth for what services the agent can offer.
  */
-function formatServiceCatalog(
-  catalog: ShopContext["serviceCatalog"]
-): string {
+function formatServiceCatalog(catalog: ShopContext["serviceCatalog"]): string {
   if (!catalog || catalog.length === 0) {
     return "No services configured. Do NOT offer any specific services. Only take messages.";
   }
 
-  const formatted = catalog.map((s) => ({
+  const formatted = catalog.map(s => ({
     name: s.name,
     category: s.category,
     ...(s.price ? { price: `$${s.price}` } : {}),
@@ -94,9 +105,10 @@ function formatUpsellRules(
     return "No upsell rules configured. Do not suggest additional services.";
   }
 
-  const formatted = rules.map((r) => (
-    `  - When customer mentions "${r.symptom}" → Primary: "${r.service}" → Adjacent upsell: "${r.adjacent}" (confidence: ${r.confidence})`
-  ));
+  const formatted = rules.map(
+    r =>
+      `  - When customer mentions "${r.symptom}" → Primary: "${r.service}" → Adjacent upsell: "${r.adjacent}" (confidence: ${r.confidence})`
+  );
 
   return `Maximum ${maxUpsells} upsell(s) per call.\n${formatted.join("\n")}`;
 }
@@ -122,7 +134,7 @@ function getTimeContext(timezone: string): string {
 
 /**
  * Compile the full system prompt from shop context.
- * 
+ *
  * This is the core function that transforms shop configuration into
  * a production-ready system prompt for the voice agent.
  */
@@ -132,7 +144,10 @@ export function compileSystemPrompt(context: ShopContext): string {
     ? formatBusinessHours(context.businessHours)
     : "Business hours not configured.";
   const catalogFormatted = formatServiceCatalog(context.serviceCatalog);
-  const upsellFormatted = formatUpsellRules(context.upsellRules, context.maxUpsellsPerCall);
+  const upsellFormatted = formatUpsellRules(
+    context.upsellRules,
+    context.maxUpsellsPerCall
+  );
 
   const confidenceLabel =
     context.confidenceThreshold >= 0.8
@@ -268,9 +283,13 @@ export function getPromptSummary(context: ShopContext): {
     serviceCount: context.serviceCatalog?.length || 0,
     upsellRuleCount: context.upsellRules?.length || 0,
     hasCustomPrompt: !!context.customSystemPrompt,
-    hasBusinessHours: !!context.businessHours && Object.keys(context.businessHours).length > 0,
+    hasBusinessHours:
+      !!context.businessHours && Object.keys(context.businessHours).length > 0,
     confidenceLevel:
-      context.confidenceThreshold >= 0.8 ? "HIGH" :
-        context.confidenceThreshold >= 0.5 ? "MEDIUM" : "LOW",
+      context.confidenceThreshold >= 0.8
+        ? "HIGH"
+        : context.confidenceThreshold >= 0.5
+          ? "MEDIUM"
+          : "LOW",
   };
 }

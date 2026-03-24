@@ -6,27 +6,27 @@
 
 ## Tech Stack
 
-| Layer | Technology | Version | Purpose |
-|---|---|---|---|
-| Frontend | React | 19 | UI framework |
-| Routing | Wouter | 3.x | Lightweight client-side routing |
-| Styling | Tailwind CSS | 4 | Utility-first CSS |
-| UI Components | shadcn/ui | latest | Pre-built accessible components |
-| State / Data | tRPC | 11 | End-to-end type-safe API layer |
-| Serialization | Superjson | — | Preserves `Date`, `BigInt`, etc. across the wire |
-| Backend | Express | 4 | HTTP server + webhook endpoints |
-| Database | MySQL (TiDB) | — | Persistent storage via Drizzle ORM |
-| ORM | Drizzle ORM | latest | Type-safe SQL query builder |
-| Auth | Manus OAuth | — | OAuth 2.0 with session cookies |
-| Voice AI | ElevenLabs | Conversational AI v1 | Real-time voice agent for phone calls |
-| Telephony | Twilio | 5.13 | Phone number provisioning + call routing |
-| Payments | Stripe | latest | Subscription billing + checkout sessions |
-| LLM | Built-in Forge API | — | Post-call analysis, intent classification, prompt compilation |
-| SMS | Twilio | 5.13 | Post-call recaps, alerts |
-| Testing | Vitest | latest | Unit + integration tests |
-| Build | Vite | 7.x | Dev server + production bundler |
-| Bundler (server) | esbuild | — | Server-side bundle for production |
-| Language | TypeScript | 5.x | Full-stack type safety |
+| Layer            | Technology         | Version              | Purpose                                                       |
+| ---------------- | ------------------ | -------------------- | ------------------------------------------------------------- |
+| Frontend         | React              | 19                   | UI framework                                                  |
+| Routing          | Wouter             | 3.x                  | Lightweight client-side routing                               |
+| Styling          | Tailwind CSS       | 4                    | Utility-first CSS                                             |
+| UI Components    | shadcn/ui          | latest               | Pre-built accessible components                               |
+| State / Data     | tRPC               | 11                   | End-to-end type-safe API layer                                |
+| Serialization    | Superjson          | —                    | Preserves `Date`, `BigInt`, etc. across the wire              |
+| Backend          | Express            | 4                    | HTTP server + webhook endpoints                               |
+| Database         | MySQL (TiDB)       | —                    | Persistent storage via Drizzle ORM                            |
+| ORM              | Drizzle ORM        | latest               | Type-safe SQL query builder                                   |
+| Auth             | Manus OAuth        | —                    | OAuth 2.0 with session cookies                                |
+| Voice AI         | ElevenLabs         | Conversational AI v1 | Real-time voice agent for phone calls                         |
+| Telephony        | Twilio             | 5.13                 | Phone number provisioning + call routing                      |
+| Payments         | Stripe             | latest               | Subscription billing + checkout sessions                      |
+| LLM              | Built-in Forge API | —                    | Post-call analysis, intent classification, prompt compilation |
+| SMS              | Twilio             | 5.13                 | Post-call recaps, alerts                                      |
+| Testing          | Vitest             | latest               | Unit + integration tests                                      |
+| Build            | Vite               | 7.x                  | Dev server + production bundler                               |
+| Bundler (server) | esbuild            | —                    | Server-side bundle for production                             |
+| Language         | TypeScript         | 5.x                  | Full-stack type safety                                        |
 
 ---
 
@@ -159,11 +159,11 @@ baylio/
 
 Baylio serves three distinct user groups through a single codebase using **subdomain-based portal routing**:
 
-| Portal | Subdomain | Query Param (dev) | Target Audience |
-|---|---|---|---|
-| Main | `baylio.io` / `www.baylio.io` | (default) | Shop owners + public visitors |
-| Partners | `partners.baylio.io` | `?portal=partners` | Affiliate partners |
-| Admin | `admin.baylio.io` | `?portal=admin` | Platform administrators |
+| Portal   | Subdomain                     | Query Param (dev)  | Target Audience               |
+| -------- | ----------------------------- | ------------------ | ----------------------------- |
+| Main     | `baylio.io` / `www.baylio.io` | (default)          | Shop owners + public visitors |
+| Partners | `partners.baylio.io`          | `?portal=partners` | Affiliate partners            |
+| Admin    | `admin.baylio.io`             | `?portal=admin`    | Platform administrators       |
 
 The portal is detected in `App.tsx` via `__MANUS_PORTAL__` (production) or the `?portal=` query parameter (development). Each portal renders its own router with dedicated pages and layout.
 
@@ -240,20 +240,20 @@ Stripe handles subscription billing with three tiers (Starter $99/mo, Pro $199/m
 
 All environment variables are managed through the Manus platform. **Never hardcode secrets or commit `.env` files.**
 
-| Variable | Purpose |
-|---|---|
-| `DATABASE_URL` | MySQL/TiDB connection string |
-| `JWT_SECRET` | Session cookie signing secret |
-| `VITE_APP_ID` | Manus OAuth application ID |
-| `OAUTH_SERVER_URL` | Manus OAuth backend URL |
-| `VITE_OAUTH_PORTAL_URL` | Manus login portal URL (frontend) |
-| `OWNER_OPEN_ID` / `OWNER_NAME` | Platform owner info |
-| `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY` | LLM, storage, notification APIs |
-| `VITE_FRONTEND_FORGE_API_URL` / `VITE_FRONTEND_FORGE_API_KEY` | Frontend Forge access |
-| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN` | Twilio credentials |
-| `ELEVENLABS_API_KEY` / `ELEVENLABS_AGENT_ID` | ElevenLabs credentials |
-| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET` | Stripe credentials |
-| `VITE_STRIPE_PUBLISHABLE_KEY` | Stripe public key (frontend) |
+| Variable                                                      | Purpose                           |
+| ------------------------------------------------------------- | --------------------------------- |
+| `DATABASE_URL`                                                | MySQL/TiDB connection string      |
+| `JWT_SECRET`                                                  | Session cookie signing secret     |
+| `VITE_APP_ID`                                                 | Manus OAuth application ID        |
+| `OAUTH_SERVER_URL`                                            | Manus OAuth backend URL           |
+| `VITE_OAUTH_PORTAL_URL`                                       | Manus login portal URL (frontend) |
+| `OWNER_OPEN_ID` / `OWNER_NAME`                                | Platform owner info               |
+| `BUILT_IN_FORGE_API_URL` / `BUILT_IN_FORGE_API_KEY`           | LLM, storage, notification APIs   |
+| `VITE_FRONTEND_FORGE_API_URL` / `VITE_FRONTEND_FORGE_API_KEY` | Frontend Forge access             |
+| `TWILIO_ACCOUNT_SID` / `TWILIO_AUTH_TOKEN`                    | Twilio credentials                |
+| `ELEVENLABS_API_KEY` / `ELEVENLABS_AGENT_ID`                  | ElevenLabs credentials            |
+| `STRIPE_SECRET_KEY` / `STRIPE_WEBHOOK_SECRET`                 | Stripe credentials                |
+| `VITE_STRIPE_PUBLISHABLE_KEY`                                 | Stripe public key (frontend)      |
 
 ---
 
@@ -275,14 +275,14 @@ pnpm db:push      # Generate + apply Drizzle migrations
 
 Tests are written with **Vitest** and live alongside the server code in `server/*.test.ts`. The current test suite has **81 tests across 6 files**:
 
-| Test File | Coverage |
-|---|---|
-| `auth.logout.test.ts` | Authentication + logout flow |
-| `baylio.test.ts` | Core shop, call, subscription, notification procedures |
-| `partner.test.ts` | Partner enrollment, referrals, earnings, payouts |
-| `security.test.ts` | Twilio signature validation + tenant isolation |
-| `elevenlabs.test.ts` | ElevenLabs agent CRUD |
-| `twilio.test.ts` | Twilio credential validation |
+| Test File             | Coverage                                               |
+| --------------------- | ------------------------------------------------------ |
+| `auth.logout.test.ts` | Authentication + logout flow                           |
+| `baylio.test.ts`      | Core shop, call, subscription, notification procedures |
+| `partner.test.ts`     | Partner enrollment, referrals, earnings, payouts       |
+| `security.test.ts`    | Twilio signature validation + tenant isolation         |
+| `elevenlabs.test.ts`  | ElevenLabs agent CRUD                                  |
+| `twilio.test.ts`      | Twilio credential validation                           |
 
 Run tests with `pnpm test` (single run) or `pnpm vitest` (watch mode).
 

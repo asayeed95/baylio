@@ -50,8 +50,19 @@ export const shops = mysqlTable("shops", {
   state: varchar("state", { length: 64 }),
   zip: varchar("zip", { length: 16 }),
   timezone: varchar("timezone", { length: 64 }).default("America/New_York"),
-  businessHours: json("businessHours").$type<Record<string, { open: string; close: string; closed: boolean }>>(),
-  serviceCatalog: json("serviceCatalog").$type<Array<{ name: string; category: string; price?: number; description?: string }>>(),
+  businessHours:
+    json("businessHours").$type<
+      Record<string, { open: string; close: string; closed: boolean }>
+    >(),
+  serviceCatalog:
+    json("serviceCatalog").$type<
+      Array<{
+        name: string;
+        category: string;
+        price?: number;
+        description?: string;
+      }>
+    >(),
   isActive: boolean("isActive").default(true).notNull(),
   smsFollowUpEnabled: boolean("smsFollowUpEnabled").default(true).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
@@ -74,8 +85,19 @@ export const agentConfigs = mysqlTable("agent_configs", {
   systemPrompt: text("systemPrompt"),
   greeting: text("greeting"),
   upsellEnabled: boolean("upsellEnabled").default(true).notNull(),
-  upsellRules: json("upsellRules").$type<Array<{ symptom: string; service: string; adjacent: string; confidence: number }>>(),
-  confidenceThreshold: decimal("confidenceThreshold", { precision: 3, scale: 2 }).default("0.80"),
+  upsellRules:
+    json("upsellRules").$type<
+      Array<{
+        symptom: string;
+        service: string;
+        adjacent: string;
+        confidence: number;
+      }>
+    >(),
+  confidenceThreshold: decimal("confidenceThreshold", {
+    precision: 3,
+    scale: 2,
+  }).default("0.80"),
   maxUpsellsPerCall: int("maxUpsellsPerCall").default(1),
   language: varchar("language", { length: 16 }).default("en"),
   elevenLabsAgentId: varchar("elevenLabsAgentId", { length: 128 }),
@@ -95,8 +117,18 @@ export const callLogs = mysqlTable("call_logs", {
   twilioCallSid: varchar("twilioCallSid", { length: 128 }).unique(),
   callerPhone: varchar("callerPhone", { length: 32 }),
   callerName: varchar("callerName", { length: 255 }),
-  direction: mysqlEnum("direction", ["inbound", "outbound"]).default("inbound").notNull(),
-  status: mysqlEnum("status", ["completed", "missed", "voicemail", "transferred", "failed"]).default("completed").notNull(),
+  direction: mysqlEnum("direction", ["inbound", "outbound"])
+    .default("inbound")
+    .notNull(),
+  status: mysqlEnum("status", [
+    "completed",
+    "missed",
+    "voicemail",
+    "transferred",
+    "failed",
+  ])
+    .default("completed")
+    .notNull(),
   duration: int("duration").default(0),
   recordingUrl: text("recordingUrl"),
   transcription: text("transcription"),
@@ -139,11 +171,21 @@ export const missedCallAudits = mysqlTable("missed_call_audits", {
   shopName: varchar("shopName", { length: 255 }),
   forwardingNumber: varchar("forwardingNumber", { length: 32 }),
   forwardingNumberSid: varchar("forwardingNumberSid", { length: 64 }),
-  status: mysqlEnum("auditStatus", ["pending", "active", "completed", "expired"]).default("pending").notNull(),
+  status: mysqlEnum("auditStatus", [
+    "pending",
+    "active",
+    "completed",
+    "expired",
+  ])
+    .default("pending")
+    .notNull(),
   startDate: timestamp("startDate"),
   endDate: timestamp("endDate"),
   totalMissedCalls: int("totalMissedCalls").default(0),
-  estimatedLostRevenue: decimal("estimatedLostRevenue", { precision: 10, scale: 2 }),
+  estimatedLostRevenue: decimal("estimatedLostRevenue", {
+    precision: 10,
+    scale: 2,
+  }),
   scorecardUrl: text("scorecardUrl"),
   scorecardData: json("scorecardData").$type<{
     callsByDayPart: Record<string, number>;
@@ -166,8 +208,16 @@ export const auditCallEntries = mysqlTable("audit_call_entries", {
   callTimestamp: timestamp("callTimestamp"),
   dayPart: mysqlEnum("dayPart", ["morning", "afternoon", "evening", "night"]),
   intentCategory: varchar("intentCategory", { length: 128 }),
-  urgencyLevel: mysqlEnum("urgencyLevel", ["low", "medium", "high", "emergency"]),
-  estimatedTicketValue: decimal("estimatedTicketValue", { precision: 10, scale: 2 }),
+  urgencyLevel: mysqlEnum("urgencyLevel", [
+    "low",
+    "medium",
+    "high",
+    "emergency",
+  ]),
+  estimatedTicketValue: decimal("estimatedTicketValue", {
+    precision: 10,
+    scale: 2,
+  }),
   bookingLikelihood: decimal("bookingLikelihood", { precision: 3, scale: 2 }),
   isRepeatCaller: boolean("isRepeatCaller").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -182,14 +232,22 @@ export const subscriptions = mysqlTable("subscriptions", {
   shopId: int("shopId").notNull(),
   ownerId: int("ownerId").notNull().default(0),
   organizationId: int("organizationId"),
-  tier: mysqlEnum("tier", ["trial", "starter", "pro", "elite"]).default("starter").notNull(),
-  status: mysqlEnum("subStatus", ["active", "past_due", "canceled", "trialing"]).default("active").notNull(),
+  tier: mysqlEnum("tier", ["trial", "starter", "pro", "elite"])
+    .default("starter")
+    .notNull(),
+  status: mysqlEnum("subStatus", ["active", "past_due", "canceled", "trialing"])
+    .default("active")
+    .notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
   includedMinutes: int("includedMinutes").default(300).notNull(),
   usedMinutes: int("usedMinutes").default(0).notNull(),
-  overageRate: decimal("overageRate", { precision: 5, scale: 4 }).default("0.1500"),
-  billingCycle: mysqlEnum("billingCycle", ["monthly", "annual"]).default("monthly").notNull(),
+  overageRate: decimal("overageRate", { precision: 5, scale: 4 }).default(
+    "0.1500"
+  ),
+  billingCycle: mysqlEnum("billingCycle", ["monthly", "annual"])
+    .default("monthly")
+    .notNull(),
   setupFeePaid: boolean("setupFeePaid").default(false),
   setupFeeAmount: decimal("setupFeeAmount", { precision: 10, scale: 2 }),
   currentPeriodStart: timestamp("currentPeriodStart"),
@@ -247,13 +305,27 @@ export const partners = mysqlTable("partners", {
   id: int("id").autoincrement().primaryKey(),
   userId: int("userId").notNull().unique(),
   referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
-  commissionRate: decimal("commissionRate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
-  tier: mysqlEnum("partnerTier", ["bronze", "silver", "gold", "platinum"]).default("bronze").notNull(),
-  status: mysqlEnum("partnerStatus", ["pending", "active", "suspended"]).default("pending").notNull(),
+  commissionRate: decimal("commissionRate", { precision: 5, scale: 4 })
+    .default("0.2000")
+    .notNull(),
+  tier: mysqlEnum("partnerTier", ["bronze", "silver", "gold", "platinum"])
+    .default("bronze")
+    .notNull(),
+  status: mysqlEnum("partnerStatus", ["pending", "active", "suspended"])
+    .default("pending")
+    .notNull(),
   totalReferrals: int("totalReferrals").default(0).notNull(),
-  totalEarnings: decimal("totalEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
-  pendingEarnings: decimal("pendingEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
-  payoutMethod: mysqlEnum("payoutMethod", ["stripe", "paypal", "bank_transfer"]).default("stripe"),
+  totalEarnings: decimal("totalEarnings", { precision: 10, scale: 2 })
+    .default("0.00")
+    .notNull(),
+  pendingEarnings: decimal("pendingEarnings", { precision: 10, scale: 2 })
+    .default("0.00")
+    .notNull(),
+  payoutMethod: mysqlEnum("payoutMethod", [
+    "stripe",
+    "paypal",
+    "bank_transfer",
+  ]).default("stripe"),
   payoutEmail: varchar("payoutEmail", { length: 320 }),
   companyName: varchar("companyName", { length: 255 }),
   website: varchar("website", { length: 512 }),
@@ -275,10 +347,19 @@ export const referrals = mysqlTable("referrals", {
   referredShopId: int("referredShopId"),
   referredEmail: varchar("referredEmail", { length: 320 }),
   referredName: varchar("referredName", { length: 255 }),
-  status: mysqlEnum("referralStatus", ["pending", "signed_up", "subscribed", "churned"]).default("pending").notNull(),
+  status: mysqlEnum("referralStatus", [
+    "pending",
+    "signed_up",
+    "subscribed",
+    "churned",
+  ])
+    .default("pending")
+    .notNull(),
   subscriptionTier: varchar("subscriptionTier", { length: 20 }),
   monthlyValue: decimal("monthlyValue", { precision: 10, scale: 2 }),
-  commissionEarned: decimal("commissionEarned", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  commissionEarned: decimal("commissionEarned", { precision: 10, scale: 2 })
+    .default("0.00")
+    .notNull(),
   convertedAt: timestamp("convertedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
@@ -292,7 +373,14 @@ export const partnerPayouts = mysqlTable("partner_payouts", {
   id: int("id").autoincrement().primaryKey(),
   partnerId: int("partnerId").notNull(),
   amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  status: mysqlEnum("payoutStatus", ["pending", "processing", "completed", "failed"]).default("pending").notNull(),
+  status: mysqlEnum("payoutStatus", [
+    "pending",
+    "processing",
+    "completed",
+    "failed",
+  ])
+    .default("pending")
+    .notNull(),
   payoutMethod: varchar("payoutMethod", { length: 32 }),
   payoutEmail: varchar("payoutEmail", { length: 320 }),
   transactionId: varchar("transactionId", { length: 255 }),
@@ -310,7 +398,16 @@ export const callerProfiles = mysqlTable("caller_profiles", {
   id: int("id").autoincrement().primaryKey(),
   phone: varchar("phone", { length: 32 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
-  callerRole: mysqlEnum("callerRole", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]).default("unknown").notNull(),
+  callerRole: mysqlEnum("callerRole", [
+    "prospect",
+    "shop_owner",
+    "founder",
+    "tester",
+    "vendor",
+    "unknown",
+  ])
+    .default("unknown")
+    .notNull(),
   shopName: varchar("shopName", { length: 255 }),
   callCount: int("callCount").default(0).notNull(),
   lastCalledAt: timestamp("lastCalledAt"),
@@ -341,7 +438,13 @@ export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
 export const shopIntegrations = mysqlTable("shop_integrations", {
   id: int("id").autoincrement().primaryKey(),
   shopId: int("shopId").notNull(),
-  provider: mysqlEnum("integrationProvider", ["google_calendar", "google_sheets", "shopmonkey", "tekmetric", "hubspot"]).notNull(),
+  provider: mysqlEnum("integrationProvider", [
+    "google_calendar",
+    "google_sheets",
+    "shopmonkey",
+    "tekmetric",
+    "hubspot",
+  ]).notNull(),
   accessToken: text("accessToken"),
   refreshToken: text("refreshToken"),
   tokenExpiresAt: timestamp("tokenExpiresAt"),

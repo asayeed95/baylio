@@ -37,18 +37,18 @@ import {
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
-import { DashboardLayoutSkeleton } from './DashboardLayoutSkeleton';
+import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
 
 /**
  * Baylio Dashboard Navigation
- * 
+ *
  * Menu items map to the core product areas:
  * - Dashboard: Overview of all shops, key metrics
  * - Audits: Missed call audit management (sales tool)
  * - Subscriptions: Billing and plan management
  * - Notifications: Alert center
- * 
+ *
  * Shop-specific pages (calls, analytics, agent config, settings)
  * are accessed by clicking into a specific shop from the dashboard.
  */
@@ -83,7 +83,7 @@ export default function DashboardLayout({
   }, [sidebarWidth]);
 
   if (loading) {
-    return <DashboardLayoutSkeleton />
+    return <DashboardLayoutSkeleton />;
   }
 
   if (!user) {
@@ -99,7 +99,8 @@ export default function DashboardLayout({
               Sign in to continue
             </h1>
             <p className="text-sm text-muted-foreground text-center max-w-sm">
-              Access your shop dashboard, manage AI agents, and track call performance.
+              Access your shop dashboard, manage AI agents, and track call
+              performance.
             </p>
           </div>
           <Button
@@ -205,7 +206,9 @@ function DashboardLayoutContent({
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
-                  <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+                  <span className="font-semibold tracking-wider uppercase text-sm">
+                    Baylio
+                  </span>
                 </div>
               ) : null}
             </div>

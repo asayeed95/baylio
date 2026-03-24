@@ -27,7 +27,15 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
 
   const createChain = (): any => {
     const chain: any = {};
-    const methods = ["select", "from", "where", "limit", "offset", "orderBy", "groupBy"];
+    const methods = [
+      "select",
+      "from",
+      "where",
+      "limit",
+      "offset",
+      "orderBy",
+      "groupBy",
+    ];
     for (const method of methods) {
       chain[method] = vi.fn().mockReturnValue(chain);
     }
@@ -41,7 +49,9 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     const db: any = {};
     db.select = vi.fn().mockImplementation(() => createChain());
     db.insert = vi.fn().mockReturnValue({
-      values: vi.fn().mockImplementation((...args: any[]) => mockValues(...args)),
+      values: vi
+        .fn()
+        .mockImplementation((...args: any[]) => mockValues(...args)),
     });
     db.update = vi.fn().mockReturnValue({
       set: vi.fn().mockImplementation(() => ({
@@ -239,8 +249,11 @@ describe("Signup Flow Regression", () => {
 
   describe("Step 3: Provision ElevenLabs agent (CRITICAL)", () => {
     it("provisionAgent creates a new agent when elevenLabsAgentId is null", async () => {
-      const { getShopById, getAgentConfigByShop, upsertAgentConfig } = await import("./db");
-      const { createConversationalAgent } = await import("./services/elevenLabsService");
+      const { getShopById, getAgentConfigByShop, upsertAgentConfig } =
+        await import("./db");
+      const { createConversationalAgent } = await import(
+        "./services/elevenLabsService"
+      );
 
       (getShopById as any).mockResolvedValue(mockShop);
       (getAgentConfigByShop as any).mockResolvedValue(mockAgentConfig); // no elevenLabsAgentId
@@ -265,7 +278,9 @@ describe("Signup Flow Regression", () => {
 
     it("provisionAgent updates existing agent when elevenLabsAgentId is set", async () => {
       const { getShopById, getAgentConfigByShop } = await import("./db");
-      const { updateConversationalAgent } = await import("./services/elevenLabsService");
+      const { updateConversationalAgent } = await import(
+        "./services/elevenLabsService"
+      );
 
       (getShopById as any).mockResolvedValue(mockShop);
       (getAgentConfigByShop as any).mockResolvedValue({
@@ -292,9 +307,9 @@ describe("Signup Flow Regression", () => {
       (getAgentConfigByShop as any).mockResolvedValue(undefined);
 
       const caller = appRouter.createCaller(createContext());
-      await expect(
-        caller.shop.provisionAgent({ shopId: 1 })
-      ).rejects.toThrow(/save your agent configuration first/i);
+      await expect(caller.shop.provisionAgent({ shopId: 1 })).rejects.toThrow(
+        /save your agent configuration first/i
+      );
     });
   });
 
@@ -334,7 +349,10 @@ describe("Signup Flow Regression", () => {
 
     it("getAgentStatus shows NOT live when phone is missing", async () => {
       const { getShopById, getAgentConfigByShop } = await import("./db");
-      (getShopById as any).mockResolvedValue({ ...mockShop, twilioPhoneNumber: null });
+      (getShopById as any).mockResolvedValue({
+        ...mockShop,
+        twilioPhoneNumber: null,
+      });
       (getAgentConfigByShop as any).mockResolvedValue({
         ...mockAgentConfig,
         elevenLabsAgentId: "agent_no_phone",

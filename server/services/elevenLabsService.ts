@@ -1,10 +1,10 @@
 /**
  * ElevenLabs Conversational AI Service
- * 
+ *
  * Handles agent provisioning, voice catalog, and the Register Call API.
  * This service manages the lifecycle of ElevenLabs conversational agents
  * for each shop.
- * 
+ *
  * Key operations:
  * - List available voices
  * - Create/update conversational AI agents
@@ -84,7 +84,7 @@ export interface AgentResponse {
 
 /**
  * Create a new Conversational AI agent for a shop.
- * 
+ *
  * This creates the agent in ElevenLabs that will handle live calls.
  * The agent_id is stored in the shop's agent_configs table.
  */
@@ -122,7 +122,10 @@ export async function createConversationalAgent(
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error creating agent:", axiosError.response?.data || axiosError.message);
+    console.error(
+      "[ElevenLabs] Error creating agent:",
+      axiosError.response?.data || axiosError.message
+    );
     throw new Error(`Failed to create ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -149,7 +152,8 @@ export async function updateConversationalAgent(
         };
       }
       if (params.firstMessage) {
-        (payload.conversation_config as any).agent.first_message = params.firstMessage;
+        (payload.conversation_config as any).agent.first_message =
+          params.firstMessage;
       }
       if (params.language) {
         (payload.conversation_config as any).agent.language = params.language;
@@ -166,11 +170,17 @@ export async function updateConversationalAgent(
       payload.name = params.name;
     }
 
-    const response = await client.patch(`/v1/convai/agents/${agentId}`, payload);
+    const response = await client.patch(
+      `/v1/convai/agents/${agentId}`,
+      payload
+    );
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error updating agent:", axiosError.response?.data || axiosError.message);
+    console.error(
+      "[ElevenLabs] Error updating agent:",
+      axiosError.response?.data || axiosError.message
+    );
     throw new Error(`Failed to update ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -178,13 +188,18 @@ export async function updateConversationalAgent(
 /**
  * Delete a Conversational AI agent.
  */
-export async function deleteConversationalAgent(agentId: string): Promise<void> {
+export async function deleteConversationalAgent(
+  agentId: string
+): Promise<void> {
   try {
     const client = createClient();
     await client.delete(`/v1/convai/agents/${agentId}`);
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error deleting agent:", axiosError.response?.data || axiosError.message);
+    console.error(
+      "[ElevenLabs] Error deleting agent:",
+      axiosError.response?.data || axiosError.message
+    );
     throw new Error(`Failed to delete ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -199,7 +214,10 @@ export async function getAgent(agentId: string): Promise<AgentResponse> {
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error getting agent:", axiosError.response?.data || axiosError.message);
+    console.error(
+      "[ElevenLabs] Error getting agent:",
+      axiosError.response?.data || axiosError.message
+    );
     throw new Error(`Failed to get ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -224,8 +242,13 @@ export async function getSubscriptionInfo(): Promise<SubscriptionInfo> {
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error getting subscription:", axiosError.response?.data || axiosError.message);
-    throw new Error(`Failed to get ElevenLabs subscription info: ${axiosError.message}`);
+    console.error(
+      "[ElevenLabs] Error getting subscription:",
+      axiosError.response?.data || axiosError.message
+    );
+    throw new Error(
+      `Failed to get ElevenLabs subscription info: ${axiosError.message}`
+    );
   }
 }
 
@@ -244,7 +267,10 @@ export async function getConversationHistory(
     return response.data.conversations || [];
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error("[ElevenLabs] Error getting conversations:", axiosError.response?.data || axiosError.message);
+    console.error(
+      "[ElevenLabs] Error getting conversations:",
+      axiosError.response?.data || axiosError.message
+    );
     return [];
   }
 }

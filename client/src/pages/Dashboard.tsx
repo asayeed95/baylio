@@ -4,7 +4,14 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 import {
   Dialog,
   DialogContent,
@@ -29,10 +36,11 @@ import {
 import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { usePostHog } from "@posthog/react";
 
 /**
  * Dashboard Page
- * 
+ *
  * The main hub after login. Shows:
  * - Quick stats across all shops
  * - List of shop cards with key metrics per shop
@@ -49,20 +57,22 @@ export default function Dashboard() {
 
 function DashboardContent() {
   const [, setLocation] = useLocation();
+  const posthog = usePostHog();
   const [createOpen, setCreateOpen] = useState(false);
   const [newShopName, setNewShopName] = useState("");
   const [newShopPhone, setNewShopPhone] = useState("");
 
   const { data: shops, isLoading, refetch } = trpc.shop.list.useQuery();
   const createShop = trpc.shop.create.useMutation({
-    onSuccess: () => {
+    onSuccess: data => {
+      posthog?.capture("shop_created", { shop_name: newShopName.trim(), has_phone: Boolean(newShopPhone.trim()) });
       toast.success("Shop created successfully");
       setCreateOpen(false);
       setNewShopName("");
       setNewShopPhone("");
       refetch();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message || "Failed to create shop");
     },
   });
@@ -122,7 +132,7 @@ function DashboardContent() {
                   id="shop-name"
                   placeholder="e.g., Mike's Auto Care"
                   value={newShopName}
-                  onChange={(e) => setNewShopName(e.target.value)}
+                  onChange={e => setNewShopName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -131,7 +141,7 @@ function DashboardContent() {
                   id="shop-phone"
                   placeholder="e.g., (555) 123-4567"
                   value={newShopPhone}
-                  onChange={(e) => setNewShopPhone(e.target.value)}
+                  onChange={e => setNewShopPhone(e.target.value)}
                 />
               </div>
               <Button
@@ -155,7 +165,8 @@ function DashboardContent() {
             </EmptyMedia>
             <EmptyTitle>No shops yet</EmptyTitle>
             <EmptyDescription>
-              Add your first auto repair shop to get started with Baylio AI call handling.
+              Add your first auto repair shop to get started with Baylio AI call
+              handling.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -167,7 +178,7 @@ function DashboardContent() {
         </Empty>
       ) : (
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {shops.map((shop) => (
+          {shops.map(shop => (
             <Card
               key={shop.id}
               className="cursor-pointer hover:border-primary/30 transition-colors border border-border rounded-sm"
@@ -182,11 +193,16 @@ function DashboardContent() {
                     <div>
                       <CardTitle className="text-base">{shop.name}</CardTitle>
                       {shop.phone && (
-                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{shop.phone}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">
+                          {shop.phone}
+                        </p>
                       )}
                     </div>
                   </div>
-                  <Badge variant={shop.twilioPhoneNumber ? "default" : "secondary"} className="text-xs">
+                  <Badge
+                    variant={shop.twilioPhoneNumber ? "default" : "secondary"}
+                    className="text-xs"
+                  >
                     {shop.twilioPhoneNumber ? "Active" : "Setup Needed"}
                   </Badge>
                 </div>

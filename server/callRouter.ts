@@ -13,14 +13,16 @@ import { generateScorecard, completeAudit } from "./services/auditService";
 
 export const callRouter = router({
   list: protectedProcedure
-    .input(z.object({
-      shopId: z.number(),
-      limit: z.number().min(1).max(100).default(50),
-      offset: z.number().min(0).default(0),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-      status: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        shopId: z.number(),
+        limit: z.number().min(1).max(100).default(50),
+        offset: z.number().min(0).default(0),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+        status: z.string().optional(),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) return { calls: [], total: 0 };
@@ -36,18 +38,20 @@ export const callRouter = router({
     }),
 
   analytics: protectedProcedure
-    .input(z.object({
-      shopId: z.number(),
-      startDate: z.string().optional(),
-      endDate: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        shopId: z.number(),
+        startDate: z.string().optional(),
+        endDate: z.string().optional(),
+      })
+    )
     .query(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) return null;
       return getShopAnalytics(
         input.shopId,
         input.startDate ? new Date(input.startDate) : undefined,
-        input.endDate ? new Date(input.endDate) : undefined,
+        input.endDate ? new Date(input.endDate) : undefined
       );
     }),
 
@@ -63,28 +67,37 @@ export const callRouter = router({
     }),
 
   createAudit: protectedProcedure
-    .input(z.object({
-      shopId: z.number().optional(),
-      prospectName: z.string().optional(),
-      prospectEmail: z.string().optional(),
-      prospectPhone: z.string().optional(),
-      shopName: z.string().optional(),
-    }))
+    .input(
+      z.object({
+        shopId: z.number().optional(),
+        prospectName: z.string().optional(),
+        prospectEmail: z.string().optional(),
+        prospectPhone: z.string().optional(),
+        shopName: z.string().optional(),
+      })
+    )
     .mutation(async ({ ctx, input }) => {
-      const id = await createMissedCallAudit({ ...input, ownerId: ctx.user.id });
+      const id = await createMissedCallAudit({
+        ...input,
+        ownerId: ctx.user.id,
+      });
       return { id };
     }),
 
   updateAudit: protectedProcedure
-    .input(z.object({
-      id: z.number(),
-      data: z.object({
-        status: z.enum(["pending", "active", "completed", "expired"]).optional(),
-        totalMissedCalls: z.number().optional(),
-        estimatedLostRevenue: z.string().optional(),
-        scorecardData: z.any().optional(),
-      }),
-    }))
+    .input(
+      z.object({
+        id: z.number(),
+        data: z.object({
+          status: z
+            .enum(["pending", "active", "completed", "expired"])
+            .optional(),
+          totalMissedCalls: z.number().optional(),
+          estimatedLostRevenue: z.string().optional(),
+          scorecardData: z.any().optional(),
+        }),
+      })
+    )
     .mutation(async ({ input }) => {
       await updateMissedCallAudit(input.id, input.data as any);
       return { success: true };

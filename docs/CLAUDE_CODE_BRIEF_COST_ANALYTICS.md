@@ -38,6 +38,7 @@ The page has three sections:
 **Section 1 — Platform Summary Cards (top row)**
 
 Four stat cards:
+
 - Total MRR (sum of all active subscription amounts)
 - Total COGS this month (Twilio + ElevenLabs combined)
 - Gross Margin % (`(MRR - COGS) / MRR * 100`)
@@ -47,22 +48,23 @@ Four stat cards:
 
 A sortable table with one row per shop:
 
-| Column | Source | Notes |
-|---|---|---|
-| Shop Name | `shops.name` | Link to shop detail |
-| Plan | `subscriptions.tier` | starter / pro / elite |
-| MRR | `subscriptions.amount` | Monthly revenue from this shop |
-| Calls This Month | `call_logs` COUNT | Filter by current month |
-| Call Minutes | `call_logs` SUM of `duration` / 60 | Total minutes |
-| Twilio Cost | Calculated | `(call_minutes * 0.0085) + 1.15 + (sms_count * 0.0079)` |
-| ElevenLabs Cost | Calculated | `call_minutes * 0.12` (use 0.12 as default rate) |
-| Total COGS | Calculated | Twilio + ElevenLabs |
-| Gross Margin | Calculated | `(MRR - COGS) / MRR * 100` formatted as percentage |
-| Margin Status | Visual badge | Green (>60%), Yellow (40–60%), Red (<40%) |
+| Column           | Source                             | Notes                                                   |
+| ---------------- | ---------------------------------- | ------------------------------------------------------- |
+| Shop Name        | `shops.name`                       | Link to shop detail                                     |
+| Plan             | `subscriptions.tier`               | starter / pro / elite                                   |
+| MRR              | `subscriptions.amount`             | Monthly revenue from this shop                          |
+| Calls This Month | `call_logs` COUNT                  | Filter by current month                                 |
+| Call Minutes     | `call_logs` SUM of `duration` / 60 | Total minutes                                           |
+| Twilio Cost      | Calculated                         | `(call_minutes * 0.0085) + 1.15 + (sms_count * 0.0079)` |
+| ElevenLabs Cost  | Calculated                         | `call_minutes * 0.12` (use 0.12 as default rate)        |
+| Total COGS       | Calculated                         | Twilio + ElevenLabs                                     |
+| Gross Margin     | Calculated                         | `(MRR - COGS) / MRR * 100` formatted as percentage      |
+| Margin Status    | Visual badge                       | Green (>60%), Yellow (40–60%), Red (<40%)               |
 
 **Section 3 — Monthly Trend Chart**
 
 A line chart (Recharts `LineChart`) showing the last 6 months:
+
 - Line 1: Total MRR (green)
 - Line 2: Total COGS (red)
 - Line 3: Gross Profit (blue, dashed)
@@ -81,13 +83,15 @@ Add to `server/routers/adminRouter.ts` (create this file if it doesn't exist, or
 This procedure is `adminProcedure` (requires `role === 'admin'`).
 
 **Input:**
+
 ```ts
 z.object({
   month: z.string().optional(), // "2026-03" format, defaults to current month
-})
+});
 ```
 
 **Output:**
+
 ```ts
 {
   summary: {
@@ -122,8 +126,10 @@ z.object({
 
 ```ts
 // Get all active subscriptions
-const subs = await db.select().from(subscriptions)
-  .where(eq(subscriptions.status, 'active'));
+const subs = await db
+  .select()
+  .from(subscriptions)
+  .where(eq(subscriptions.status, "active"));
 
 // For each shop, get call stats for the current month
 const callStats = await db
@@ -149,6 +155,7 @@ const ELEVENLABS_PER_MINUTE = 0.12;
 ```
 
 **Subscription MRR mapping:**
+
 ```ts
 const PLAN_MRR = {
   starter: 99,
@@ -172,11 +179,22 @@ client/src/App.tsx                ← Add /admin/costs route
 ## Dependencies
 
 Recharts is already installed. Import from `recharts`:
+
 ```ts
-import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import {
+  LineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  Tooltip,
+  Legend,
+  ResponsiveContainer,
+} from "recharts";
 ```
 
 shadcn/ui components to use:
+
 - `Card`, `CardHeader`, `CardContent` for stat cards
 - `Table`, `TableHeader`, `TableRow`, `TableCell` for the shop table
 - `Badge` for margin status
@@ -187,6 +205,7 @@ shadcn/ui components to use:
 ## Styling Notes
 
 The admin portal uses a **dark theme** with the following accent colors:
+
 - Green: `#10b981` (positive metrics, good margin)
 - Red: `#ef4444` (costs, bad margin)
 - Blue: `#3b82f6` (neutral metrics)
@@ -216,9 +235,10 @@ Background: `#0f172a` (slate-900), Card background: `#1e293b` (slate-800)
 The admin portal currently lives in `client/src/pages/AdminPortal.tsx`. The sidebar navigation is defined inside that file. Add a "Cost Analytics" nav item pointing to `/admin/costs`.
 
 The `adminProcedure` middleware pattern is:
+
 ```ts
 const adminProcedure = protectedProcedure.use(({ ctx, next }) => {
-  if (ctx.user.role !== 'admin') throw new TRPCError({ code: 'FORBIDDEN' });
+  if (ctx.user.role !== "admin") throw new TRPCError({ code: "FORBIDDEN" });
   return next({ ctx });
 });
 ```

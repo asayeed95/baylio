@@ -1,18 +1,28 @@
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import {
-  InsertUser, users,
-  shops, InsertShop,
-  organizations, InsertOrganization,
-  agentConfigs, InsertAgentConfig,
-  callLogs, InsertCallLog,
-  missedCallAudits, InsertMissedCallAudit,
-  subscriptions, InsertSubscription,
-  usageRecords, InsertUsageRecord,
-  notifications, InsertNotification,
-  contactSubmissions, InsertContactSubmission,
+  InsertUser,
+  users,
+  shops,
+  InsertShop,
+  organizations,
+  InsertOrganization,
+  agentConfigs,
+  InsertAgentConfig,
+  callLogs,
+  InsertCallLog,
+  missedCallAudits,
+  InsertMissedCallAudit,
+  subscriptions,
+  InsertSubscription,
+  usageRecords,
+  InsertUsageRecord,
+  notifications,
+  InsertNotification,
+  contactSubmissions,
+  InsertContactSubmission,
 } from "../drizzle/schema";
-import { ENV } from './_core/env';
+import { ENV } from "./_core/env";
 
 let _db: ReturnType<typeof drizzle> | null = null;
 
@@ -66,8 +76,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       values.role = user.role;
       updateSet.role = user.role;
     } else if (user.openId === ENV.ownerOpenId) {
-      values.role = 'admin';
-      updateSet.role = 'admin';
+      values.role = "admin";
+      updateSet.role = "admin";
     }
 
     if (!values.lastSignedIn) {
@@ -94,7 +104,11 @@ export async function getUserByOpenId(openId: string) {
     return undefined;
   }
 
-  const result = await db.select().from(users).where(eq(users.openId, openId)).limit(1);
+  const result = await db
+    .select()
+    .from(users)
+    .where(eq(users.openId, openId))
+    .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
 }
@@ -110,7 +124,10 @@ export async function createOrganization(data: InsertOrganization) {
 export async function getOrganizationsByOwner(ownerId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(organizations).where(eq(organizations.ownerId, ownerId));
+  return db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.ownerId, ownerId));
 }
 
 // ─── Shops ────────────────────────────────────────────────────────────
@@ -124,7 +141,11 @@ export async function createShop(data: InsertShop) {
 export async function getShopsByOwner(ownerId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(shops).where(eq(shops.ownerId, ownerId)).orderBy(desc(shops.createdAt));
+  return db
+    .select()
+    .from(shops)
+    .where(eq(shops.ownerId, ownerId))
+    .orderBy(desc(shops.createdAt));
 }
 
 export async function getShopById(id: number) {
@@ -150,7 +171,11 @@ export async function deleteShop(id: number) {
 export async function getAgentConfigByShop(shopId: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(agentConfigs).where(eq(agentConfigs.shopId, shopId)).limit(1);
+  const result = await db
+    .select()
+    .from(agentConfigs)
+    .where(eq(agentConfigs.shopId, shopId))
+    .limit(1);
   return result[0];
 }
 
@@ -159,7 +184,10 @@ export async function upsertAgentConfig(data: InsertAgentConfig) {
   if (!db) return undefined;
   const existing = await getAgentConfigByShop(data.shopId);
   if (existing) {
-    await db.update(agentConfigs).set(data).where(eq(agentConfigs.id, existing.id));
+    await db
+      .update(agentConfigs)
+      .set(data)
+      .where(eq(agentConfigs.id, existing.id));
     return existing.id;
   }
   const result = await db.insert(agentConfigs).values(data);
@@ -176,15 +204,24 @@ export async function createCallLog(data: InsertCallLog) {
 
 export async function getCallLogsByShop(
   shopId: number,
-  opts?: { limit?: number; offset?: number; startDate?: Date; endDate?: Date; status?: string }
+  opts?: {
+    limit?: number;
+    offset?: number;
+    startDate?: Date;
+    endDate?: Date;
+    status?: string;
+  }
 ) {
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(callLogs.shopId, shopId)];
-  if (opts?.startDate) conditions.push(gte(callLogs.callStartedAt, opts.startDate));
+  if (opts?.startDate)
+    conditions.push(gte(callLogs.callStartedAt, opts.startDate));
   if (opts?.endDate) conditions.push(lte(callLogs.callStartedAt, opts.endDate));
   if (opts?.status) conditions.push(eq(callLogs.status, opts.status as any));
-  return db.select().from(callLogs)
+  return db
+    .select()
+    .from(callLogs)
     .where(and(...conditions))
     .orderBy(desc(callLogs.createdAt))
     .limit(opts?.limit ?? 50)
@@ -194,27 +231,37 @@ export async function getCallLogsByShop(
 export async function getCallLogCountByShop(shopId: number) {
   const db = await getDb();
   if (!db) return 0;
-  const result = await db.select({ count: count() }).from(callLogs).where(eq(callLogs.shopId, shopId));
+  const result = await db
+    .select({ count: count() })
+    .from(callLogs)
+    .where(eq(callLogs.shopId, shopId));
   return result[0]?.count ?? 0;
 }
 
 // ─── Analytics ────────────────────────────────────────────────────────
-export async function getShopAnalytics(shopId: number, startDate?: Date, endDate?: Date) {
+export async function getShopAnalytics(
+  shopId: number,
+  startDate?: Date,
+  endDate?: Date
+) {
   const db = await getDb();
   if (!db) return null;
   const conditions = [eq(callLogs.shopId, shopId)];
   if (startDate) conditions.push(gte(callLogs.callStartedAt, startDate));
   if (endDate) conditions.push(lte(callLogs.callStartedAt, endDate));
-  const result = await db.select({
-    totalCalls: count(),
-    totalRevenue: sql<string>`COALESCE(SUM(${callLogs.estimatedRevenue}), 0)`,
-    appointmentsBooked: sql<number>`SUM(CASE WHEN ${callLogs.appointmentBooked} = true THEN 1 ELSE 0 END)`,
-    missedCalls: sql<number>`SUM(CASE WHEN ${callLogs.status} = 'missed' THEN 1 ELSE 0 END)`,
-    avgDuration: sql<string>`COALESCE(AVG(${callLogs.duration}), 0)`,
-    avgSentiment: sql<string>`COALESCE(AVG(${callLogs.sentimentScore}), 0)`,
-    upsellAttempts: sql<number>`SUM(CASE WHEN ${callLogs.upsellAttempted} = true THEN 1 ELSE 0 END)`,
-    upsellAccepted: sql<number>`SUM(CASE WHEN ${callLogs.upsellAccepted} = true THEN 1 ELSE 0 END)`,
-  }).from(callLogs).where(and(...conditions));
+  const result = await db
+    .select({
+      totalCalls: count(),
+      totalRevenue: sql<string>`COALESCE(SUM(${callLogs.estimatedRevenue}), 0)`,
+      appointmentsBooked: sql<number>`SUM(CASE WHEN ${callLogs.appointmentBooked} = true THEN 1 ELSE 0 END)`,
+      missedCalls: sql<number>`SUM(CASE WHEN ${callLogs.status} = 'missed' THEN 1 ELSE 0 END)`,
+      avgDuration: sql<string>`COALESCE(AVG(${callLogs.duration}), 0)`,
+      avgSentiment: sql<string>`COALESCE(AVG(${callLogs.sentimentScore}), 0)`,
+      upsellAttempts: sql<number>`SUM(CASE WHEN ${callLogs.upsellAttempted} = true THEN 1 ELSE 0 END)`,
+      upsellAccepted: sql<number>`SUM(CASE WHEN ${callLogs.upsellAccepted} = true THEN 1 ELSE 0 END)`,
+    })
+    .from(callLogs)
+    .where(and(...conditions));
   return result[0];
 }
 
@@ -230,22 +277,39 @@ export async function getMissedCallAudits(shopId?: number) {
   const db = await getDb();
   if (!db) return [];
   if (shopId) {
-    return db.select().from(missedCallAudits).where(eq(missedCallAudits.shopId, shopId)).orderBy(desc(missedCallAudits.createdAt));
+    return db
+      .select()
+      .from(missedCallAudits)
+      .where(eq(missedCallAudits.shopId, shopId))
+      .orderBy(desc(missedCallAudits.createdAt));
   }
-  return db.select().from(missedCallAudits).orderBy(desc(missedCallAudits.createdAt));
+  return db
+    .select()
+    .from(missedCallAudits)
+    .orderBy(desc(missedCallAudits.createdAt));
 }
 
-export async function updateMissedCallAudit(id: number, data: Partial<InsertMissedCallAudit>) {
+export async function updateMissedCallAudit(
+  id: number,
+  data: Partial<InsertMissedCallAudit>
+) {
   const db = await getDb();
   if (!db) return;
-  await db.update(missedCallAudits).set(data).where(eq(missedCallAudits.id, id));
+  await db
+    .update(missedCallAudits)
+    .set(data)
+    .where(eq(missedCallAudits.id, id));
 }
 
 // ─── Subscriptions ────────────────────────────────────────────────────
 export async function getSubscriptionByShop(shopId: number) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.select().from(subscriptions).where(eq(subscriptions.shopId, shopId)).limit(1);
+  const result = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.shopId, shopId))
+    .limit(1);
   return result[0];
 }
 
@@ -256,7 +320,10 @@ export async function createSubscription(data: InsertSubscription) {
   return result[0].insertId;
 }
 
-export async function updateSubscription(id: number, data: Partial<InsertSubscription>) {
+export async function updateSubscription(
+  id: number,
+  data: Partial<InsertSubscription>
+) {
   const db = await getDb();
   if (!db) return;
   await db.update(subscriptions).set(data).where(eq(subscriptions.id, id));
@@ -273,7 +340,11 @@ export async function createUsageRecord(data: InsertUsageRecord) {
 export async function getUsageBySubscription(subscriptionId: number) {
   const db = await getDb();
   if (!db) return [];
-  return db.select().from(usageRecords).where(eq(usageRecords.subscriptionId, subscriptionId)).orderBy(desc(usageRecords.recordedAt));
+  return db
+    .select()
+    .from(usageRecords)
+    .where(eq(usageRecords.subscriptionId, subscriptionId))
+    .orderBy(desc(usageRecords.recordedAt));
 }
 
 // ─── Notifications ────────────────────────────────────────────────────
@@ -284,24 +355,38 @@ export async function createNotification(data: InsertNotification) {
   return result[0].insertId;
 }
 
-export async function getNotificationsByUser(userId: number, unreadOnly = false) {
+export async function getNotificationsByUser(
+  userId: number,
+  unreadOnly = false
+) {
   const db = await getDb();
   if (!db) return [];
   const conditions = [eq(notifications.userId, userId)];
   if (unreadOnly) conditions.push(eq(notifications.isRead, false));
-  return db.select().from(notifications).where(and(...conditions)).orderBy(desc(notifications.createdAt)).limit(50);
+  return db
+    .select()
+    .from(notifications)
+    .where(and(...conditions))
+    .orderBy(desc(notifications.createdAt))
+    .limit(50);
 }
 
 export async function markNotificationRead(id: number) {
   const db = await getDb();
   if (!db) return;
-  await db.update(notifications).set({ isRead: true }).where(eq(notifications.id, id));
+  await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(eq(notifications.id, id));
 }
 
 export async function markAllNotificationsRead(userId: number) {
   const db = await getDb();
   if (!db) return;
-  await db.update(notifications).set({ isRead: true }).where(eq(notifications.userId, userId));
+  await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(eq(notifications.userId, userId));
 }
 
 // ─── Contact Submissions ─────────────────────────────────────────────

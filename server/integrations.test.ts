@@ -64,8 +64,13 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
 
       const chain: any = {};
       const methods = [
-        "select", "from", "where", "limit", "offset",
-        "orderBy", "groupBy",
+        "select",
+        "from",
+        "where",
+        "limit",
+        "offset",
+        "orderBy",
+        "groupBy",
       ];
 
       for (const method of methods) {
@@ -297,7 +302,14 @@ describe("Integration Router", () => {
   it("integration.getSyncLogs returns sync log entries", async () => {
     setDbResponses([
       [
-        { id: 1, shopId: 1, provider: "hubspot", action: "sync_contact", status: "success", createdAt: now },
+        {
+          id: 1,
+          shopId: 1,
+          provider: "hubspot",
+          action: "sync_contact",
+          status: "success",
+          createdAt: now,
+        },
       ],
     ]);
     const caller = appRouter.createCaller(createContext());

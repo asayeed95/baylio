@@ -1,6 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -40,10 +46,11 @@ function ShopSettingsContent() {
   const shopId = parseInt(params.id || "0", 10);
   const [, setLocation] = useLocation();
 
-  const { data: shop, isLoading, refetch } = trpc.shop.getById.useQuery(
-    { id: shopId },
-    { enabled: shopId > 0 }
-  );
+  const {
+    data: shop,
+    isLoading,
+    refetch,
+  } = trpc.shop.getById.useQuery({ id: shopId }, { enabled: shopId > 0 });
 
   // Twilio status
   const { data: twilioStatus } = trpc.shop.twilioStatus.useQuery(undefined, {
@@ -75,7 +82,9 @@ function ShopSettingsContent() {
       setZip(shop.zip || "");
       setServices(
         Array.isArray(shop.serviceCatalog)
-          ? shop.serviceCatalog.map(s => `${s.name}${s.price ? ` - $${s.price}` : ""}`).join("\n")
+          ? shop.serviceCatalog
+              .map(s => `${s.name}${s.price ? ` - $${s.price}` : ""}`)
+              .join("\n")
           : ""
       );
     }
@@ -86,21 +95,25 @@ function ShopSettingsContent() {
       toast.success("Shop settings saved");
       refetch();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message || "Failed to save settings");
     },
   });
 
   const handleSave = () => {
     const parsedServices = services.trim()
-      ? services.trim().split("\n").filter(Boolean).map(line => {
-          const parts = line.split(" - $");
-          return {
-            name: parts[0]?.trim() || line.trim(),
-            category: "general",
-            price: parts[1] ? parseFloat(parts[1]) : undefined,
-          };
-        })
+      ? services
+          .trim()
+          .split("\n")
+          .filter(Boolean)
+          .map(line => {
+            const parts = line.split(" - $");
+            return {
+              name: parts[0]?.trim() || line.trim(),
+              category: "general",
+              price: parts[1] ? parseFloat(parts[1]) : undefined,
+            };
+          })
       : undefined;
 
     updateShop.mutate({
@@ -130,11 +143,17 @@ function ShopSettingsContent() {
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation(`/shops/${shopId}`)}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">Shop Settings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Shop Settings
+          </h1>
           <p className="text-sm text-muted-foreground">{shop?.name}</p>
         </div>
         <Button onClick={handleSave} disabled={updateShop.isPending}>
@@ -157,19 +176,22 @@ function ShopSettingsContent() {
             <Input
               id="shop-name"
               value={name}
-              onChange={(e) => setName(e.target.value)}
+              onChange={e => setName(e.target.value)}
             />
           </div>
           <div className="space-y-2">
-            <Label htmlFor="shop-phone">Business Phone (existing landline)</Label>
+            <Label htmlFor="shop-phone">
+              Business Phone (existing landline)
+            </Label>
             <Input
               id="shop-phone"
               value={phone}
-              onChange={(e) => setPhone(e.target.value)}
+              onChange={e => setPhone(e.target.value)}
               placeholder="(555) 123-4567"
             />
             <p className="text-xs text-muted-foreground">
-              The shop's existing phone number. Baylio's AI number is provisioned separately below.
+              The shop's existing phone number. Baylio's AI number is
+              provisioned separately below.
             </p>
           </div>
         </CardContent>
@@ -189,22 +211,34 @@ function ShopSettingsContent() {
             <Input
               id="address"
               value={address}
-              onChange={(e) => setAddress(e.target.value)}
+              onChange={e => setAddress(e.target.value)}
               placeholder="123 Main St"
             />
           </div>
           <div className="grid md:grid-cols-3 gap-4">
             <div className="space-y-2">
               <Label htmlFor="city">City</Label>
-              <Input id="city" value={city} onChange={(e) => setCity(e.target.value)} />
+              <Input
+                id="city"
+                value={city}
+                onChange={e => setCity(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="state">State</Label>
-              <Input id="state" value={state} onChange={(e) => setState(e.target.value)} />
+              <Input
+                id="state"
+                value={state}
+                onChange={e => setState(e.target.value)}
+              />
             </div>
             <div className="space-y-2">
               <Label htmlFor="zip">ZIP Code</Label>
-              <Input id="zip" value={zip} onChange={(e) => setZip(e.target.value)} />
+              <Input
+                id="zip"
+                value={zip}
+                onChange={e => setZip(e.target.value)}
+              />
             </div>
           </div>
         </CardContent>
@@ -218,13 +252,14 @@ function ShopSettingsContent() {
             <CardTitle>Service Catalog</CardTitle>
           </div>
           <CardDescription>
-            List the services your shop offers. The AI agent uses this to answer customer questions accurately.
+            List the services your shop offers. The AI agent uses this to answer
+            customer questions accurately.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <Textarea
             value={services}
-            onChange={(e) => setServices(e.target.value)}
+            onChange={e => setServices(e.target.value)}
             placeholder={`Oil Change - $39.99\nBrake Pad Replacement - $149.99\nTire Rotation - $29.99\nFull Inspection - $89.99\nTransmission Flush - $179.99`}
             rows={8}
           />
@@ -257,7 +292,13 @@ function ShopSettingsContent() {
 interface TwilioPhoneCardProps {
   shopId: number;
   twilioPhoneNumber?: string | null;
-  twilioStatus?: { connected: boolean; friendlyName?: string; accountSid?: string; status?: string; error?: string };
+  twilioStatus?: {
+    connected: boolean;
+    friendlyName?: string;
+    accountSid?: string;
+    status?: string;
+    error?: string;
+  };
   onProvisioned: () => void;
   areaCode: string;
   setAreaCode: (v: string) => void;
@@ -294,7 +335,7 @@ function TwilioPhoneCard({
   );
 
   const purchaseMutation = trpc.shop.purchasePhoneNumber.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(`Phone number ${data.phoneNumber} provisioned and live!`);
       setShowNumberSearch(false);
       setSelectedNumber(null);
@@ -302,7 +343,7 @@ function TwilioPhoneCard({
       utils.shop.getById.invalidate({ id: shopId });
       onProvisioned();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(`Failed to provision number: ${err.message}`);
     },
   });
@@ -313,7 +354,7 @@ function TwilioPhoneCard({
       utils.shop.getById.invalidate({ id: shopId });
       onProvisioned();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(`Failed to release number: ${err.message}`);
     },
   });
@@ -338,7 +379,9 @@ function TwilioPhoneCard({
   const hasNumber = !!twilioPhoneNumber;
 
   return (
-    <Card className={hasNumber ? "border-emerald-500/40" : "border-amber-500/40"}>
+    <Card
+      className={hasNumber ? "border-emerald-500/40" : "border-amber-500/40"}
+    >
       <CardHeader>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -347,12 +390,18 @@ function TwilioPhoneCard({
           </div>
           <div className="flex items-center gap-2">
             {twilioStatus?.connected ? (
-              <Badge variant="outline" className="text-emerald-400 border-emerald-500/40 gap-1">
+              <Badge
+                variant="outline"
+                className="text-emerald-400 border-emerald-500/40 gap-1"
+              >
                 <Wifi className="h-3 w-3" />
                 Twilio Connected
               </Badge>
             ) : (
-              <Badge variant="outline" className="text-amber-400 border-amber-500/40 gap-1">
+              <Badge
+                variant="outline"
+                className="text-amber-400 border-amber-500/40 gap-1"
+              >
                 <WifiOff className="h-3 w-3" />
                 Twilio Disconnected
               </Badge>
@@ -360,8 +409,8 @@ function TwilioPhoneCard({
           </div>
         </div>
         <CardDescription>
-          This is the dedicated phone number customers call to reach the AI agent.
-          It routes all inbound calls through ElevenLabs voice AI.
+          This is the dedicated phone number customers call to reach the AI
+          agent. It routes all inbound calls through ElevenLabs voice AI.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -371,8 +420,12 @@ function TwilioPhoneCard({
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
               <div>
-                <p className="font-mono text-lg font-semibold text-emerald-300">{twilioPhoneNumber}</p>
-                <p className="text-xs text-muted-foreground">Active — routing calls to AI agent</p>
+                <p className="font-mono text-lg font-semibold text-emerald-300">
+                  {twilioPhoneNumber}
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Active — routing calls to AI agent
+                </p>
               </div>
             </div>
             <Button
@@ -380,7 +433,11 @@ function TwilioPhoneCard({
               size="sm"
               className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
               onClick={() => {
-                if (confirm(`Release ${twilioPhoneNumber}? This will disconnect the AI agent immediately.`)) {
+                if (
+                  confirm(
+                    `Release ${twilioPhoneNumber}? This will disconnect the AI agent immediately.`
+                  )
+                ) {
                   releaseMutation.mutate({ shopId });
                 }
               }}
@@ -397,9 +454,12 @@ function TwilioPhoneCard({
           <div className="flex items-center gap-3 p-3 rounded-lg bg-amber-500/10 border border-amber-500/20">
             <XCircle className="h-5 w-5 text-amber-400 shrink-0" />
             <div>
-              <p className="font-medium text-amber-300">No phone number provisioned</p>
+              <p className="font-medium text-amber-300">
+                No phone number provisioned
+              </p>
               <p className="text-xs text-muted-foreground">
-                Search for a local number below to activate the AI agent for this shop.
+                Search for a local number below to activate the AI agent for
+                this shop.
               </p>
             </div>
           </div>
@@ -426,14 +486,21 @@ function TwilioPhoneCard({
                     <Input
                       id="area-code"
                       value={areaCode}
-                      onChange={(e) => setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                      onChange={e =>
+                        setAreaCode(
+                          e.target.value.replace(/\D/g, "").slice(0, 3)
+                        )
+                      }
                       placeholder={shopCity ? `e.g. 248` : "e.g. 415"}
                       maxLength={3}
                       className="font-mono"
                     />
                   </div>
                   <div className="flex items-end">
-                    <Button onClick={handleSearch} disabled={isSearching || areaCode.length !== 3}>
+                    <Button
+                      onClick={handleSearch}
+                      disabled={isSearching || areaCode.length !== 3}
+                    >
                       {isSearching ? (
                         <Loader2 className="h-4 w-4 animate-spin" />
                       ) : (
@@ -445,7 +512,8 @@ function TwilioPhoneCard({
 
                 {availableNumbers && availableNumbers.length === 0 && (
                   <p className="text-sm text-muted-foreground text-center py-2">
-                    No numbers found for area code {areaCode}. Try a different area code.
+                    No numbers found for area code {areaCode}. Try a different
+                    area code.
                   </p>
                 )}
 
@@ -454,12 +522,16 @@ function TwilioPhoneCard({
                     <Label className="text-xs text-muted-foreground uppercase tracking-wide">
                       Available Numbers
                     </Label>
-                    {availableNumbers.map((num) => (
+                    {availableNumbers.map(num => (
                       <div
                         key={num.phoneNumber}
-                        onClick={() => setSelectedNumber(
-                          selectedNumber === num.phoneNumber ? null : num.phoneNumber
-                        )}
+                        onClick={() =>
+                          setSelectedNumber(
+                            selectedNumber === num.phoneNumber
+                              ? null
+                              : num.phoneNumber
+                          )
+                        }
                         className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-colors ${
                           selectedNumber === num.phoneNumber
                             ? "border-primary bg-primary/10"
@@ -467,7 +539,9 @@ function TwilioPhoneCard({
                         }`}
                       >
                         <div>
-                          <p className="font-mono font-medium">{num.friendlyName}</p>
+                          <p className="font-mono font-medium">
+                            {num.friendlyName}
+                          </p>
                           {num.locality && (
                             <p className="text-xs text-muted-foreground">
                               {num.locality}, {num.region}
@@ -476,10 +550,14 @@ function TwilioPhoneCard({
                         </div>
                         <div className="flex gap-1">
                           {num.capabilities.voice && (
-                            <Badge variant="secondary" className="text-xs">Voice</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              Voice
+                            </Badge>
                           )}
                           {num.capabilities.sms && (
-                            <Badge variant="secondary" className="text-xs">SMS</Badge>
+                            <Badge variant="secondary" className="text-xs">
+                              SMS
+                            </Badge>
                           )}
                         </div>
                       </div>
@@ -488,10 +566,17 @@ function TwilioPhoneCard({
                     {selectedNumber && (
                       <div className="pt-2 space-y-2">
                         <div className="p-3 rounded-lg bg-primary/10 border border-primary/30 text-sm">
-                          <p className="font-medium">Ready to provision: <span className="font-mono">{selectedNumber}</span></p>
+                          <p className="font-medium">
+                            Ready to provision:{" "}
+                            <span className="font-mono">{selectedNumber}</span>
+                          </p>
                           <p className="text-xs text-muted-foreground mt-1">
-                            This number will be purchased (~$1.15/month) and configured to route all calls to your AI agent.
-                            Webhook URL: <span className="font-mono">{window.location.origin}/api/twilio/voice</span>
+                            This number will be purchased (~$1.15/month) and
+                            configured to route all calls to your AI agent.
+                            Webhook URL:{" "}
+                            <span className="font-mono">
+                              {window.location.origin}/api/twilio/voice
+                            </span>
                           </p>
                         </div>
                         <div className="flex gap-2">
@@ -535,7 +620,8 @@ function TwilioPhoneCard({
         {/* Twilio account info */}
         {twilioStatus?.connected && (
           <div className="text-xs text-muted-foreground border-t border-border pt-3 mt-2">
-            Connected as: <span className="font-mono">{twilioStatus.accountSid}</span>
+            Connected as:{" "}
+            <span className="font-mono">{twilioStatus.accountSid}</span>
             {" · "}
             {twilioStatus.friendlyName}
           </div>

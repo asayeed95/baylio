@@ -42,17 +42,17 @@ Baylio Server (Express + tRPC)
 
 ## Tech Stack
 
-| Layer | Technology |
-|---|---|
-| Framework | React 19 + TypeScript + Vite |
-| API | tRPC 11 (end-to-end type safety) |
-| Server | Express 4 + Node.js |
-| Database | MySQL/TiDB via Drizzle ORM |
-| Auth | Manus OAuth (JWT sessions) |
-| Voice AI | ElevenLabs Conversational AI |
-| Telephony | Twilio (Voice API + SMS) |
-| Billing | Stripe (subscriptions + setup fees) |
-| Styling | Tailwind CSS 4 + shadcn/ui |
+| Layer     | Technology                          |
+| --------- | ----------------------------------- |
+| Framework | React 19 + TypeScript + Vite        |
+| API       | tRPC 11 (end-to-end type safety)    |
+| Server    | Express 4 + Node.js                 |
+| Database  | MySQL/TiDB via Drizzle ORM          |
+| Auth      | Manus OAuth (JWT sessions)          |
+| Voice AI  | ElevenLabs Conversational AI        |
+| Telephony | Twilio (Voice API + SMS)            |
+| Billing   | Stripe (subscriptions + setup fees) |
+| Styling   | Tailwind CSS 4 + shadcn/ui          |
 
 ---
 
@@ -129,18 +129,18 @@ baylio/
 
 ## Database Schema (10 Tables)
 
-| Table | Purpose |
-|---|---|
-| `users` | Shop owners (OAuth, role: admin/user) |
-| `organizations` | Multi-location grouping |
-| `shops` | Individual shop profiles + Twilio numbers |
-| `agent_configs` | Per-shop AI voice agent settings |
-| `call_logs` | Every inbound call record |
-| `transcripts` | Call transcriptions |
-| `customers` | Caller profiles (auto-built from calls) |
-| `subscriptions` | Stripe subscription state per shop |
-| `usage_records` | Per-call metering for overage billing |
-| `missed_call_audits` | 7-day audit data for sales demos |
+| Table                | Purpose                                   |
+| -------------------- | ----------------------------------------- |
+| `users`              | Shop owners (OAuth, role: admin/user)     |
+| `organizations`      | Multi-location grouping                   |
+| `shops`              | Individual shop profiles + Twilio numbers |
+| `agent_configs`      | Per-shop AI voice agent settings          |
+| `call_logs`          | Every inbound call record                 |
+| `transcripts`        | Call transcriptions                       |
+| `customers`          | Caller profiles (auto-built from calls)   |
+| `subscriptions`      | Stripe subscription state per shop        |
+| `usage_records`      | Per-call metering for overage billing     |
+| `missed_call_audits` | 7-day audit data for sales demos          |
 
 All tables include `ownerId` for multi-tenant row-level isolation.
 
@@ -148,35 +148,41 @@ All tables include `ownerId` for multi-tenant row-level isolation.
 
 ## Environment Variables
 
-| Variable | Required | Description |
-|---|---|---|
-| `DATABASE_URL` | Yes | MySQL/TiDB connection string |
-| `JWT_SECRET` | Yes | Session cookie signing key |
-| `TWILIO_ACCOUNT_SID` | Yes | Twilio Account SID (ACxxxxxxxx) |
-| `TWILIO_AUTH_TOKEN` | Yes | Twilio Auth Token (32-char hex) |
-| `ELEVENLABS_API_KEY` | Yes | ElevenLabs API key |
-| `STRIPE_SECRET_KEY` | Yes | Stripe secret key |
-| `STRIPE_WEBHOOK_SECRET` | Yes | Stripe webhook signing secret |
-| `TWILIO_VALIDATION_ENABLED` | No | Set to `false` to disable webhook signature validation (dev only) |
+| Variable                    | Required | Description                                                       |
+| --------------------------- | -------- | ----------------------------------------------------------------- |
+| `DATABASE_URL`              | Yes      | MySQL/TiDB connection string                                      |
+| `JWT_SECRET`                | Yes      | Session cookie signing key                                        |
+| `TWILIO_ACCOUNT_SID`        | Yes      | Twilio Account SID (ACxxxxxxxx)                                   |
+| `TWILIO_AUTH_TOKEN`         | Yes      | Twilio Auth Token (32-char hex)                                   |
+| `ELEVENLABS_API_KEY`        | Yes      | ElevenLabs API key                                                |
+| `STRIPE_SECRET_KEY`         | Yes      | Stripe secret key                                                 |
+| `STRIPE_WEBHOOK_SECRET`     | Yes      | Stripe webhook signing secret                                     |
+| `TWILIO_VALIDATION_ENABLED` | No       | Set to `false` to disable webhook signature validation (dev only) |
 
 ---
 
 ## Key Design Decisions
 
 ### 1. No DB Writes During Live Calls
+
 The `/api/twilio/voice` webhook must respond in under 2 seconds or Twilio drops the call. All database writes happen asynchronously after the call ends via the post-call pipeline.
 
 ### 2. Hot Context Cache
+
 Shop configuration (name, hours, service catalog, agent ID) is cached in memory with a 5-minute TTL. This eliminates DB queries during live webhook handling.
 
 ### 3. Tenant Isolation via ownerId
+
 MySQL/TiDB has no native row-level security. Every child table includes an `ownerId` column that is always filtered in queries. The `tenantScope` middleware injects `ctx.tenantId` into every tRPC procedure.
 
 ### 4. Twilio Webhook Validation
+
 All `/api/twilio/*` routes are protected by HMAC-SHA1 signature validation. In development, this runs in `logOnly` mode. In production, invalid signatures return 403 (toll fraud prevention).
 
 ### 5. 3-Stage Prompt Compilation
+
 Rather than a static system prompt, Baylio compiles a fresh prompt per call:
+
 1. **Symptom extraction** — what is the customer describing?
 2. **Catalog mapping** — which services in the shop's catalog match?
 3. **Offer generation** — what upsell makes sense at this confidence level?
@@ -206,11 +212,11 @@ pnpm drizzle-kit push
 
 ## Subscription Tiers
 
-| Tier | Price | Minutes Included | Overage |
-|---|---|---|---|
-| Starter | $199/mo | 300 min | $0.05/min |
-| Pro | $349/mo | 750 min | $0.04/min |
-| Elite | $599/mo | 2,000 min | $0.03/min |
+| Tier    | Price   | Minutes Included | Overage   |
+| ------- | ------- | ---------------- | --------- |
+| Starter | $199/mo | 300 min          | $0.05/min |
+| Pro     | $349/mo | 750 min          | $0.04/min |
+| Elite   | $599/mo | 2,000 min        | $0.03/min |
 
 Setup fee: $299 one-time (waived for annual prepay).
 
@@ -218,12 +224,12 @@ Setup fee: $299 one-time (waived for annual prepay).
 
 ## Live Infrastructure
 
-| Service | Account |
-|---|---|
-| Twilio | REDACTED_TWILIO_SID (Pay-as-you-go) |
-| ElevenLabs | REDACTED_ELEVENLABS_AGENT_ID (Baylio agent) |
-| Test number | (XXX) XXX-XXXX / +1REDACTED |
-| GitHub | github.com/asayeed95/baylio (private) |
+| Service     | Account                                     |
+| ----------- | ------------------------------------------- |
+| Twilio      | REDACTED_TWILIO_SID (Pay-as-you-go)         |
+| ElevenLabs  | REDACTED_ELEVENLABS_AGENT_ID (Baylio agent) |
+| Test number | (XXX) XXX-XXXX / +1REDACTED                 |
+| GitHub      | github.com/asayeed95/baylio (private)       |
 
 ---
 

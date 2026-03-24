@@ -51,7 +51,7 @@ export const analyticsRouter = router({
         .from(shops)
         .where(eq(shops.ownerId, ctx.user.id));
 
-      const shopIds = userShops.map((s) => s.id);
+      const shopIds = userShops.map(s => s.id);
       if (shopIds.length === 0) {
         return {
           callCount: 0,

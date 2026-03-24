@@ -105,7 +105,10 @@ function MainRouter() {
       <Route path="/shops/:id/analytics" component={Analytics} />
       <Route path="/shops/:id/settings" component={ShopSettings} />
       <Route path="/shops/:id/integrations" component={Integrations} />
-      <Route path="/shops/:id/calls/:callId/scorecard" component={CallScorecard} />
+      <Route
+        path="/shops/:id/calls/:callId/scorecard"
+        component={CallScorecard}
+      />
       <Route path="/audits" component={MissedCallAudit} />
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
