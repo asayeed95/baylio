@@ -208,11 +208,11 @@ export default function PartnersLanding() {
           {/* Social proof numbers */}
           <div className="mt-14 grid grid-cols-3 gap-6 max-w-lg mx-auto">
             <div>
-              <p className="text-3xl font-bold text-white">$299</p>
+              <p className="text-3xl font-mono font-bold text-white">$299</p>
               <p className="text-sm text-zinc-500 mt-1">Avg shop plan/mo</p>
             </div>
             <div>
-              <p className="text-3xl font-bold text-emerald-400">30%</p>
+              <p className="text-3xl font-mono font-bold text-emerald-400">30%</p>
               <p className="text-sm text-zinc-500 mt-1">Max commission rate</p>
             </div>
             <div>
@@ -279,26 +279,26 @@ export default function PartnersLanding() {
               <CardContent className="p-6 space-y-5">
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-400 text-sm">Commission rate</span>
-                  <span className="text-white font-bold">{(TIER_RATES[tier] * 100).toFixed(0)}%</span>
+                  <span className="text-white font-mono font-bold">{(TIER_RATES[tier] * 100).toFixed(0)}%</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-400 text-sm">Avg plan value</span>
-                  <span className="text-white font-bold">$299/mo</span>
+                  <span className="text-white font-mono font-bold">$299/mo</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-zinc-400 text-sm">Active referrals</span>
-                  <span className="text-white font-bold">{shops} shops</span>
+                  <span className="text-white font-mono font-bold">{shops} shops</span>
                 </div>
                 <div className="border-t border-zinc-800 pt-4">
                   <div className="flex items-center justify-between mb-2">
                     <span className="text-zinc-300 font-medium">Monthly earnings</span>
-                    <span className="text-2xl font-extrabold text-emerald-400">
+                    <span className="text-2xl font-mono font-extrabold text-emerald-400">
                       ${monthlyEarnings.toLocaleString()}
                     </span>
                   </div>
                   <div className="flex items-center justify-between">
                     <span className="text-zinc-500 text-sm">Annual earnings</span>
-                    <span className="text-lg font-bold text-amber-400">
+                    <span className="text-lg font-mono font-bold text-amber-400">
                       ${annualEarnings.toLocaleString()}
                     </span>
                   </div>
@@ -337,7 +337,7 @@ export default function PartnersLanding() {
                 <Badge variant="outline" className={`text-xs mb-4 ${t.badge}`}>
                   {t.name}
                 </Badge>
-                <p className={`text-4xl font-extrabold mb-1 ${t.accent}`}>{t.rate}</p>
+                <p className={`text-4xl font-mono font-extrabold mb-1 ${t.accent}`}>{t.rate}</p>
                 <p className="text-xs text-zinc-500 mb-3">recurring commission</p>
                 <div className="border-t border-zinc-800/60 pt-3 space-y-2">
                   <div className="flex items-center gap-2">

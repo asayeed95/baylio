@@ -69,7 +69,7 @@ function SubscriptionsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Subscriptions & Billing</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Subscriptions & Billing</h1>
         <p className="text-muted-foreground">
           Manage plans, track usage, and view billing for all your shops.
         </p>
@@ -116,8 +116,8 @@ function SubscriptionsContent() {
                     {/* Usage bar */}
                     <div>
                       <div className="flex items-center justify-between text-sm mb-1">
-                        <span>{subscription.usedMinutes} min used</span>
-                        <span>{subscription.includedMinutes} min included</span>
+                        <span className="font-mono">{subscription.usedMinutes} min used</span>
+                        <span className="font-mono">{subscription.includedMinutes} min included</span>
                       </div>
                       <Progress
                         value={subscription.includedMinutes > 0
@@ -198,8 +198,8 @@ function SubscriptionsContent() {
             ].map((plan) => (
               <div key={plan.tier} className="p-4 rounded-lg bg-background border">
                 <h3 className="font-semibold">{plan.tier}</h3>
-                <p className="text-2xl font-bold mt-1">${plan.price}<span className="text-sm text-muted-foreground font-normal">/mo</span></p>
-                <p className="text-xs text-muted-foreground mt-1">{plan.minutes} min included</p>
+                <p className="text-2xl font-mono font-medium mt-1">${plan.price}<span className="text-sm text-muted-foreground font-normal font-sans">/mo</span></p>
+                <p className="text-xs text-muted-foreground mt-1"><span className="font-mono">{plan.minutes}</span> min included</p>
                 <ul className="mt-3 space-y-1">
                   {plan.features.map((f) => (
                     <li key={f} className="text-xs flex items-center gap-1">

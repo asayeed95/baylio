@@ -170,7 +170,7 @@ export default function PartnersReferrals() {
                         <TableCell className="text-zinc-300 capitalize">
                           {ref.subscriptionTier || "-"}
                         </TableCell>
-                        <TableCell className="text-right text-emerald-400 font-medium">
+                        <TableCell className="text-right text-emerald-400 font-mono font-medium">
                           {parseFloat(ref.commissionEarned?.toString() || "0") > 0
                             ? `$${parseFloat(ref.commissionEarned?.toString() || "0").toFixed(2)}`
                             : "-"}

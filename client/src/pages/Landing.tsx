@@ -314,7 +314,7 @@ function ROICalculator() {
           <Card className="border border-destructive/30 bg-destructive/5">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground mb-1">Revenue you're losing monthly</p>
-              <p className="text-3xl font-bold text-destructive">{formatCurrency(calculations.monthlyRevenueLost)}</p>
+              <p className="text-3xl font-mono font-bold text-destructive">{formatCurrency(calculations.monthlyRevenueLost)}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {calculations.monthlyMissed} missed calls/mo &times; 35% conversion &times; {formatCurrency(avgRepairOrder[0])} avg order
               </p>
@@ -324,7 +324,7 @@ function ROICalculator() {
           <Card className="border border-primary/30 bg-primary/5">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground mb-1">Revenue Baylio recovers monthly</p>
-              <p className="text-3xl font-bold text-primary">{formatCurrency(calculations.monthlyRecovered)}</p>
+              <p className="text-3xl font-mono font-bold text-primary">{formatCurrency(calculations.monthlyRecovered)}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {calculations.capturedCalls} calls captured &rarr; {calculations.newBookings} new bookings
               </p>
@@ -336,11 +336,11 @@ function ROICalculator() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Annual recovery</p>
-                  <p className="text-xl font-bold">{formatCurrency(calculations.annualRecovered)}</p>
+                  <p className="text-xl font-mono font-bold">{formatCurrency(calculations.annualRecovered)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">ROI multiple</p>
-                  <p className="text-xl font-bold text-primary">{calculations.roiMultiple}x return</p>
+                  <p className="text-xl font-mono font-bold text-primary">{calculations.roiMultiple}x return</p>
                 </div>
               </div>
             </CardContent>
@@ -365,8 +365,8 @@ export default function Landing() {
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <Phone className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Baylio</span>
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
@@ -706,7 +706,7 @@ export default function Landing() {
           </p>
           <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
             {PRICING_TIERS.map((tier) => (
-              <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary shadow-lg" : ""}`}>
+              <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary" : ""}`}>
                 {tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
                     <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
@@ -716,7 +716,7 @@ export default function Landing() {
                   <CardTitle className="text-xl">{tier.name}</CardTitle>
                   <p className="text-sm text-muted-foreground">{tier.description}</p>
                   <div className="mt-4">
-                    <span className="text-4xl font-bold">${tier.price}</span>
+                    <span className="text-4xl font-mono font-bold">${tier.price}</span>
                     <span className="text-muted-foreground">/month</span>
                   </div>
                   <p className="text-xs text-muted-foreground mt-1">{tier.minutes} minutes included</p>
@@ -829,7 +829,7 @@ export default function Landing() {
               ))}
             </div>
 
-            <div className="bg-muted/50 border rounded-2xl p-6 md:p-8 mb-10">
+            <div className="bg-muted/50 border rounded-sm p-6 md:p-8 mb-10">
               <p className="text-center text-sm font-semibold text-muted-foreground mb-6 uppercase tracking-wide">Example monthly earnings</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                 {[
@@ -839,7 +839,7 @@ export default function Landing() {
                   { referrals: "50 shops", tier: "Mixed", monthly: "$5,000+/mo", rate: "30%" },
                 ].map((ex, i) => (
                   <div key={i}>
-                    <p className="text-2xl font-bold text-primary">{ex.monthly}</p>
+                    <p className="text-2xl font-mono font-bold text-primary">{ex.monthly}</p>
                     <p className="text-sm font-medium mt-1">{ex.referrals}</p>
                     <p className="text-xs text-muted-foreground">{ex.tier} · {ex.rate}</p>
                   </div>
@@ -899,8 +899,8 @@ export default function Landing() {
         <div className="container py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Baylio</span>
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
             </div>
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.

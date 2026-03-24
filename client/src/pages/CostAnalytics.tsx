@@ -88,7 +88,7 @@ export default function CostAnalytics() {
     <DashboardLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cost Analytics</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Cost Analytics</h1>
           <p className="text-muted-foreground mt-1">
             Platform costs, revenue, and margin for the current month.
           </p>
@@ -99,12 +99,12 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Calls This Month</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Calls This Month</p>
                 <Phone className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-bold mt-2">{summary.callCount}</p>
+              <p className="text-2xl font-mono font-medium mt-2">{summary.callCount}</p>
               <p className="text-xs text-muted-foreground mt-1">
-                {summary.totalMinutes} total minutes
+                <span className="font-mono">{summary.totalMinutes}</span> total minutes
               </p>
             </CardContent>
           </Card>
@@ -112,15 +112,14 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Total Cost</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Total Cost</p>
                 <DollarSign className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-bold mt-2">
+              <p className="text-2xl font-mono font-medium mt-2">
                 ${summary.totalCost.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Twilio: ${summary.twilioCost.toFixed(2)} | ElevenLabs: $
-                {summary.elevenLabsCost.toFixed(2)}
+                Twilio: <span className="font-mono">${summary.twilioCost.toFixed(2)}</span> | ElevenLabs: <span className="font-mono">${summary.elevenLabsCost.toFixed(2)}</span>
               </p>
             </CardContent>
           </Card>
@@ -128,10 +127,10 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Cost Per Call</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Cost Per Call</p>
                 <Clock className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-bold mt-2">
+              <p className="text-2xl font-mono font-medium mt-2">
                 ${summary.costPerCall.toFixed(2)}
               </p>
               <p className="text-xs text-muted-foreground mt-1">
@@ -143,14 +142,14 @@ export default function CostAnalytics() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">Gross Margin</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Gross Margin</p>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
               </div>
-              <p className="text-2xl font-bold mt-2">
+              <p className={`text-2xl font-mono font-medium mt-2 ${summary.grossMargin >= 50 ? "text-primary" : summary.grossMargin >= 20 ? "text-foreground" : "text-destructive"}`}>
                 {summary.grossMargin.toFixed(1)}%
               </p>
               <p className="text-xs text-muted-foreground mt-1">
-                Revenue: ${summary.revenue.toLocaleString()}/mo
+                Revenue: <span className="font-mono">${summary.revenue.toLocaleString()}</span>/mo
               </p>
             </CardContent>
           </Card>
@@ -245,7 +244,7 @@ export default function CostAnalytics() {
                         <TableCell className="font-mono text-sm">
                           {maskPhone(call.callerPhone)}
                         </TableCell>
-                        <TableCell>{formatDuration(call.duration)}</TableCell>
+                        <TableCell className="font-mono">{formatDuration(call.duration)}</TableCell>
                         <TableCell>
                           <span
                             className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
@@ -259,7 +258,7 @@ export default function CostAnalytics() {
                             {call.status}
                           </span>
                         </TableCell>
-                        <TableCell className="text-right font-medium">
+                        <TableCell className="text-right font-mono font-medium">
                           ${cost.toFixed(2)}
                         </TableCell>
                       </TableRow>

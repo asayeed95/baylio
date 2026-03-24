@@ -147,7 +147,7 @@ function ShopDetailContent() {
         </Button>
         <div className="flex-1">
           <div className="flex items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight">{shop.name}</h1>
+            <h1 className="text-2xl font-semibold tracking-tight">{shop.name}</h1>
             <Badge variant={shop.twilioPhoneNumber ? "default" : "secondary"}>
               {shop.twilioPhoneNumber ? "Active" : "Setup Needed"}
             </Badge>
@@ -172,8 +172,8 @@ function ShopDetailContent() {
               <div className="flex items-center gap-3">
                 <stat.icon className="h-4 w-4 text-muted-foreground" />
                 <div>
-                  <p className="text-xs text-muted-foreground">{stat.label}</p>
-                  <p className="text-lg font-semibold">{stat.value}</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{stat.label}</p>
+                  <p className="text-lg font-mono font-medium">{stat.value}</p>
                 </div>
               </div>
             </CardContent>
@@ -186,7 +186,7 @@ function ShopDetailContent() {
         {navCards.map((card) => (
           <Card
             key={card.title}
-            className="cursor-pointer hover:shadow-md transition-shadow"
+            className="cursor-pointer hover:border-primary/30 transition-colors rounded-sm"
             onClick={() => setLocation(card.path)}
           >
             <CardContent className="pt-6">

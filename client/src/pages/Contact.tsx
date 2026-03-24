@@ -42,8 +42,8 @@ export default function Contact() {
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
-            <Phone className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Baylio</span>
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
             <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
@@ -210,8 +210,8 @@ export default function Contact() {
         <div className="container py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Baylio</span>
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.

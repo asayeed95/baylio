@@ -82,11 +82,11 @@ export default function PartnersPortal() {
             <CardContent className="space-y-4">
               <div className="grid grid-cols-3 gap-3 text-center">
                 <div className="p-3 rounded-lg bg-zinc-800">
-                  <p className="text-2xl font-bold text-emerald-400">20%</p>
+                  <p className="text-2xl font-mono font-bold text-emerald-400">20%</p>
                   <p className="text-xs text-zinc-500">Commission</p>
                 </div>
                 <div className="p-3 rounded-lg bg-zinc-800">
-                  <p className="text-2xl font-bold text-amber-400">$120</p>
+                  <p className="text-2xl font-mono font-bold text-amber-400">$120</p>
                   <p className="text-xs text-zinc-500">Max/mo/referral</p>
                 </div>
                 <div className="p-3 rounded-lg bg-zinc-800">
@@ -186,10 +186,10 @@ export default function PartnersPortal() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Total Referrals</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Total Referrals</p>
                 <Users className="h-4 w-4 text-zinc-500" />
               </div>
-              <p className="text-2xl font-bold text-white mt-2">
+              <p className="text-2xl font-mono font-medium text-white mt-2">
                 {stats.totalReferrals}
               </p>
               <p className="text-xs text-zinc-500 mt-1">
@@ -201,10 +201,10 @@ export default function PartnersPortal() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Total Earnings</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Total Earnings</p>
                 <DollarSign className="h-4 w-4 text-emerald-500" />
               </div>
-              <p className="text-2xl font-bold text-emerald-400 mt-2">
+              <p className="text-2xl font-mono font-medium text-emerald-400 mt-2">
                 ${stats.totalEarnings.toLocaleString()}
               </p>
               <p className="text-xs text-zinc-500 mt-1">
@@ -216,10 +216,10 @@ export default function PartnersPortal() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Monthly Recurring</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Monthly Recurring</p>
                 <TrendingUp className="h-4 w-4 text-amber-500" />
               </div>
-              <p className="text-2xl font-bold text-amber-400 mt-2">
+              <p className="text-2xl font-mono font-medium text-amber-400 mt-2">
                 ${stats.recurringMonthly.toFixed(0)}
                 <span className="text-sm text-zinc-500">/mo</span>
               </p>
@@ -232,10 +232,10 @@ export default function PartnersPortal() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Conversion Rate</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Conversion Rate</p>
                 <ArrowUpRight className="h-4 w-4 text-blue-500" />
               </div>
-              <p className="text-2xl font-bold text-white mt-2">
+              <p className="text-2xl font-mono font-medium text-white mt-2">
                 {stats.conversionRate}%
               </p>
               <p className="text-xs text-zinc-500 mt-1">

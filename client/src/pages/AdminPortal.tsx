@@ -99,12 +99,12 @@ function AdminOverview() {
           <Card key={card.label} className="bg-gray-900 border-gray-800">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
-                <CardTitle className="text-gray-400 text-sm font-normal">{card.label}</CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-widest text-gray-400">{card.label}</CardTitle>
                 <card.icon className={`w-4 h-4 ${card.color}`} />
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-white">{card.value}</p>
+              <p className="text-3xl font-mono font-medium text-white">{card.value}</p>
             </CardContent>
           </Card>
         ))}

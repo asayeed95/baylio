@@ -132,7 +132,7 @@ function CallLogsContent() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Call Logs</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Call Logs</h1>
           <p className="text-sm text-muted-foreground">{shop?.name} — {total} total calls</p>
         </div>
       </div>
@@ -207,11 +207,11 @@ function CallLogsContent() {
                     <TableCell>
                       <div>
                         <p className="font-medium text-sm">{call.callerName || "Unknown"}</p>
-                        <p className="text-xs text-muted-foreground">{call.callerPhone || "-"}</p>
+                        <p className="text-xs text-muted-foreground font-mono">{call.callerPhone || "-"}</p>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(call.status)}</TableCell>
-                    <TableCell className="text-sm">{formatDuration(call.duration)}</TableCell>
+                    <TableCell className="text-sm font-mono">{formatDuration(call.duration)}</TableCell>
                     <TableCell className="text-sm max-w-[200px] truncate">
                       {call.customerIntent || "-"}
                     </TableCell>
@@ -222,7 +222,7 @@ function CallLogsContent() {
                         <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </TableCell>
-                    <TableCell className="text-sm">
+                    <TableCell className="text-sm font-mono">
                       {call.estimatedRevenue ? `$${parseFloat(call.estimatedRevenue).toFixed(0)}` : "-"}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
@@ -275,7 +275,7 @@ function CallLogsContent() {
                 <div>
                   <Label className="text-xs text-muted-foreground">Caller</Label>
                   <p className="text-sm font-medium">{selectedCall.callerName || "Unknown"}</p>
-                  <p className="text-xs text-muted-foreground">{selectedCall.callerPhone}</p>
+                  <p className="text-xs text-muted-foreground font-mono">{selectedCall.callerPhone}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Status</Label>
@@ -283,7 +283,7 @@ function CallLogsContent() {
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Duration</Label>
-                  <p className="text-sm">{formatDuration(selectedCall.duration)}</p>
+                  <p className="text-sm font-mono">{formatDuration(selectedCall.duration)}</p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Date</Label>
@@ -313,7 +313,7 @@ function CallLogsContent() {
               {selectedCall.sentimentScore != null && (
                 <div>
                   <Label className="text-xs text-muted-foreground">Sentiment Score</Label>
-                  <p className="text-sm">{parseFloat(selectedCall.sentimentScore).toFixed(2)} / 1.00</p>
+                  <p className="text-sm font-mono">{parseFloat(selectedCall.sentimentScore).toFixed(2)} / 1.00</p>
                 </div>
               )}
             </div>

@@ -134,7 +134,7 @@ function ShopSettingsContent() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Shop Settings</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Shop Settings</h1>
           <p className="text-sm text-muted-foreground">{shop?.name}</p>
         </div>
         <Button onClick={handleSave} disabled={updateShop.isPending}>
@@ -371,7 +371,7 @@ function TwilioPhoneCard({
             <div className="flex items-center gap-3">
               <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
               <div>
-                <p className="font-mono font-semibold text-emerald-300">{twilioPhoneNumber}</p>
+                <p className="font-mono text-lg font-semibold text-emerald-300">{twilioPhoneNumber}</p>
                 <p className="text-xs text-muted-foreground">Active — routing calls to AI agent</p>
               </div>
             </div>

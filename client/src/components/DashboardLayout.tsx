@@ -107,7 +107,7 @@ export default function DashboardLayout({
               window.location.href = getLoginUrl();
             }}
             size="lg"
-            className="w-full shadow-lg hover:shadow-xl transition-all"
+            className="w-full transition-all"
           >
             Sign in
           </Button>
@@ -204,10 +204,8 @@ function DashboardLayoutContent({
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
-                  <Phone className="h-5 w-5 text-primary shrink-0" />
-                  <span className="font-bold tracking-tight truncate">
-                    Baylio
-                  </span>
+                  <div className="w-2 h-2 rounded-full bg-primary shrink-0" />
+                  <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
                 </div>
               ) : null}
             </div>
@@ -223,7 +221,7 @@ function DashboardLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal`}
+                      className={`h-10 transition-all font-normal ${isActive ? "border-l-2 border-primary bg-accent/50 text-accent-foreground rounded-none" : "text-muted-foreground hover:bg-secondary hover:text-foreground rounded-none"}`}
                     >
                       <item.icon
                         className={`h-4 w-4 ${isActive ? "text-primary" : ""}`}
@@ -249,7 +247,7 @@ function DashboardLayoutContent({
                     <p className="text-sm font-medium truncate leading-none">
                       {user?.name || "-"}
                     </p>
-                    <p className="text-xs text-muted-foreground truncate mt-1.5">
+                    <p className="font-mono text-xs text-muted-foreground truncate mt-1.5">
                       {user?.email || "-"}
                     </p>
                   </div>
@@ -275,7 +273,7 @@ function DashboardLayoutContent({
           </SidebarFooter>
         </Sidebar>
         <div
-          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/20 transition-colors ${isCollapsed ? "hidden" : ""}`}
+          className={`absolute top-0 right-0 w-1 h-full cursor-col-resize hover:bg-primary/30 transition-colors ${isCollapsed ? "hidden" : ""}`}
           onMouseDown={() => {
             if (isCollapsed) return;
             setIsResizing(true);

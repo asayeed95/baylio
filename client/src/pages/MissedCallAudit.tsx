@@ -120,7 +120,7 @@ function MissedCallAuditContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Missed Call Audits</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Missed Call Audits</h1>
           <p className="text-muted-foreground">
             Your sales tool. Run 7-day audits to show prospects how much revenue they're losing.
           </p>
@@ -245,8 +245,8 @@ function MissedCallAuditContent() {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(audit.status)}</TableCell>
-                  <TableCell>{audit.totalMissedCalls ?? 0}</TableCell>
-                  <TableCell>
+                  <TableCell className="font-mono">{audit.totalMissedCalls ?? 0}</TableCell>
+                  <TableCell className="font-mono text-primary">
                     {audit.estimatedLostRevenue
                       ? `$${parseFloat(audit.estimatedLostRevenue).toLocaleString()}`
                       : "-"}
