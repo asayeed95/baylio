@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 
 /**
  * Security & Stripe Integration Tests
- * 
+ *
  * Tests:
  * - Twilio signature validation middleware logic
  * - Tenant scope isolation
@@ -34,7 +34,12 @@ describe("promptCompiler", () => {
         { name: "Brake Pad Replacement", category: "brakes", price: 199 },
       ],
       upsellRules: [
-        { symptom: "oil change", service: "Oil Change", adjacent: "Tire Rotation", confidence: 0.8 },
+        {
+          symptom: "oil change",
+          service: "Oil Change",
+          adjacent: "Tire Rotation",
+          confidence: 0.8,
+        },
       ],
       confidenceThreshold: 0.8,
       maxUpsellsPerCall: 2,
@@ -86,10 +91,13 @@ describe("promptCompiler", () => {
     const { estimateTokenCount } = await import("./services/promptCompiler");
 
     const shortText = "Hello world";
-    const longText = "This is a much longer text that should have more tokens. ".repeat(20);
+    const longText =
+      "This is a much longer text that should have more tokens. ".repeat(20);
 
     expect(estimateTokenCount(shortText)).toBeGreaterThan(0);
-    expect(estimateTokenCount(longText)).toBeGreaterThan(estimateTokenCount(shortText));
+    expect(estimateTokenCount(longText)).toBeGreaterThan(
+      estimateTokenCount(shortText)
+    );
   });
 });
 
@@ -286,8 +294,14 @@ describe("twilioValidation", () => {
     const url = "https://baylio.io/api/twilio/voice";
     const data = url + "CallSidCA123From+15551234567";
 
-    const sig1 = crypto.createHmac("sha1", "token_1").update(Buffer.from(data, "utf-8")).digest("base64");
-    const sig2 = crypto.createHmac("sha1", "token_2").update(Buffer.from(data, "utf-8")).digest("base64");
+    const sig1 = crypto
+      .createHmac("sha1", "token_1")
+      .update(Buffer.from(data, "utf-8"))
+      .digest("base64");
+    const sig2 = crypto
+      .createHmac("sha1", "token_2")
+      .update(Buffer.from(data, "utf-8"))
+      .digest("base64");
 
     expect(sig1).not.toBe(sig2);
   });

@@ -12,6 +12,7 @@ Protected by HMAC-SHA1 signature validation (`server/middleware/twilioValidation
 **Response:** TwiML from ElevenLabs Register Call API, or voicemail fallback.
 
 **Flow:**
+
 1. Resolve shop by `To` number (cache → DB fallback)
 2. Check ElevenLabs agent is configured
 3. Register call with ElevenLabs (server-side, API key never exposed)
@@ -52,6 +53,7 @@ BEFORE `express.json()` so Stripe signature verification works.
 ### POST /api/stripe/webhook
 
 **Events handled:**
+
 - `checkout.session.completed` → Create/update subscription in DB
 - `invoice.paid` → Reset billing period
 - `invoice.payment_failed` → Set subscription to `past_due`
@@ -63,6 +65,7 @@ BEFORE `express.json()` so Stripe signature verification works.
 ## Webhook Ordering Assumptions
 
 Twilio does NOT guarantee callback ordering. The system handles this by:
+
 - Using `twilioCallSid` as the idempotency key for call log creation
 - Recording and transcription callbacks update by `twilioCallSid` (safe if call log doesn't exist yet — no-op)
 - All webhook handlers respond 200 immediately, process async via `setImmediate`

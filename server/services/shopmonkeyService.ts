@@ -15,27 +15,43 @@ interface WorkOrderParams {
   notes?: string;
 }
 
-async function getShopmonkeyKeys(shopId: number): Promise<{ publicKey: string; privateKey: string } | null> {
+async function getShopmonkeyKeys(
+  shopId: number
+): Promise<{ publicKey: string; privateKey: string } | null> {
   const db = await getDb();
   if (!db) return null;
 
   const result = await db
     .select()
     .from(shopIntegrations)
-    .where(and(eq(shopIntegrations.shopId, shopId), eq(shopIntegrations.provider, "shopmonkey"), eq(shopIntegrations.isActive, true)))
+    .where(
+      and(
+        eq(shopIntegrations.shopId, shopId),
+        eq(shopIntegrations.provider, "shopmonkey"),
+        eq(shopIntegrations.isActive, true)
+      )
+    )
     .limit(1);
 
   if (result.length === 0) return null;
   const settings = result[0].settings as any;
-  if (!settings?.shopmonkeyPublicKey || !settings?.shopmonkeyPrivateKey) return null;
-  return { publicKey: settings.shopmonkeyPublicKey, privateKey: settings.shopmonkeyPrivateKey };
+  if (!settings?.shopmonkeyPublicKey || !settings?.shopmonkeyPrivateKey)
+    return null;
+  return {
+    publicKey: settings.shopmonkeyPublicKey,
+    privateKey: settings.shopmonkeyPrivateKey,
+  };
 }
 
-async function shopmonkeyFetch(path: string, keys: { publicKey: string; privateKey: string }, options: RequestInit = {}) {
+async function shopmonkeyFetch(
+  path: string,
+  keys: { publicKey: string; privateKey: string },
+  options: RequestInit = {}
+) {
   const response = await fetch(`https://api.shopmonkey.cloud${path}`, {
     ...options,
     headers: {
-      "Authorization": `Bearer ${keys.privateKey}`,
+      Authorization: `Bearer ${keys.privateKey}`,
       "Content-Type": "application/json",
       ...options.headers,
     },
@@ -58,7 +74,10 @@ export async function createWorkOrder(
     // Step 1: Search or create customer
     let customerId: string | undefined;
     try {
-      const searchResult = await shopmonkeyFetch(`/v3/customer?phone=${encodeURIComponent(params.customerPhone)}`, keys);
+      const searchResult = await shopmonkeyFetch(
+        `/v3/customer?phone=${encodeURIComponent(params.customerPhone)}`,
+        keys
+      );
       if (searchResult.data?.length > 0) {
         customerId = searchResult.data[0].id;
       }
@@ -83,7 +102,9 @@ export async function createWorkOrder(
       body: JSON.stringify({
         customerId,
         note: `Service: ${params.service}\n${params.notes || ""}\n\nBooked via Baylio AI`,
-        ...(params.appointmentDate ? { appointmentDate: params.appointmentDate } : {}),
+        ...(params.appointmentDate
+          ? { appointmentDate: params.appointmentDate }
+          : {}),
       }),
     });
 

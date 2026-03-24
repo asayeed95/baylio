@@ -79,7 +79,9 @@ googleAuthRouter.get("/callback", async (req: Request, res: Response) => {
           provider,
           accessToken: tokens.access_token || null,
           refreshToken: tokens.refresh_token || null,
-          tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+          tokenExpiresAt: tokens.expiry_date
+            ? new Date(tokens.expiry_date)
+            : null,
           externalAccountId: userInfo.data.email || null,
           isActive: true,
         })
@@ -87,7 +89,9 @@ googleAuthRouter.get("/callback", async (req: Request, res: Response) => {
           set: {
             accessToken: tokens.access_token || null,
             refreshToken: tokens.refresh_token || null,
-            tokenExpiresAt: tokens.expiry_date ? new Date(tokens.expiry_date) : null,
+            tokenExpiresAt: tokens.expiry_date
+              ? new Date(tokens.expiry_date)
+              : null,
             externalAccountId: userInfo.data.email || null,
             isActive: true,
           },
@@ -115,7 +119,13 @@ export async function getGoogleClient(
   const results = await db
     .select()
     .from(shopIntegrations)
-    .where(and(eq(shopIntegrations.shopId, shopId), eq(shopIntegrations.provider, provider), eq(shopIntegrations.isActive, true)))
+    .where(
+      and(
+        eq(shopIntegrations.shopId, shopId),
+        eq(shopIntegrations.provider, provider),
+        eq(shopIntegrations.isActive, true)
+      )
+    )
     .limit(1);
 
   if (results.length === 0) return null;
@@ -138,7 +148,9 @@ export async function getGoogleClient(
         .update(shopIntegrations)
         .set({
           accessToken: credentials.access_token || integration.accessToken,
-          tokenExpiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null,
+          tokenExpiresAt: credentials.expiry_date
+            ? new Date(credentials.expiry_date)
+            : null,
         })
         .where(eq(shopIntegrations.id, integration.id));
       oauth2Client.setCredentials(credentials);

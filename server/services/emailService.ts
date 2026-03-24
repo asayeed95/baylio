@@ -46,7 +46,10 @@ export async function sendContactNotification(data: {
 
   try {
     const info = await transporter.sendMail(mailOptions);
-    console.log("[EmailService] Contact notification sent:", info.messageId || "logged");
+    console.log(
+      "[EmailService] Contact notification sent:",
+      info.messageId || "logged"
+    );
   } catch (err) {
     // Never throw — email failure should not break the form submission
     console.error("[EmailService] Failed to send contact notification:", err);

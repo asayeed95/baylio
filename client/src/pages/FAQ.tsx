@@ -44,23 +44,43 @@ const FAQ_ITEMS = [
 
 export default function FAQ() {
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="dark min-h-screen bg-background text-foreground">
       {/* ─── Navbar ─── */}
       <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary" />
-            <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+            <span className="font-semibold tracking-wider uppercase text-sm">
+              Baylio
+            </span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/faq" className="text-sm text-foreground font-medium">FAQ</Link>
-            <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
+            <Link href="/faq" className="text-sm text-foreground font-medium">
+              FAQ
+            </Link>
+            <Link
+              href="/contact"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              Contact
+            </Link>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Sign In
             </Button>
-            <Button size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="sm"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Get Started
             </Button>
           </div>
@@ -82,7 +102,11 @@ export default function FAQ() {
         <div className="max-w-3xl mx-auto">
           <Accordion type="single" collapsible className="w-full">
             {FAQ_ITEMS.map((item, i) => (
-              <AccordionItem key={i} value={`item-${i}`} className="border-border">
+              <AccordionItem
+                key={i}
+                value={`item-${i}`}
+                className="border-border"
+              >
                 <AccordionTrigger className="text-base text-left text-foreground font-medium hover:no-underline hover:text-primary transition-colors py-4">
                   {item.question}
                 </AccordionTrigger>
@@ -96,7 +120,9 @@ export default function FAQ() {
 
         {/* ─── CTA ─── */}
         <div className="max-w-2xl mx-auto text-center mt-16 p-8 bg-card border border-border rounded-sm">
-          <h2 className="text-2xl font-bold mb-4 text-foreground">Still have questions?</h2>
+          <h2 className="text-2xl font-bold mb-4 text-foreground">
+            Still have questions?
+          </h2>
           <p className="text-muted-foreground mb-6">
             Our team is here to help. Reach out and we'll get back to you within
             24 hours.
@@ -112,7 +138,9 @@ export default function FAQ() {
               variant="outline"
               size="lg"
               className="rounded-sm"
-              onClick={() => { window.location.href = getLoginUrl(); }}
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
             >
               Get Started Free
             </Button>
@@ -126,16 +154,38 @@ export default function FAQ() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+              <span className="font-semibold tracking-wider uppercase text-sm">
+                Baylio
+              </span>
             </Link>
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
-              <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
+              <Link
+                href="/contact"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Contact
+              </Link>
+              <Link
+                href="/faq"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                FAQ
+              </Link>
+              <a
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Terms
+              </a>
             </div>
           </div>
         </div>

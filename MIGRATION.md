@@ -19,7 +19,15 @@ Replace all `mysqlTable` with `pgTable` and update column types:
 
 ```ts
 // BEFORE (MySQL)
-import { mysqlTable, int, varchar, text, boolean, timestamp, json } from "drizzle-orm/mysql-core";
+import {
+  mysqlTable,
+  int,
+  varchar,
+  text,
+  boolean,
+  timestamp,
+  json,
+} from "drizzle-orm/mysql-core";
 
 export const shops = mysqlTable("shops", {
   id: int("id").autoincrement().primaryKey(),
@@ -29,7 +37,16 @@ export const shops = mysqlTable("shops", {
 });
 
 // AFTER (PostgreSQL)
-import { pgTable, serial, integer, varchar, text, boolean, timestamp, jsonb } from "drizzle-orm/pg-core";
+import {
+  pgTable,
+  serial,
+  integer,
+  varchar,
+  text,
+  boolean,
+  timestamp,
+  jsonb,
+} from "drizzle-orm/pg-core";
 
 export const shops = pgTable("shops", {
   id: serial("id").primaryKey(),
@@ -159,26 +176,26 @@ mysqldump $OLD_DATABASE_URL > baylio_backup.sql
 
 ## Estimated Timeline
 
-| Task | Time |
-|---|---|
-| Schema rewrite | 1 hour |
-| Drizzle config + connection | 30 min |
-| RLS policies | 1 hour |
-| Vercel setup + env vars | 30 min |
-| Data migration | 1 hour |
-| Testing + Twilio webhook update | 1 hour |
-| **Total** | **~5-6 hours** |
+| Task                            | Time           |
+| ------------------------------- | -------------- |
+| Schema rewrite                  | 1 hour         |
+| Drizzle config + connection     | 30 min         |
+| RLS policies                    | 1 hour         |
+| Vercel setup + env vars         | 30 min         |
+| Data migration                  | 1 hour         |
+| Testing + Twilio webhook update | 1 hour         |
+| **Total**                       | **~5-6 hours** |
 
 ---
 
 ## Cost Comparison
 
-| Service | Current (Manus) | After Migration |
-|---|---|---|
-| Hosting | Included in Manus plan | Vercel Pro: $20/mo |
-| Database | Included in Manus plan | Supabase Pro: $25/mo |
-| SSL | Free (Let's Encrypt) | Free (Vercel) |
-| Custom domain | Included | Included |
-| **Total infra** | **~$0 extra** | **~$45/mo** |
+| Service         | Current (Manus)        | After Migration      |
+| --------------- | ---------------------- | -------------------- |
+| Hosting         | Included in Manus plan | Vercel Pro: $20/mo   |
+| Database        | Included in Manus plan | Supabase Pro: $25/mo |
+| SSL             | Free (Let's Encrypt)   | Free (Vercel)        |
+| Custom domain   | Included               | Included             |
+| **Total infra** | **~$0 extra**          | **~$45/mo**          |
 
 **Verdict:** Only migrate when the operational benefits (global edge, native RLS, Supabase realtime) outweigh the $45/mo cost and 6-hour migration effort. At 100 shops ($20K MRR), this is trivially justified.

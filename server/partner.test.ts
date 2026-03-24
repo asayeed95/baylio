@@ -100,8 +100,13 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
 
       const chain: any = {};
       const methods = [
-        "select", "from", "where", "limit", "offset",
-        "orderBy", "groupBy",
+        "select",
+        "from",
+        "where",
+        "limit",
+        "offset",
+        "orderBy",
+        "groupBy",
       ];
 
       for (const method of methods) {
@@ -124,7 +129,9 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     // select() starts a new query chain
     db.select = vi.fn().mockImplementation(() => createChain());
     db.insert = vi.fn().mockReturnValue({
-      values: vi.fn().mockImplementation((...args: any[]) => mockValues(...args)),
+      values: vi
+        .fn()
+        .mockImplementation((...args: any[]) => mockValues(...args)),
     });
     db.update = vi.fn().mockReturnValue({
       set: vi.fn().mockImplementation(() => makeSetWhere()),
@@ -380,10 +387,7 @@ describe("partner", () => {
     });
 
     it("creates payout for valid amount", async () => {
-      setDbResponses(
-        [[mockPartner]],
-        [{ insertId: 5 }]
-      );
+      setDbResponses([[mockPartner]], [{ insertId: 5 }]);
 
       const caller = appRouter.createCaller(createContext());
       const result = await caller.partner.requestPayout({ amount: 100 });

@@ -1,6 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
@@ -21,7 +27,14 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription, EmptyContent } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+  EmptyContent,
+} from "@/components/ui/empty";
 import {
   ClipboardCheck,
   Plus,
@@ -35,9 +48,9 @@ import { toast } from "sonner";
 
 /**
  * Missed Call Audit Page
- * 
+ *
  * This is the SALES TOOL — the "Missed Call Audit" lead magnet.
- * 
+ *
  * Flow:
  * 1. Admin creates an audit for a prospect shop
  * 2. A forwarding number is set up for 7 days
@@ -47,7 +60,7 @@ import { toast } from "sonner";
  *    - Intent classification per call
  *    - Estimated revenue lost
  *    - PDF scorecard for the sales pitch
- * 
+ *
  * This page manages the lifecycle of all audits.
  */
 export default function MissedCallAudit() {
@@ -77,7 +90,7 @@ function MissedCallAuditContent() {
       setShopName("");
       refetch();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message || "Failed to create audit");
     },
   });
@@ -96,13 +109,22 @@ function MissedCallAuditContent() {
   };
 
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const map: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       pending: { variant: "secondary", label: "Pending Setup" },
       active: { variant: "default", label: "Active (Tracking)" },
       completed: { variant: "outline", label: "Completed" },
       expired: { variant: "destructive", label: "Expired" },
     };
-    const config = map[status] || { variant: "secondary" as const, label: status };
+    const config = map[status] || {
+      variant: "secondary" as const,
+      label: status,
+    };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -120,9 +142,12 @@ function MissedCallAuditContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">Missed Call Audits</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Missed Call Audits
+          </h1>
           <p className="text-muted-foreground">
-            Your sales tool. Run 7-day audits to show prospects how much revenue they're losing.
+            Your sales tool. Run 7-day audits to show prospects how much revenue
+            they're losing.
           </p>
         </div>
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
@@ -142,7 +167,7 @@ function MissedCallAuditContent() {
                 <Input
                   placeholder="e.g., Joe's Auto Repair"
                   value={shopName}
-                  onChange={(e) => setShopName(e.target.value)}
+                  onChange={e => setShopName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -150,7 +175,7 @@ function MissedCallAuditContent() {
                 <Input
                   placeholder="e.g., Joe Smith"
                   value={prospectName}
-                  onChange={(e) => setProspectName(e.target.value)}
+                  onChange={e => setProspectName(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -159,7 +184,7 @@ function MissedCallAuditContent() {
                   type="email"
                   placeholder="joe@example.com"
                   value={prospectEmail}
-                  onChange={(e) => setProspectEmail(e.target.value)}
+                  onChange={e => setProspectEmail(e.target.value)}
                 />
               </div>
               <div className="space-y-2">
@@ -167,7 +192,7 @@ function MissedCallAuditContent() {
                 <Input
                   placeholder="(555) 123-4567"
                   value={prospectPhone}
-                  onChange={(e) => setProspectPhone(e.target.value)}
+                  onChange={e => setProspectPhone(e.target.value)}
                 />
               </div>
               <Button
@@ -187,11 +212,27 @@ function MissedCallAuditContent() {
         <CardContent className="pt-5 pb-5">
           <div className="grid md:grid-cols-4 gap-4 text-center">
             {[
-              { step: "1", title: "Create Audit", desc: "Enter prospect shop details" },
-              { step: "2", title: "Forward Calls", desc: "Set up 7-day call forwarding" },
-              { step: "3", title: "Track Misses", desc: "AI classifies every missed call" },
-              { step: "4", title: "Deliver Scorecard", desc: "Show them the revenue they're losing" },
-            ].map((item) => (
+              {
+                step: "1",
+                title: "Create Audit",
+                desc: "Enter prospect shop details",
+              },
+              {
+                step: "2",
+                title: "Forward Calls",
+                desc: "Set up 7-day call forwarding",
+              },
+              {
+                step: "3",
+                title: "Track Misses",
+                desc: "AI classifies every missed call",
+              },
+              {
+                step: "4",
+                title: "Deliver Scorecard",
+                desc: "Show them the revenue they're losing",
+              },
+            ].map(item => (
               <div key={item.step} className="flex flex-col items-center">
                 <div className="w-8 h-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-sm font-bold mb-2">
                   {item.step}
@@ -208,10 +249,13 @@ function MissedCallAuditContent() {
       {!audits || audits.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><ClipboardCheck /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <ClipboardCheck />
+            </EmptyMedia>
             <EmptyTitle>No audits yet</EmptyTitle>
             <EmptyDescription>
-              Create your first missed call audit to start generating sales leads.
+              Create your first missed call audit to start generating sales
+              leads.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
@@ -235,17 +279,23 @@ function MissedCallAuditContent() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {audits.map((audit) => (
+              {audits.map(audit => (
                 <TableRow key={audit.id}>
-                  <TableCell className="font-medium">{audit.shopName || "-"}</TableCell>
+                  <TableCell className="font-medium">
+                    {audit.shopName || "-"}
+                  </TableCell>
                   <TableCell>
                     <div>
                       <p className="text-sm">{audit.prospectName || "-"}</p>
-                      <p className="text-xs text-muted-foreground">{audit.prospectPhone || audit.prospectEmail || ""}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {audit.prospectPhone || audit.prospectEmail || ""}
+                      </p>
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(audit.status)}</TableCell>
-                  <TableCell className="font-mono">{audit.totalMissedCalls ?? 0}</TableCell>
+                  <TableCell className="font-mono">
+                    {audit.totalMissedCalls ?? 0}
+                  </TableCell>
                   <TableCell className="font-mono text-primary">
                     {audit.estimatedLostRevenue
                       ? `$${parseFloat(audit.estimatedLostRevenue).toLocaleString()}`

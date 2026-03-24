@@ -8,11 +8,11 @@
 
 Baylio serves three completely separate user experiences from a single React application. Each portal has its own subdomain, its own navigation structure, its own authentication requirements, and its own page set. They share the same backend API, database, and authentication system.
 
-| Portal | Subdomain | Audience | Auth Required |
-|---|---|---|---|
-| **Main App** | `baylio.io` | Auto repair shop owners | Yes (Manus OAuth) |
-| **Admin Portal** | `admin.baylio.io` | Baylio staff (Abdur + team) | Yes + admin role |
-| **Partners Portal** | `partners.baylio.io` | Affiliate partners | Public landing, then OAuth |
+| Portal              | Subdomain            | Audience                    | Auth Required              |
+| ------------------- | -------------------- | --------------------------- | -------------------------- |
+| **Main App**        | `baylio.io`          | Auto repair shop owners     | Yes (Manus OAuth)          |
+| **Admin Portal**    | `admin.baylio.io`    | Baylio staff (Abdur + team) | Yes + admin role           |
+| **Partners Portal** | `partners.baylio.io` | Affiliate partners          | Public landing, then OAuth |
 
 ---
 
@@ -37,10 +37,10 @@ return <MainAppRouter />;
 
 **Dev shortcuts** — because the dev server runs on a single localhost port, you cannot test subdomains locally. Use these URL parameters instead:
 
-| Portal | Dev URL |
-|---|---|
-| Main App | `http://localhost:3000/` |
-| Admin Portal | `http://localhost:3000/?portal=admin` |
+| Portal          | Dev URL                                  |
+| --------------- | ---------------------------------------- |
+| Main App        | `http://localhost:3000/`                 |
+| Admin Portal    | `http://localhost:3000/?portal=admin`    |
 | Partners Portal | `http://localhost:3000/?portal=partners` |
 
 ---
@@ -55,16 +55,16 @@ All routes require authentication. Unauthenticated users are redirected to the M
 
 ### Pages
 
-| Route | File | Description |
-|---|---|---|
-| `/` | `pages/Dashboard.tsx` | Overview stats, recent calls, quick actions |
-| `/shop/:id` | `pages/ShopDetail.tsx` | Shop settings, phone number, business hours |
-| `/agent/:shopId` | `pages/AgentConfig.tsx` | Voice agent configuration, persona, upsell rules |
-| `/calls` | `pages/CallLogs.tsx` | Full call history with filters and transcripts |
-| `/analytics` | `pages/Analytics.tsx` | Call volume, revenue recovered, sentiment trends |
-| `/audit` | `pages/MissedCallAudit.tsx` | Missed call recovery workflow |
-| `/subscriptions` | `pages/Subscriptions.tsx` | Plan management and billing |
-| `/onboarding` | `pages/Onboarding.tsx` | New shop setup wizard |
+| Route            | File                        | Description                                      |
+| ---------------- | --------------------------- | ------------------------------------------------ |
+| `/`              | `pages/Dashboard.tsx`       | Overview stats, recent calls, quick actions      |
+| `/shop/:id`      | `pages/ShopDetail.tsx`      | Shop settings, phone number, business hours      |
+| `/agent/:shopId` | `pages/AgentConfig.tsx`     | Voice agent configuration, persona, upsell rules |
+| `/calls`         | `pages/CallLogs.tsx`        | Full call history with filters and transcripts   |
+| `/analytics`     | `pages/Analytics.tsx`       | Call volume, revenue recovered, sentiment trends |
+| `/audit`         | `pages/MissedCallAudit.tsx` | Missed call recovery workflow                    |
+| `/subscriptions` | `pages/Subscriptions.tsx`   | Plan management and billing                      |
+| `/onboarding`    | `pages/Onboarding.tsx`      | New shop setup wizard                            |
 
 ### Layout
 
@@ -86,14 +86,14 @@ UPDATE users SET role = 'admin' WHERE email = 'your@email.com';
 
 ### Pages
 
-| Route | File | Description |
-|---|---|---|
-| `/` | `pages/AdminPortal.tsx` | Overview: total shops, MRR, call volume, active agents |
-| `/shops` | (planned) | All shops management table |
-| `/analytics` | (planned) | Platform-wide analytics |
-| `/costs` | (planned) | Cost analytics — Twilio + ElevenLabs COGS per shop |
-| `/partners` | (planned) | Partner/affiliate management |
-| `/users` | (planned) | User management and role assignment |
+| Route        | File                    | Description                                            |
+| ------------ | ----------------------- | ------------------------------------------------------ |
+| `/`          | `pages/AdminPortal.tsx` | Overview: total shops, MRR, call volume, active agents |
+| `/shops`     | (planned)               | All shops management table                             |
+| `/analytics` | (planned)               | Platform-wide analytics                                |
+| `/costs`     | (planned)               | Cost analytics — Twilio + ElevenLabs COGS per shop     |
+| `/partners`  | (planned)               | Partner/affiliate management                           |
+| `/users`     | (planned)               | User management and role assignment                    |
 
 ### Layout
 
@@ -128,24 +128,24 @@ function PartnersLandingOrDashboard() {
 
 ### Pages
 
-| Route | File | Description |
-|---|---|---|
-| `/` | `pages/PartnersLanding.tsx` | Public landing — commissions, calculator, CTA |
-| `/partners/dashboard` | `pages/PartnersPortal.tsx` | Partner dashboard — stats, referral link |
-| `/partners/referrals` | `pages/PartnersReferrals.tsx` | Referral table with status and commissions |
-| `/partners/earnings` | `pages/PartnersEarnings.tsx` | Commission history and payout requests |
-| `/partners/network` | `pages/PartnersNetwork.tsx` | Downline partners and override earnings |
-| `/partners/resources` | `pages/PartnersResources.tsx` | Email/SMS templates, demo links, assets |
-| `/partners/settings` | `pages/PartnersSettings.tsx` | PayPal email, referral code, notifications |
+| Route                 | File                          | Description                                   |
+| --------------------- | ----------------------------- | --------------------------------------------- |
+| `/`                   | `pages/PartnersLanding.tsx`   | Public landing — commissions, calculator, CTA |
+| `/partners/dashboard` | `pages/PartnersPortal.tsx`    | Partner dashboard — stats, referral link      |
+| `/partners/referrals` | `pages/PartnersReferrals.tsx` | Referral table with status and commissions    |
+| `/partners/earnings`  | `pages/PartnersEarnings.tsx`  | Commission history and payout requests        |
+| `/partners/network`   | `pages/PartnersNetwork.tsx`   | Downline partners and override earnings       |
+| `/partners/resources` | `pages/PartnersResources.tsx` | Email/SMS templates, demo links, assets       |
+| `/partners/settings`  | `pages/PartnersSettings.tsx`  | PayPal email, referral code, notifications    |
 
 ### Commission Structure
 
-| Tier | Monthly Referrals | Commission Rate |
-|---|---|---|
-| Bronze | 1–4 active shops | 20% |
-| Silver | 5–9 active shops | 25% |
-| Gold | 10–19 active shops | 28% |
-| Platinum | 20+ active shops | 30% |
+| Tier     | Monthly Referrals  | Commission Rate |
+| -------- | ------------------ | --------------- |
+| Bronze   | 1–4 active shops   | 20%             |
+| Silver   | 5–9 active shops   | 25%             |
+| Gold     | 10–19 active shops | 28%             |
+| Platinum | 20+ active shops   | 30%             |
 
 ---
 

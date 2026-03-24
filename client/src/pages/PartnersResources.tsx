@@ -24,19 +24,22 @@ const RESOURCES = [
     items: [
       {
         title: "Baylio One-Pager",
-        description: "Single-page overview of Baylio's value proposition for auto repair shops.",
+        description:
+          "Single-page overview of Baylio's value proposition for auto repair shops.",
         type: "PDF",
         icon: FileText,
       },
       {
         title: "ROI Calculator Spreadsheet",
-        description: "Editable spreadsheet showing shops exactly how much revenue they're losing to missed calls.",
+        description:
+          "Editable spreadsheet showing shops exactly how much revenue they're losing to missed calls.",
         type: "XLSX",
         icon: Presentation,
       },
       {
         title: "Partner Pitch Deck",
-        description: "15-slide presentation covering Baylio's features, pricing, and case studies.",
+        description:
+          "15-slide presentation covering Baylio's features, pricing, and case studies.",
         type: "PPTX",
         icon: Presentation,
       },
@@ -47,19 +50,22 @@ const RESOURCES = [
     items: [
       {
         title: "Cold Outreach Template",
-        description: "Proven email template for reaching out to auto repair shop owners.",
+        description:
+          "Proven email template for reaching out to auto repair shop owners.",
         type: "Email",
         icon: Mail,
       },
       {
         title: "Follow-Up Sequence (3-part)",
-        description: "Three-email nurture sequence for shops that showed interest but haven't signed up.",
+        description:
+          "Three-email nurture sequence for shops that showed interest but haven't signed up.",
         type: "Email",
         icon: Mail,
       },
       {
         title: "Post-Audit Send",
-        description: "Email template to send after running a missed call audit, with scorecard results.",
+        description:
+          "Email template to send after running a missed call audit, with scorecard results.",
         type: "Email",
         icon: Mail,
       },
@@ -70,19 +76,22 @@ const RESOURCES = [
     items: [
       {
         title: "Social Media Graphics Pack",
-        description: "20 branded graphics for Instagram, Facebook, and LinkedIn posts.",
+        description:
+          "20 branded graphics for Instagram, Facebook, and LinkedIn posts.",
         type: "ZIP",
         icon: Image,
       },
       {
         title: "Demo Video: AI Receptionist",
-        description: "2-minute walkthrough showing what a shop owner hears when Baylio answers a call.",
+        description:
+          "2-minute walkthrough showing what a shop owner hears when Baylio answers a call.",
         type: "Video",
         icon: Video,
       },
       {
         title: "Testimonial Clips",
-        description: "Short video clips from shop owners sharing their experience with Baylio.",
+        description:
+          "Short video clips from shop owners sharing their experience with Baylio.",
         type: "Video",
         icon: Video,
       },
@@ -93,19 +102,22 @@ const RESOURCES = [
     items: [
       {
         title: "Partner Playbook",
-        description: "Step-by-step guide on how to identify, pitch, and close auto repair shops.",
+        description:
+          "Step-by-step guide on how to identify, pitch, and close auto repair shops.",
         type: "PDF",
         icon: BookOpen,
       },
       {
         title: "Objection Handling Guide",
-        description: "Responses to the 15 most common objections from shop owners.",
+        description:
+          "Responses to the 15 most common objections from shop owners.",
         type: "PDF",
         icon: MessageSquare,
       },
       {
         title: "Missed Call Audit Setup Guide",
-        description: "How to run a 7-day missed call audit to prove value before the sale.",
+        description:
+          "How to run a 7-day missed call audit to prove value before the sale.",
         type: "PDF",
         icon: BookOpen,
       },
@@ -200,13 +212,13 @@ export default function PartnersResources() {
         </Card>
 
         {/* Resources by Category */}
-        {RESOURCES.map((category) => (
+        {RESOURCES.map(category => (
           <div key={category.category} className="space-y-3">
             <h2 className="text-xs font-medium uppercase tracking-widest text-zinc-400">
               {category.category}
             </h2>
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {category.items.map((item) => (
+              {category.items.map(item => (
                 <Card
                   key={item.title}
                   className="bg-zinc-900 border-zinc-800 hover:border-zinc-700 transition-colors"
@@ -237,7 +249,11 @@ export default function PartnersResources() {
                       variant="outline"
                       size="sm"
                       className="w-full mt-3 border-zinc-700 text-zinc-400 hover:bg-zinc-800 hover:text-white"
-                      onClick={() => toast.info("Resources will be available once the partner program launches.")}
+                      onClick={() =>
+                        toast.info(
+                          "Resources will be available once the partner program launches."
+                        )
+                      }
                     >
                       <Download className="h-3 w-3 mr-1.5" />
                       Download
@@ -255,8 +271,8 @@ export default function PartnersResources() {
             <MessageSquare className="h-10 w-10 text-zinc-600 mx-auto mb-3" />
             <p className="text-zinc-300 font-medium">Need custom materials?</p>
             <p className="text-sm text-zinc-500 mt-1">
-              Reach out to your partner manager for co-branded assets,
-              custom pitch decks, or localized content.
+              Reach out to your partner manager for co-branded assets, custom
+              pitch decks, or localized content.
             </p>
             <Button
               variant="outline"

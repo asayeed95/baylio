@@ -1,10 +1,10 @@
 /**
  * Twilio Webhook Signature Validation Middleware
- * 
+ *
  * Validates the X-Twilio-Signature header against the incoming request
  * using HMAC-SHA1 with the TWILIO_AUTH_TOKEN. This prevents toll fraud
  * from spoofed webhooks.
- * 
+ *
  * Security features:
  * - Timing-safe comparison (prevents timing attacks)
  * - Forensic logging of failed validation attempts
@@ -21,7 +21,7 @@ interface TwilioValidationOptions {
 
 /**
  * Compute the expected Twilio signature for a request.
- * 
+ *
  * Algorithm (from Twilio docs):
  * 1. Take the full URL of the request
  * 2. If POST, sort POST params alphabetically and append key+value
@@ -85,25 +85,27 @@ function logForensic(
 
 /**
  * Express middleware that validates Twilio webhook signatures.
- * 
+ *
  * Usage:
  *   app.use("/api/twilio", validateTwilioSignature());
  *   app.use("/api/twilio", validateTwilioSignature({ logOnly: true })); // testing mode
  */
-export function validateTwilioSignature(
-  options: TwilioValidationOptions = {}
-) {
+export function validateTwilioSignature(options: TwilioValidationOptions = {}) {
   return (req: Request, res: Response, next: NextFunction) => {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const validationEnabled = process.env.TWILIO_VALIDATION_ENABLED !== "false";
 
     // Fail-closed: if no auth token is configured, reject all requests
     if (!authToken) {
-      logForensic("error", "TWILIO_AUTH_TOKEN not configured — rejecting webhook", {
-        ip: req.ip,
-        path: req.path,
-        method: req.method,
-      });
+      logForensic(
+        "error",
+        "TWILIO_AUTH_TOKEN not configured — rejecting webhook",
+        {
+          ip: req.ip,
+          path: req.path,
+          method: req.method,
+        }
+      );
       return res.status(500).json({
         error: "Server configuration error: Twilio auth token not set",
       });
@@ -111,22 +113,32 @@ export function validateTwilioSignature(
 
     // If validation is disabled via env, pass through with a log
     if (!validationEnabled) {
-      logForensic("info", "Twilio validation disabled via TWILIO_VALIDATION_ENABLED=false", {
-        path: req.path,
-      });
+      logForensic(
+        "info",
+        "Twilio validation disabled via TWILIO_VALIDATION_ENABLED=false",
+        {
+          path: req.path,
+        }
+      );
       return next();
     }
 
-    const twilioSignature = req.headers["x-twilio-signature"] as string | undefined;
+    const twilioSignature = req.headers["x-twilio-signature"] as
+      | string
+      | undefined;
 
     if (!twilioSignature) {
-      logForensic("warn", "Missing X-Twilio-Signature header — potential spoofing attempt", {
-        ip: req.ip,
-        path: req.path,
-        method: req.method,
-        userAgent: req.headers["user-agent"],
-        headers: Object.keys(req.headers),
-      });
+      logForensic(
+        "warn",
+        "Missing X-Twilio-Signature header — potential spoofing attempt",
+        {
+          ip: req.ip,
+          path: req.path,
+          method: req.method,
+          userAgent: req.headers["user-agent"],
+          headers: Object.keys(req.headers),
+        }
+      );
 
       if (options.logOnly) {
         return next();
@@ -142,9 +154,13 @@ export function validateTwilioSignature(
     const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
     // For POST requests, use the body params; for GET, use query params
-    const params = req.method === "POST" ? (req.body || {}) : {};
+    const params = req.method === "POST" ? req.body || {} : {};
 
-    const expectedSignature = computeExpectedSignature(authToken, fullUrl, params);
+    const expectedSignature = computeExpectedSignature(
+      authToken,
+      fullUrl,
+      params
+    );
     const isValid = timingSafeCompare(twilioSignature, expectedSignature);
 
     if (!isValid) {

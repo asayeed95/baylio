@@ -45,7 +45,7 @@ export default function PartnersSettings() {
       toast.success("Settings saved");
       utils.partner.getProfile.invalidate();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message);
     },
   });
@@ -125,7 +125,7 @@ export default function PartnersSettings() {
                 <Label className="text-zinc-300">Company Name</Label>
                 <Input
                   value={companyName}
-                  onChange={(e) => setCompanyName(e.target.value)}
+                  onChange={e => setCompanyName(e.target.value)}
                   placeholder="Your company name"
                   className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600"
                 />
@@ -134,7 +134,7 @@ export default function PartnersSettings() {
                 <Label className="text-zinc-300">Website</Label>
                 <Input
                   value={website}
-                  onChange={(e) => setWebsite(e.target.value)}
+                  onChange={e => setWebsite(e.target.value)}
                   placeholder="https://yourcompany.com"
                   className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600"
                 />
@@ -144,19 +144,25 @@ export default function PartnersSettings() {
             <div className="p-3 rounded-lg bg-zinc-800 border border-zinc-700">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Referral Code</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+                    Referral Code
+                  </p>
                   <p className="text-white font-mono font-medium">
                     {profile.referralCode}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Partner Tier</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+                    Partner Tier
+                  </p>
                   <p className="text-white capitalize font-medium">
                     {profile.tier}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Commission Rate</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">
+                    Commission Rate
+                  </p>
                   <p className="text-emerald-400 font-mono font-medium">
                     {(
                       parseFloat(profile.commissionRate?.toString() || "0.20") *
@@ -199,7 +205,7 @@ export default function PartnersSettings() {
               <Input
                 type="email"
                 value={payoutEmail}
-                onChange={(e) => setPayoutEmail(e.target.value)}
+                onChange={e => setPayoutEmail(e.target.value)}
                 placeholder="your@email.com"
                 className="bg-zinc-800 border-zinc-700 text-white placeholder:text-zinc-600"
               />
@@ -214,9 +220,7 @@ export default function PartnersSettings() {
         {/* Notification Preferences */}
         <Card className="bg-zinc-900 border-zinc-800">
           <CardHeader>
-            <CardTitle className="text-white text-lg">
-              Notifications
-            </CardTitle>
+            <CardTitle className="text-white text-lg">Notifications</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex items-center justify-between">

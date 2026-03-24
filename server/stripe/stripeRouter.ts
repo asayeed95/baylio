@@ -1,6 +1,6 @@
 /**
  * Stripe tRPC Router
- * 
+ *
  * Provides checkout session creation and customer portal access
  * through the tRPC API. These procedures are called by the frontend
  * to initiate payments and manage billing.
@@ -91,7 +91,9 @@ export const stripeRouter = router({
     .input(
       z.object({
         shopId: z.number(),
-        locationCount: z.enum(["single", "multi_3", "multi_5"]).default("single"),
+        locationCount: z
+          .enum(["single", "multi_3", "multi_5"])
+          .default("single"),
       })
     )
     .mutation(async ({ ctx, input }) => {

@@ -1,0 +1,67 @@
+[
+  {
+    "event": "cta_clicked",
+    "description": "User clicked a primary CTA button on the landing page (e.g. 'Start Free Trial', 'Start for $149'). Captures the conversion funnel entry point.",
+    "file": "baylio/client/src/pages/Landing.tsx"
+  },
+  {
+    "event": "pricing_tier_selected",
+    "description": "User clicked the CTA for a specific pricing tier on the landing page.",
+    "file": "baylio/client/src/pages/Landing.tsx"
+  },
+  {
+    "event": "roi_calculator_used",
+    "description": "User interacted with the ROI calculator on the landing page (slider moved).",
+    "file": "baylio/client/src/pages/Landing.tsx"
+  },
+  {
+    "event": "shop_created",
+    "description": "User successfully created a new shop (auto-repair location). Key activation event.",
+    "file": "baylio/client/src/pages/Dashboard.tsx"
+  },
+  {
+    "event": "agent_config_saved",
+    "description": "User saved AI agent configuration (voice, name, greeting, system prompt, upsell settings). Indicates setup completion.",
+    "file": "baylio/client/src/pages/AgentConfig.tsx"
+  },
+  {
+    "event": "integration_connected",
+    "description": "User successfully connected a third-party integration (Google Calendar, HubSpot, Shopmonkey, etc.).",
+    "file": "baylio/client/src/pages/Integrations.tsx"
+  },
+  {
+    "event": "integration_disconnected",
+    "description": "User disconnected a third-party integration.",
+    "file": "baylio/client/src/pages/Integrations.tsx"
+  },
+  {
+    "event": "subscription_checkout_started",
+    "description": "User initiated a subscription checkout session (clicked upgrade/subscribe). Captures conversion intent with tier and billing cycle.",
+    "file": "baylio/client/src/pages/Subscriptions.tsx"
+  },
+  {
+    "event": "subscription_checkout_completed",
+    "description": "Stripe webhook confirmed checkout.session.completed — subscription was successfully purchased. Server-side event.",
+    "file": "baylio/server/stripe/stripeRoutes.ts"
+  },
+  {
+    "event": "subscription_payment_failed",
+    "description": "Stripe invoice payment failed. Server-side event for churn risk detection.",
+    "file": "baylio/server/stripe/stripeRoutes.ts"
+  },
+  {
+    "event": "subscription_cancelled",
+    "description": "Stripe subscription was deleted/cancelled. Server-side churn event.",
+    "file": "baylio/server/stripe/stripeRoutes.ts"
+  },
+  {
+    "event": "partner_signup_intent",
+    "description": "User clicked the partner program CTA on the landing page, signaling intent to join the partner/affiliate program.",
+    "file": "baylio/client/src/pages/Landing.tsx"
+  },
+  {
+    "event": "call_scorecard_viewed",
+    "description": "User viewed a call scorecard for a specific call. Indicates engagement with call quality analytics.",
+    "file": "baylio/client/src/pages/CallScorecard.tsx"
+  }
+]

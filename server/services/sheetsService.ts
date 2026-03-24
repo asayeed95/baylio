@@ -9,9 +9,18 @@ import { eq, and } from "drizzle-orm";
 import { shopIntegrations, integrationSyncLogs } from "../../drizzle/schema";
 
 const HEADER_ROW = [
-  "Date", "Time", "Caller", "Phone", "Duration (s)", "Service Requested",
-  "Appointment Booked", "Upsell Offered", "Upsell Accepted", "Sentiment",
-  "Revenue Estimate", "Summary",
+  "Date",
+  "Time",
+  "Caller",
+  "Phone",
+  "Duration (s)",
+  "Service Requested",
+  "Appointment Booked",
+  "Upsell Offered",
+  "Upsell Accepted",
+  "Sentiment",
+  "Revenue Estimate",
+  "Summary",
 ];
 
 export async function syncCallToSheet(
@@ -40,7 +49,12 @@ export async function syncCallToSheet(
     const integration = await db
       .select()
       .from(shopIntegrations)
-      .where(and(eq(shopIntegrations.shopId, shopId), eq(shopIntegrations.provider, "google_sheets")))
+      .where(
+        and(
+          eq(shopIntegrations.shopId, shopId),
+          eq(shopIntegrations.provider, "google_sheets")
+        )
+      )
       .limit(1);
 
     const sheetId = (integration[0]?.settings as any)?.sheetId;

@@ -28,7 +28,7 @@ export const contactRouter = router({
         email: input.email,
         phone: input.phone || null,
         message: input.message,
-      }).catch((err) => {
+      }).catch(err => {
         console.error("[Contact] Email notification failed:", err);
       });
 
@@ -36,7 +36,7 @@ export const contactRouter = router({
       notifyOwner({
         title: `New contact from ${input.name}`,
         content: `Email: ${input.email}\nPhone: ${input.phone || "N/A"}\n\n${input.message}`,
-      }).catch((err) => {
+      }).catch(err => {
         console.error("[Contact] Owner notification failed:", err);
       });
 

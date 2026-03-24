@@ -1,11 +1,11 @@
 /**
  * Stripe Routes
- * 
+ *
  * Handles:
  * 1. Checkout session creation for new subscriptions and setup fees
  * 2. Webhook processing for payment events
  * 3. Customer portal session creation for self-service billing
- * 
+ *
  * The webhook endpoint MUST be registered BEFORE express.json() middleware
  * because Stripe signature verification requires the raw request body.
  */
@@ -16,6 +16,15 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/mysql2";
 import { subscriptions, shops, users } from "../../drizzle/schema";
 import { TIERS, SETUP_FEES, getTierConfig } from "./products";
+import { PostHog } from "posthog-node";
+
+function getPostHog(): PostHog {
+  return new PostHog(process.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN!, {
+    host: process.env.VITE_PUBLIC_POSTHOG_HOST!,
+    flushAt: 1,
+    flushInterval: 0,
+  });
+}
 
 const router = express.Router();
 
@@ -51,13 +60,18 @@ router.post(
     try {
       event = stripe.webhooks.constructEvent(req.body, sig, webhookSecret);
     } catch (err: any) {
-      console.error("[Stripe Webhook] Signature verification failed:", err.message);
+      console.error(
+        "[Stripe Webhook] Signature verification failed:",
+        err.message
+      );
       return res.status(400).json({ error: "Invalid signature" });
     }
 
     // Handle test events for webhook verification
     if (event.id.startsWith("evt_test_")) {
-      console.log("[Stripe Webhook] Test event detected, returning verification response");
+      console.log(
+        "[Stripe Webhook] Test event detected, returning verification response"
+      );
       return res.json({ verified: true });
     }
 
@@ -66,7 +80,9 @@ router.post(
     try {
       switch (event.type) {
         case "checkout.session.completed": {
-          await handleCheckoutCompleted(event.data.object as Stripe.Checkout.Session);
+          await handleCheckoutCompleted(
+            event.data.object as Stripe.Checkout.Session
+          );
           break;
         }
         case "invoice.paid": {
@@ -78,11 +94,15 @@ router.post(
           break;
         }
         case "customer.subscription.updated": {
-          await handleSubscriptionUpdated(event.data.object as Stripe.Subscription);
+          await handleSubscriptionUpdated(
+            event.data.object as Stripe.Subscription
+          );
           break;
         }
         case "customer.subscription.deleted": {
-          await handleSubscriptionDeleted(event.data.object as Stripe.Subscription);
+          await handleSubscriptionDeleted(
+            event.data.object as Stripe.Subscription
+          );
           break;
         }
         default:
@@ -91,7 +111,9 @@ router.post(
     } catch (err) {
       console.error(`[Stripe Webhook] Error processing ${event.type}:`, err);
       // Return 200 to prevent Stripe from retrying — log the error for investigation
-      return res.status(200).json({ received: true, error: "Processing error" });
+      return res
+        .status(200)
+        .json({ received: true, error: "Processing error" });
     }
 
     return res.json({ received: true });
@@ -159,6 +181,20 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   }
 
   console.log(`[Stripe] Subscription created: shop=${shopId}, tier=${tier}`);
+
+  const ph = getPostHog();
+  ph.capture({
+    distinctId: userId,
+    event: "subscription_checkout_completed",
+    properties: {
+      shop_id: shopId,
+      tier,
+      billing_cycle: session.metadata?.billing_cycle,
+      customer_email: session.metadata?.customer_email,
+      stripe_session_id: session.id,
+    },
+  });
+  await ph.shutdown().catch(() => {});
 }
 
 async function handleInvoicePaid(invoice: Stripe.Invoice) {
@@ -167,7 +203,8 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
 
   // Stripe v2025 API changes: subscription is now nested under parent
   const invoiceAny = invoice as any;
-  const subscriptionId = (invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription) as string;
+  const subscriptionId = (invoiceAny.subscription ??
+    invoiceAny.parent?.subscription_details?.subscription) as string;
   if (!subscriptionId) return;
 
   // Reset usage minutes at the start of each billing period
@@ -188,9 +225,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
         currentPeriodStart: periodStart
           ? new Date(periodStart * 1000)
           : undefined,
-        currentPeriodEnd: periodEnd
-          ? new Date(periodEnd * 1000)
-          : undefined,
+        currentPeriodEnd: periodEnd ? new Date(periodEnd * 1000) : undefined,
       })
       .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
   }
@@ -203,7 +238,8 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   if (!db) return;
 
   const invoiceAny2 = invoice as any;
-  const subscriptionId = (invoiceAny2.subscription ?? invoiceAny2.parent?.subscription_details?.subscription) as string;
+  const subscriptionId = (invoiceAny2.subscription ??
+    invoiceAny2.parent?.subscription_details?.subscription) as string;
   if (!subscriptionId) return;
 
   await db
@@ -212,13 +248,26 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
     .where(eq(subscriptions.stripeSubscriptionId, subscriptionId));
 
   console.log(`[Stripe] Payment failed for subscription: ${subscriptionId}`);
+
+  if (subs.length > 0) {
+    const ph = getPostHog();
+    ph.capture({
+      distinctId: String(subs[0].ownerId),
+      event: "subscription_payment_failed",
+      properties: { stripe_subscription_id: subscriptionId, shop_id: subs[0].shopId },
+    });
+    await ph.shutdown().catch(() => {});
+  }
 }
 
 async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   const db = await getDb();
   if (!db) return;
 
-  const statusMap: Record<string, "active" | "past_due" | "canceled" | "trialing"> = {
+  const statusMap: Record<
+    string,
+    "active" | "past_due" | "canceled" | "trialing"
+  > = {
     active: "active",
     past_due: "past_due",
     canceled: "canceled",
@@ -231,7 +280,9 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
     .update(subscriptions)
     .set({
       status,
-      currentPeriodStart: new Date(((sub as any).current_period_start ?? 0) * 1000),
+      currentPeriodStart: new Date(
+        ((sub as any).current_period_start ?? 0) * 1000
+      ),
       currentPeriodEnd: new Date(((sub as any).current_period_end ?? 0) * 1000),
     })
     .where(eq(subscriptions.stripeSubscriptionId, sub.id));
@@ -249,6 +300,24 @@ async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
     .where(eq(subscriptions.stripeSubscriptionId, sub.id));
 
   console.log(`[Stripe] Subscription canceled: ${sub.id}`);
+
+  const db2 = await getDb();
+  if (db2) {
+    const canceledSubs = await db2
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.stripeSubscriptionId, sub.id))
+      .limit(1);
+    if (canceledSubs.length > 0) {
+      const ph = getPostHog();
+      ph.capture({
+        distinctId: String(canceledSubs[0].ownerId),
+        event: "subscription_cancelled",
+        properties: { stripe_subscription_id: sub.id, shop_id: canceledSubs[0].shopId, tier: canceledSubs[0].tier },
+      });
+      await ph.shutdown().catch(() => {});
+    }
+  }
 }
 
 export { router as stripeWebhookRouter };

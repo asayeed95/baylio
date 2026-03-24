@@ -1,17 +1,17 @@
 /**
  * Hot Context Cache
- * 
+ *
  * In-memory cache for shop configurations used during live call routing.
  * This is Layer 1 of the 3-Layer Architecture — the real-time call path
  * must NEVER hit the database during a live webhook. Instead, shop context
  * is pre-loaded and cached here.
- * 
+ *
  * Cache strategy:
  * - TTL-based expiration (default 5 minutes)
  * - Lazy loading on first request per shop
  * - Manual invalidation when shop config changes
  * - Phone number → shop ID lookup for Twilio routing
- * 
+ *
  * Performance target: <5ms cache hit (vs ~50-100ms DB query)
  */
 
@@ -193,7 +193,8 @@ class ContextCache {
    */
   getStats(): CacheStats & { hitRate: string } {
     const total = this.stats.hits + this.stats.misses;
-    const hitRate = total > 0 ? ((this.stats.hits / total) * 100).toFixed(1) + "%" : "N/A";
+    const hitRate =
+      total > 0 ? ((this.stats.hits / total) * 100).toFixed(1) + "%" : "N/A";
     return { ...this.stats, hitRate };
   }
 
@@ -209,12 +210,12 @@ class ContextCache {
       // Evict oldest entry
       let oldestKey: any = null;
       let oldestTime = Infinity;
-    Array.from(cache).forEach(([key, entry]) => {
-      if (entry.createdAt < oldestTime) {
-        oldestTime = entry.createdAt;
-        oldestKey = key;
-      }
-    });
+      Array.from(cache).forEach(([key, entry]) => {
+        if (entry.createdAt < oldestTime) {
+          oldestTime = entry.createdAt;
+          oldestKey = key;
+        }
+      });
       if (oldestKey !== null) {
         cache.delete(oldestKey);
         this.stats.evictions++;
@@ -223,7 +224,10 @@ class ContextCache {
   }
 
   private updateSize(): void {
-    this.stats.size = this.shopContexts.size + this.phoneToShopId.size + this.compiledPrompts.size;
+    this.stats.size =
+      this.shopContexts.size +
+      this.phoneToShopId.size +
+      this.compiledPrompts.size;
   }
 }
 

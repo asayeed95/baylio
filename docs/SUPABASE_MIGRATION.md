@@ -41,31 +41,46 @@ Every table in `drizzle/schema.ts` uses MySQL-specific types. These must be conv
 ```ts
 // BEFORE (MySQL)
 import {
-  int, mysqlEnum, mysqlTable, text, timestamp,
-  varchar, boolean, json, decimal,
+  int,
+  mysqlEnum,
+  mysqlTable,
+  text,
+  timestamp,
+  varchar,
+  boolean,
+  json,
+  decimal,
 } from "drizzle-orm/mysql-core";
 
 // AFTER (PostgreSQL)
 import {
-  integer, pgEnum, pgTable, text, timestamp,
-  varchar, boolean, jsonb, decimal, serial,
+  integer,
+  pgEnum,
+  pgTable,
+  text,
+  timestamp,
+  varchar,
+  boolean,
+  jsonb,
+  decimal,
+  serial,
 } from "drizzle-orm/pg-core";
 ```
 
 ### Type Mapping Reference
 
-| MySQL Type | PostgreSQL Equivalent | Notes |
-|---|---|---|
-| `mysqlTable` | `pgTable` | Direct rename |
-| `mysqlEnum` | `pgEnum` | Must be declared separately (see below) |
-| `int().autoincrement()` | `serial()` or `integer()` | Use `serial()` for auto-increment PKs |
-| `int()` | `integer()` | Direct rename |
-| `varchar(n)` | `varchar(n)` | Same |
-| `text` | `text` | Same |
-| `boolean` | `boolean` | Same |
-| `timestamp` | `timestamp` | Same, but remove `.onUpdateNow()` — not supported in PG |
-| `json` | `jsonb` | Use `jsonb` for better indexing and querying |
-| `decimal` | `decimal` | Same |
+| MySQL Type              | PostgreSQL Equivalent     | Notes                                                   |
+| ----------------------- | ------------------------- | ------------------------------------------------------- |
+| `mysqlTable`            | `pgTable`                 | Direct rename                                           |
+| `mysqlEnum`             | `pgEnum`                  | Must be declared separately (see below)                 |
+| `int().autoincrement()` | `serial()` or `integer()` | Use `serial()` for auto-increment PKs                   |
+| `int()`                 | `integer()`               | Direct rename                                           |
+| `varchar(n)`            | `varchar(n)`              | Same                                                    |
+| `text`                  | `text`                    | Same                                                    |
+| `boolean`               | `boolean`                 | Same                                                    |
+| `timestamp`             | `timestamp`               | Same, but remove `.onUpdateNow()` — not supported in PG |
+| `json`                  | `jsonb`                   | Use `jsonb` for better indexing and querying            |
+| `decimal`               | `decimal`                 | Same                                                    |
 
 ### Enum Declaration Change
 
@@ -83,16 +98,16 @@ role: roleEnum("role").default("user").notNull(),
 
 **All enums to convert:**
 
-| Enum Name | Values |
-|---|---|
-| `roleEnum` | `user`, `admin` |
-| `directionEnum` | `inbound`, `outbound` |
-| `callStatusEnum` | `completed`, `missed`, `voicemail`, `transferred`, `failed` |
-| `auditStatusEnum` | `pending`, `active`, `completed`, `expired` |
-| `dayPartEnum` | `morning`, `afternoon`, `evening`, `night` |
-| `urgencyLevelEnum` | `low`, `medium`, `high`, `emergency` |
-| `tierEnum` | `starter`, `pro`, `elite` |
-| `subStatusEnum` | `active`, `past_due`, `canceled`, `trialing` |
+| Enum Name          | Values                                                      |
+| ------------------ | ----------------------------------------------------------- |
+| `roleEnum`         | `user`, `admin`                                             |
+| `directionEnum`    | `inbound`, `outbound`                                       |
+| `callStatusEnum`   | `completed`, `missed`, `voicemail`, `transferred`, `failed` |
+| `auditStatusEnum`  | `pending`, `active`, `completed`, `expired`                 |
+| `dayPartEnum`      | `morning`, `afternoon`, `evening`, `night`                  |
+| `urgencyLevelEnum` | `low`, `medium`, `high`, `emergency`                        |
+| `tierEnum`         | `starter`, `pro`, `elite`                                   |
+| `subStatusEnum`    | `active`, `past_due`, `canceled`, `trialing`                |
 
 ### Remove `.onUpdateNow()`
 
@@ -251,17 +266,17 @@ UNION ALL SELECT 'subscriptions', COUNT(*) FROM subscriptions;
 
 In Manus Settings → Secrets, update:
 
-| Variable | New Value |
-|---|---|
+| Variable       | New Value                                                                 |
+| -------------- | ------------------------------------------------------------------------- |
 | `DATABASE_URL` | Supabase PostgreSQL connection string (from Supabase Settings → Database) |
 
 Add new Supabase-specific variables:
 
-| Variable | Purpose |
-|---|---|
-| `SUPABASE_URL` | Your project URL (e.g., `https://xyz.supabase.co`) |
-| `SUPABASE_ANON_KEY` | Public anon key for client-side queries |
-| `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin key (never expose to frontend) |
+| Variable                    | Purpose                                            |
+| --------------------------- | -------------------------------------------------- |
+| `SUPABASE_URL`              | Your project URL (e.g., `https://xyz.supabase.co`) |
+| `SUPABASE_ANON_KEY`         | Public anon key for client-side queries            |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side admin key (never expose to frontend)   |
 
 ---
 
@@ -312,10 +327,14 @@ const supabase = createClient(
 
 supabase
   .channel("call_logs")
-  .on("postgres_changes", { event: "INSERT", schema: "public", table: "call_logs" }, (payload) => {
-    // New call came in — update dashboard without polling
-    setRecentCalls(prev => [payload.new, ...prev]);
-  })
+  .on(
+    "postgres_changes",
+    { event: "INSERT", schema: "public", table: "call_logs" },
+    payload => {
+      // New call came in — update dashboard without polling
+      setRecentCalls(prev => [payload.new, ...prev]);
+    }
+  )
   .subscribe();
 ```
 
@@ -351,12 +370,12 @@ The old TiDB database is not deleted during migration — it remains available a
 
 ## Cost Comparison
 
-| | TiDB (Current) | Supabase Pro |
-|---|---|---|
-| Monthly cost | Included in Manus plan | $25/mo |
-| Storage | Managed | 8GB included |
-| Connections | Managed | 200 direct, unlimited via pooler |
-| Realtime | No | Yes |
-| RLS | No | Yes |
-| Backups | Managed | Daily, 7-day retention |
-| Self-hostable | No | Yes (open source) |
+|               | TiDB (Current)         | Supabase Pro                     |
+| ------------- | ---------------------- | -------------------------------- |
+| Monthly cost  | Included in Manus plan | $25/mo                           |
+| Storage       | Managed                | 8GB included                     |
+| Connections   | Managed                | 200 direct, unlimited via pooler |
+| Realtime      | No                     | Yes                              |
+| RLS           | No                     | Yes                              |
+| Backups       | Managed                | Daily, 7-day retention           |
+| Self-hostable | No                     | Yes (open source)                |

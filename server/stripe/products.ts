@@ -1,14 +1,14 @@
 /**
  * Baylio Stripe Product Definitions
- * 
+ *
  * Centralized product/price configuration for all subscription tiers.
  * These are created in Stripe on first use and cached by price ID.
- * 
+ *
  * Tier structure:
  * - Starter: $199/mo, 300 minutes
  * - Pro: $349/mo, 750 minutes (most popular)
  * - Elite: $599/mo, 1500 minutes
- * 
+ *
  * Additional charges:
  * - Setup fee: $500-$2,000 (one-time, per location)
  * - Overage: $0.15/minute beyond included

@@ -1,6 +1,12 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,21 +15,33 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp, Zap, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import {
+  ArrowLeft,
+  Bot,
+  Save,
+  Volume2,
+  MessageSquare,
+  TrendingUp,
+  Zap,
+  CheckCircle2,
+  AlertCircle,
+  Loader2,
+} from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
+import { usePostHog } from "@posthog/react";
 
 /**
  * AI Agent Configuration Page
- * 
+ *
  * Allows shop owners to customize their AI call agent:
  * - Voice selection (ElevenLabs voice ID)
  * - Agent name and greeting message
  * - System prompt (personality, behavior rules)
  * - Upsell settings (enable/disable, rules, confidence threshold)
  * - Language preference
- * 
+ *
  * Changes are saved via the shop.saveAgentConfig tRPC mutation.
  */
 export default function AgentConfig() {
@@ -38,6 +56,7 @@ function AgentConfigContent() {
   const params = useParams<{ id: string }>();
   const shopId = parseInt(params.id || "0", 10);
   const [, setLocation] = useLocation();
+  const posthog = usePostHog();
 
   const { data: config, isLoading } = trpc.shop.getAgentConfig.useQuery(
     { shopId },
@@ -75,25 +94,29 @@ function AgentConfigContent() {
     }
   }, [config]);
 
-  const { data: agentStatus, refetch: refetchStatus } = trpc.shop.getAgentStatus.useQuery(
-    { shopId },
-    { enabled: shopId > 0 }
-  );
+  const { data: agentStatus, refetch: refetchStatus } =
+    trpc.shop.getAgentStatus.useQuery({ shopId }, { enabled: shopId > 0 });
 
   const utils = trpc.useUtils();
 
   const saveConfig = trpc.shop.saveAgentConfig.useMutation({
     onSuccess: () => {
+      posthog?.capture("agent_config_saved", {
+        shop_id: shopId,
+        voice_id: voiceId || null,
+        upsell_enabled: upsellEnabled,
+        language,
+      });
       toast.success("Agent configuration saved");
       refetchStatus();
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message || "Failed to save configuration");
     },
   });
 
   const provisionAgent = trpc.shop.provisionAgent.useMutation({
-    onSuccess: (data) => {
+    onSuccess: data => {
       toast.success(
         data.action === "created"
           ? "AI agent created and ready to take calls!"
@@ -102,7 +125,7 @@ function AgentConfigContent() {
       refetchStatus();
       utils.shop.getAgentConfig.invalidate({ shopId });
     },
-    onError: (err) => {
+    onError: err => {
       toast.error(err.message || "Failed to provision AI agent");
     },
   });
@@ -146,11 +169,17 @@ Always be helpful and never pushy. If you don't know something, offer to have th
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation(`/shops/${shopId}`)}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">AI Agent Configuration</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            AI Agent Configuration
+          </h1>
           <p className="text-sm text-muted-foreground">{shop?.name}</p>
         </div>
         <Button onClick={handleSave} disabled={saveConfig.isPending}>
@@ -161,10 +190,13 @@ Always be helpful and never pushy. If you don't know something, offer to have th
 
       {/* Agent Status Banner */}
       {agentStatus && (
-        <Card className={agentStatus.isLive
-          ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30"
-          : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
-        }>
+        <Card
+          className={
+            agentStatus.isLive
+              ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30"
+              : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
+          }
+        >
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
@@ -184,14 +216,25 @@ Always be helpful and never pushy. If you don't know something, offer to have th
                           : "Agent needs configuration"}
                   </p>
                   <div className="flex items-center gap-3 mt-1">
-                    <Badge variant="outline" className={`text-xs ${agentStatus.hasConfig ? "text-green-600" : "text-muted-foreground"}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${agentStatus.hasConfig ? "text-green-600" : "text-muted-foreground"}`}
+                    >
                       {agentStatus.hasConfig ? "Config saved" : "No config"}
                     </Badge>
-                    <Badge variant="outline" className={`text-xs ${agentStatus.hasAgent ? "text-green-600" : "text-muted-foreground"}`}>
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${agentStatus.hasAgent ? "text-green-600" : "text-muted-foreground"}`}
+                    >
                       {agentStatus.hasAgent ? "Agent provisioned" : "No agent"}
                     </Badge>
-                    <Badge variant="outline" className={`text-xs ${agentStatus.hasPhone ? "text-green-600" : "text-muted-foreground"}`}>
-                      {agentStatus.hasPhone ? agentStatus.phoneNumber : "No phone"}
+                    <Badge
+                      variant="outline"
+                      className={`text-xs ${agentStatus.hasPhone ? "text-green-600" : "text-muted-foreground"}`}
+                    >
+                      {agentStatus.hasPhone
+                        ? agentStatus.phoneNumber
+                        : "No phone"}
                     </Badge>
                   </div>
                 </div>
@@ -223,7 +266,9 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         <CardHeader>
           <div className="flex items-center gap-2">
             <Volume2 className="h-5 w-5 text-primary" />
-            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Voice & Identity</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Voice & Identity
+            </CardTitle>
           </div>
           <CardDescription>
             Configure how your AI agent sounds and introduces itself.
@@ -236,20 +281,24 @@ Always be helpful and never pushy. If you don't know something, offer to have th
               <Input
                 id="agent-name"
                 value={agentName}
-                onChange={(e) => setAgentName(e.target.value)}
+                onChange={e => setAgentName(e.target.value)}
                 placeholder="e.g., Baylio, Sarah, Mike"
               />
-              <p className="text-xs text-muted-foreground">The name your AI uses to introduce itself.</p>
+              <p className="text-xs text-muted-foreground">
+                The name your AI uses to introduce itself.
+              </p>
             </div>
             <div className="space-y-2">
               <Label htmlFor="language">Language</Label>
               <Input
                 id="language"
                 value={language}
-                onChange={(e) => setLanguage(e.target.value)}
+                onChange={e => setLanguage(e.target.value)}
                 placeholder="en"
               />
-              <p className="text-xs text-muted-foreground">ISO language code (e.g., en, es, fr).</p>
+              <p className="text-xs text-muted-foreground">
+                ISO language code (e.g., en, es, fr).
+              </p>
             </div>
           </div>
           <div className="grid md:grid-cols-2 gap-4">
@@ -258,7 +307,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
               <Input
                 id="voice-id"
                 value={voiceId}
-                onChange={(e) => setVoiceId(e.target.value)}
+                onChange={e => setVoiceId(e.target.value)}
                 placeholder="e.g., 21m00Tcm4TlvDq8ikWAM"
               />
               <p className="text-xs text-muted-foreground">
@@ -270,7 +319,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
               <Input
                 id="voice-name"
                 value={voiceName}
-                onChange={(e) => setVoiceName(e.target.value)}
+                onChange={e => setVoiceName(e.target.value)}
                 placeholder="e.g., Rachel, Josh"
               />
             </div>
@@ -280,7 +329,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
             <Textarea
               id="greeting"
               value={greeting}
-              onChange={(e) => setGreeting(e.target.value)}
+              onChange={e => setGreeting(e.target.value)}
               placeholder={`e.g., "Hi, thanks for calling ${shop?.name || "our shop"}! This is ${agentName}, how can I help you today?"`}
               rows={2}
             />
@@ -296,18 +345,21 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">System Prompt</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              System Prompt
+            </CardTitle>
           </div>
           <CardDescription>
             Define your AI agent's personality, knowledge, and behavior rules.
-            This is the core instruction set that controls how the agent handles calls.
+            This is the core instruction set that controls how the agent handles
+            calls.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Textarea
               value={systemPrompt}
-              onChange={(e) => setSystemPrompt(e.target.value)}
+              onChange={e => setSystemPrompt(e.target.value)}
               placeholder={defaultSystemPrompt}
               rows={12}
               className="font-mono text-sm"
@@ -333,11 +385,13 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         <CardHeader>
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Upsell Engine</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Upsell Engine
+            </CardTitle>
           </div>
           <CardDescription>
-            Configure intelligent service recommendations. The AI suggests complementary
-            services based on customer symptoms and vehicle needs.
+            Configure intelligent service recommendations. The AI suggests
+            complementary services based on customer symptoms and vehicle needs.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -366,10 +420,11 @@ Always be helpful and never pushy. If you don't know something, offer to have th
                     min="0"
                     max="1"
                     value={confidenceThreshold}
-                    onChange={(e) => setConfidenceThreshold(e.target.value)}
+                    onChange={e => setConfidenceThreshold(e.target.value)}
                   />
                   <p className="text-xs text-muted-foreground">
-                    Only suggest services when confidence is above this level (0-1).
+                    Only suggest services when confidence is above this level
+                    (0-1).
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -380,7 +435,9 @@ Always be helpful and never pushy. If you don't know something, offer to have th
                     min={0}
                     max={5}
                     value={maxUpsellsPerCall}
-                    onChange={(e) => setMaxUpsellsPerCall(parseInt(e.target.value) || 1)}
+                    onChange={e =>
+                      setMaxUpsellsPerCall(parseInt(e.target.value) || 1)
+                    }
                   />
                   <p className="text-xs text-muted-foreground">
                     Limit suggestions to avoid sounding pushy.

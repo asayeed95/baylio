@@ -44,18 +44,18 @@ Customer Phone Call
 
 ## Key Files
 
-| File | Purpose |
-|---|---|
-| `server/services/twilioWebhooks.ts` | Express router for `/api/twilio/*` endpoints |
-| `server/services/elevenLabsService.ts` | ElevenLabs REST API client (agent CRUD) |
-| `server/services/promptCompiler.ts` | Shop context → compiled system prompt + greeting |
-| `server/services/contextCache.ts` | In-memory hot cache for shop configs |
-| `server/services/postCallPipeline.ts` | Async post-call processing (transcription → analysis → DB) |
-| `server/services/smsService.ts` | Twilio SMS for post-call recaps and alerts |
-| `server/services/twilioProvisioning.ts` | Phone number search, purchase, release |
-| `server/middleware/twilioValidation.ts` | HMAC-SHA1 webhook signature verification |
-| `scripts/update-elevenlabs-agent.mjs` | One-off script to update the default ElevenLabs agent |
-| `drizzle/schema.ts` | `agent_configs` and `call_logs` table definitions |
+| File                                    | Purpose                                                    |
+| --------------------------------------- | ---------------------------------------------------------- |
+| `server/services/twilioWebhooks.ts`     | Express router for `/api/twilio/*` endpoints               |
+| `server/services/elevenLabsService.ts`  | ElevenLabs REST API client (agent CRUD)                    |
+| `server/services/promptCompiler.ts`     | Shop context → compiled system prompt + greeting           |
+| `server/services/contextCache.ts`       | In-memory hot cache for shop configs                       |
+| `server/services/postCallPipeline.ts`   | Async post-call processing (transcription → analysis → DB) |
+| `server/services/smsService.ts`         | Twilio SMS for post-call recaps and alerts                 |
+| `server/services/twilioProvisioning.ts` | Phone number search, purchase, release                     |
+| `server/middleware/twilioValidation.ts` | HMAC-SHA1 webhook signature verification                   |
+| `scripts/update-elevenlabs-agent.mjs`   | One-off script to update the default ElevenLabs agent      |
+| `drizzle/schema.ts`                     | `agent_configs` and `call_logs` table definitions          |
 
 ---
 
@@ -79,17 +79,17 @@ If no shop is found for the phone number, the handler falls back to the default 
 
 If a shop is found, the **prompt compiler** (`promptCompiler.ts`) takes the shop's context and generates a complete system prompt. The compiler uses a template system with the following variables:
 
-| Variable | Source | Example |
-|---|---|---|
-| `{{SHOP_NAME}}` | `shops.name` | "Mike's Auto Repair" |
-| `{{AGENT_NAME}}` | `agent_configs.agentName` | "Sam" |
-| `{{SHOP_PHONE}}` | `shops.phone` | "(555) 123-4567" |
-| `{{BUSINESS_HOURS}}` | `shops.businessHours` | "Mon-Fri 8AM-6PM, Sat 9AM-2PM" |
-| `{{SERVICE_CATALOG}}` | `shops.serviceCatalog` | "Oil Change ($39.99), Brake Pads ($149.99)..." |
-| `{{CURRENT_PROMOS}}` | `shops.currentPromos` | "Free brake inspection with any service" |
-| `{{TIMEZONE}}` | `shops.timezone` | "America/New_York" |
-| `{{VOICE_PERSONA}}` | `agent_configs.voicePersona` | "friendly_advisor" |
-| `{{CONFIDENCE_THRESHOLD}}` | `agent_configs.confidenceThreshold` | "0.70" |
+| Variable                   | Source                              | Example                                        |
+| -------------------------- | ----------------------------------- | ---------------------------------------------- |
+| `{{SHOP_NAME}}`            | `shops.name`                        | "Mike's Auto Repair"                           |
+| `{{AGENT_NAME}}`           | `agent_configs.agentName`           | "Sam"                                          |
+| `{{SHOP_PHONE}}`           | `shops.phone`                       | "(555) 123-4567"                               |
+| `{{BUSINESS_HOURS}}`       | `shops.businessHours`               | "Mon-Fri 8AM-6PM, Sat 9AM-2PM"                 |
+| `{{SERVICE_CATALOG}}`      | `shops.serviceCatalog`              | "Oil Change ($39.99), Brake Pads ($149.99)..." |
+| `{{CURRENT_PROMOS}}`       | `shops.currentPromos`               | "Free brake inspection with any service"       |
+| `{{TIMEZONE}}`             | `shops.timezone`                    | "America/New_York"                             |
+| `{{VOICE_PERSONA}}`        | `agent_configs.voicePersona`        | "friendly_advisor"                             |
+| `{{CONFIDENCE_THRESHOLD}}` | `agent_configs.confidenceThreshold` | "0.70"                                         |
 
 The compiler also generates a **first message** (greeting) that includes the shop name and agent name.
 
@@ -157,7 +157,10 @@ interface ShopContext {
   serviceCatalog: ServiceItem[];
   currentPromos: Promo[];
   timezone: string;
-  voicePersona: 'friendly_advisor' | 'professional_technician' | 'sales_focused';
+  voicePersona:
+    | "friendly_advisor"
+    | "professional_technician"
+    | "sales_focused";
   confidenceThreshold: number;
   upsellEnabled: boolean;
   upsellRules: UpsellRule[];
@@ -170,11 +173,11 @@ interface ShopContext {
 
 The compiler includes three built-in persona templates:
 
-| Persona | Tone | Best For |
-|---|---|---|
-| `friendly_advisor` | Warm, conversational, uses contractions | General shops, family-owned businesses |
-| `professional_technician` | Precise, knowledgeable, formal | High-end shops, dealerships |
-| `sales_focused` | Energetic, proactive, upsell-oriented | Shops focused on revenue growth |
+| Persona                   | Tone                                    | Best For                               |
+| ------------------------- | --------------------------------------- | -------------------------------------- |
+| `friendly_advisor`        | Warm, conversational, uses contractions | General shops, family-owned businesses |
+| `professional_technician` | Precise, knowledgeable, formal          | High-end shops, dealerships            |
+| `sales_focused`           | Energetic, proactive, upsell-oriented   | Shops focused on revenue growth        |
 
 ### 3-Stage Reasoning Architecture
 
@@ -186,11 +189,11 @@ The compiled prompt includes a three-stage reasoning framework for intelligent s
 
 The confidence threshold behavior:
 
-| Confidence | Action |
-|---|---|
-| HIGH (>= threshold) | Offer the service naturally in conversation |
-| MEDIUM (threshold - 0.2 to threshold) | Ask clarifying questions before offering |
-| LOW (< threshold - 0.2) | Book appointment only, don't suggest services |
+| Confidence                            | Action                                        |
+| ------------------------------------- | --------------------------------------------- |
+| HIGH (>= threshold)                   | Offer the service naturally in conversation   |
+| MEDIUM (threshold - 0.2 to threshold) | Ask clarifying questions before offering      |
+| LOW (< threshold - 0.2)               | Book appointment only, don't suggest services |
 
 ### Custom Prompt Override
 
@@ -215,15 +218,15 @@ The cache is implemented as a singleton `ContextCache` class with the following 
 
 The ElevenLabs service (`server/services/elevenLabsService.ts`) provides CRUD operations for conversational agents:
 
-| Function | Description |
-|---|---|
-| `createConversationalAgent(config)` | Creates a new ElevenLabs agent with voice, prompt, and turn settings |
-| `updateConversationalAgent(agentId, config)` | Updates an existing agent's configuration |
-| `deleteConversationalAgent(agentId)` | Deletes an agent |
-| `getAgent(agentId)` | Retrieves agent configuration |
-| `listVoices()` | Lists available ElevenLabs voices |
-| `getSubscriptionInfo()` | Gets ElevenLabs account usage/limits |
-| `getConversationHistory(agentId)` | Gets past conversations for an agent |
+| Function                                     | Description                                                          |
+| -------------------------------------------- | -------------------------------------------------------------------- |
+| `createConversationalAgent(config)`          | Creates a new ElevenLabs agent with voice, prompt, and turn settings |
+| `updateConversationalAgent(agentId, config)` | Updates an existing agent's configuration                            |
+| `deleteConversationalAgent(agentId)`         | Deletes an agent                                                     |
+| `getAgent(agentId)`                          | Retrieves agent configuration                                        |
+| `listVoices()`                               | Lists available ElevenLabs voices                                    |
+| `getSubscriptionInfo()`                      | Gets ElevenLabs account usage/limits                                 |
+| `getConversationHistory(agentId)`            | Gets past conversations for an agent                                 |
 
 ### Agent Configuration
 
@@ -258,15 +261,15 @@ Each ElevenLabs agent has the following configuration:
 
 The Twilio provisioning service (`server/services/twilioProvisioning.ts`) manages phone numbers:
 
-| Function | Description |
-|---|---|
-| `validateTwilioCredentials()` | Checks if Twilio SID/token are valid |
-| `searchAvailableNumbers(areaCode?, contains?)` | Searches for available local numbers |
-| `purchasePhoneNumber(phoneNumber, friendlyName)` | Purchases a number and configures webhooks |
-| `updatePhoneWebhooks(phoneSid, voiceUrl, statusUrl)` | Updates webhook URLs for a number |
-| `releasePhoneNumber(phoneSid)` | Releases a number back to Twilio |
-| `listOwnedNumbers()` | Lists all numbers on the account |
-| `getAccountBalance()` | Gets the Twilio account balance |
+| Function                                             | Description                                |
+| ---------------------------------------------------- | ------------------------------------------ |
+| `validateTwilioCredentials()`                        | Checks if Twilio SID/token are valid       |
+| `searchAvailableNumbers(areaCode?, contains?)`       | Searches for available local numbers       |
+| `purchasePhoneNumber(phoneNumber, friendlyName)`     | Purchases a number and configures webhooks |
+| `updatePhoneWebhooks(phoneSid, voiceUrl, statusUrl)` | Updates webhook URLs for a number          |
+| `releasePhoneNumber(phoneSid)`                       | Releases a number back to Twilio           |
+| `listOwnedNumbers()`                                 | Lists all numbers on the account           |
+| `getAccountBalance()`                                | Gets the Twilio account balance            |
 
 When a number is purchased, webhooks are automatically configured to point at:
 
@@ -292,12 +295,12 @@ The validation can be toggled via the `TWILIO_VALIDATION_ENABLED` environment va
 
 The SMS service (`server/services/smsService.ts`) sends text messages via Twilio for:
 
-| Function | Description |
-|---|---|
-| `sendPostCallRecap(recap)` | Sends a call summary to the shop manager after each call |
-| `sendHighValueAlert(details)` | Alerts the shop owner when a high-value lead calls |
-| `sendWeeklySummary(stats)` | Sends a weekly performance summary |
-| `sendSMS(payload)` | Low-level SMS send function |
+| Function                      | Description                                              |
+| ----------------------------- | -------------------------------------------------------- |
+| `sendPostCallRecap(recap)`    | Sends a call summary to the shop manager after each call |
+| `sendHighValueAlert(details)` | Alerts the shop owner when a high-value lead calls       |
+| `sendWeeklySummary(stats)`    | Sends a weekly performance summary                       |
+| `sendSMS(payload)`            | Low-level SMS send function                              |
 
 ---
 
@@ -313,11 +316,11 @@ The system supports two modes:
 
 ## Troubleshooting
 
-| Issue | Likely Cause | Fix |
-|---|---|---|
-| "Application error" on call | Webhook URL not configured or server unreachable | Check Twilio console → Phone Numbers → Voice webhook URL |
-| Generic greeting ("How can I help you?") | Agent not updated with shop prompt | Run `node scripts/update-elevenlabs-agent.mjs` or check shop's `elevenLabsAgentId` |
-| Agent talks too fast / interrupts | Turn settings too aggressive | Set `turn_eagerness: "patient"` and `initial_wait_time: 2` |
-| No post-call analysis | Status callback not configured | Verify Twilio status callback URL points to `/api/twilio/status` |
-| Webhook signature failures | Clock skew or wrong auth token | Verify `TWILIO_AUTH_TOKEN` matches the Twilio console |
-| Context cache stale | Shop config updated but cache not refreshed | Cache auto-refreshes on TTL expiry; restart server to force refresh |
+| Issue                                    | Likely Cause                                     | Fix                                                                                |
+| ---------------------------------------- | ------------------------------------------------ | ---------------------------------------------------------------------------------- |
+| "Application error" on call              | Webhook URL not configured or server unreachable | Check Twilio console → Phone Numbers → Voice webhook URL                           |
+| Generic greeting ("How can I help you?") | Agent not updated with shop prompt               | Run `node scripts/update-elevenlabs-agent.mjs` or check shop's `elevenLabsAgentId` |
+| Agent talks too fast / interrupts        | Turn settings too aggressive                     | Set `turn_eagerness: "patient"` and `initial_wait_time: 2`                         |
+| No post-call analysis                    | Status callback not configured                   | Verify Twilio status callback URL points to `/api/twilio/status`                   |
+| Webhook signature failures               | Clock skew or wrong auth token                   | Verify `TWILIO_AUTH_TOKEN` matches the Twilio console                              |
+| Context cache stale                      | Shop config updated but cache not refreshed      | Cache auto-refreshes on TTL expiry; restart server to force refresh                |

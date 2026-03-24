@@ -29,6 +29,7 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ```
 
 Optional:
+
 ```env
 TWILIO_VALIDATION_ENABLED=false  # Disable webhook HMAC check in dev
 ```
@@ -79,11 +80,11 @@ docs/                 Architecture, API, webhook, and setup docs
 
 ## What is Safe to Modify
 
-| Area | Safety | Notes |
-|------|--------|-------|
-| `client/src/pages/*` | Safe | Self-contained page components |
-| `server/*Router.ts` | Safe | Add procedures, keep auth checks |
-| `server/services/*` | Careful | Business logic, test after changes |
-| `server/db.ts` | Careful | Used by all routers |
-| `drizzle/schema.ts` | Careful | Schema changes need migrations |
-| `server/_core/*` | Do not edit | Framework internals |
+| Area                 | Safety      | Notes                              |
+| -------------------- | ----------- | ---------------------------------- |
+| `client/src/pages/*` | Safe        | Self-contained page components     |
+| `server/*Router.ts`  | Safe        | Add procedures, keep auth checks   |
+| `server/services/*`  | Careful     | Business logic, test after changes |
+| `server/db.ts`       | Careful     | Used by all routers                |
+| `drizzle/schema.ts`  | Careful     | Schema changes need migrations     |
+| `server/_core/*`     | Do not edit | Framework internals                |

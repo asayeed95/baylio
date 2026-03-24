@@ -70,7 +70,9 @@ export async function validateTwilioCredentials(): Promise<{
   status: string;
 }> {
   const client = getTwilioClient();
-  const account = await client.api.v2010.accounts(process.env.TWILIO_ACCOUNT_SID!).fetch();
+  const account = await client.api.v2010
+    .accounts(process.env.TWILIO_ACCOUNT_SID!)
+    .fetch();
   return {
     accountSid: account.sid,
     friendlyName: account.friendlyName,
@@ -98,7 +100,7 @@ export async function searchAvailableNumbers(
     limit: 10,
   });
 
-  return numbers.map((n) => ({
+  return numbers.map(n => ({
     phoneNumber: n.phoneNumber,
     friendlyName: n.friendlyName,
     locality: n.locality ?? "",
@@ -196,7 +198,7 @@ export async function listOwnedNumbers(): Promise<ProvisionedNumber[]> {
   const client = getTwilioClient();
   const numbers = await client.incomingPhoneNumbers.list({ limit: 100 });
 
-  return numbers.map((n) => ({
+  return numbers.map(n => ({
     sid: n.sid,
     phoneNumber: n.phoneNumber,
     friendlyName: n.friendlyName,

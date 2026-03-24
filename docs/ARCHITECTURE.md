@@ -34,12 +34,12 @@ External Services:
 
 ## Layer Model
 
-| Layer | Responsibility | Files |
-|-------|---------------|-------|
-| **Routers** | Zod validation, auth, response shaping | `server/*Router.ts` |
+| Layer        | Responsibility                         | Files               |
+| ------------ | -------------------------------------- | ------------------- |
+| **Routers**  | Zod validation, auth, response shaping | `server/*Router.ts` |
 | **Services** | Business workflows, external API calls | `server/services/*` |
-| **Data** | Raw queries, connection management | `server/db.ts` |
-| **Schema** | Table definitions, types | `drizzle/schema.ts` |
+| **Data**     | Raw queries, connection management     | `server/db.ts`      |
+| **Schema**   | Table definitions, types               | `drizzle/schema.ts` |
 
 ## Request Flow (tRPC)
 
@@ -71,10 +71,10 @@ in every router procedure.
 
 The frontend serves three portals from one SPA:
 
-| Portal | Trigger | Layout |
-|--------|---------|--------|
-| Main | Default / `baylio.io` | DashboardLayout (light) |
+| Portal   | Trigger                                    | Layout                      |
+| -------- | ------------------------------------------ | --------------------------- |
+| Main     | Default / `baylio.io`                      | DashboardLayout (light)     |
 | Partners | `partners.baylio.io` or `?portal=partners` | PartnersPortalLayout (dark) |
-| Admin | `admin.baylio.io` or `?portal=admin` | AdminPortal |
+| Admin    | `admin.baylio.io` or `?portal=admin`       | AdminPortal                 |
 
 Detection happens in `App.tsx:detectPortal()` at render time.

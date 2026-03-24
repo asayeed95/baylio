@@ -18,7 +18,13 @@ async function getShopHubspotKey(shopId: number): Promise<string | null> {
   const result = await db
     .select()
     .from(shopIntegrations)
-    .where(and(eq(shopIntegrations.shopId, shopId), eq(shopIntegrations.provider, "hubspot"), eq(shopIntegrations.isActive, true)))
+    .where(
+      and(
+        eq(shopIntegrations.shopId, shopId),
+        eq(shopIntegrations.provider, "hubspot"),
+        eq(shopIntegrations.isActive, true)
+      )
+    )
     .limit(1);
 
   if (result.length > 0 && result[0].accessToken) {
@@ -51,9 +57,17 @@ export async function syncCallerToHubspot(
     let contactId: string | undefined;
     try {
       const searchResult = await client.crm.contacts.searchApi.doSearch({
-        filterGroups: [{
-          filters: [{ propertyName: "phone", operator: "EQ" as any, value: caller.phone }],
-        }],
+        filterGroups: [
+          {
+            filters: [
+              {
+                propertyName: "phone",
+                operator: "EQ" as any,
+                value: caller.phone,
+              },
+            ],
+          },
+        ],
         properties: ["phone", "firstname", "lastname", "email"],
         limit: 1,
       });
@@ -63,7 +77,12 @@ export async function syncCallerToHubspot(
         // Update existing contact
         await client.crm.contacts.basicApi.update(contactId, {
           properties: {
-            ...(caller.name ? { firstname: caller.name.split(" ")[0], lastname: caller.name.split(" ").slice(1).join(" ") || "" } : {}),
+            ...(caller.name
+              ? {
+                  firstname: caller.name.split(" ")[0],
+                  lastname: caller.name.split(" ").slice(1).join(" ") || "",
+                }
+              : {}),
             hs_lead_status: "OPEN",
           },
         });
@@ -99,10 +118,17 @@ export async function syncCallerToHubspot(
             hs_note_body: `Baylio AI Call Summary:\n\n${caller.callSummary}\n\nService: ${caller.service || "N/A"}\nDuration: ${caller.duration || 0}s`,
             hs_timestamp: new Date().toISOString(),
           },
-          associations: [{
-            to: { id: contactId },
-            types: [{ associationCategory: "HUBSPOT_DEFINED" as any, associationTypeId: 202 }],
-          }],
+          associations: [
+            {
+              to: { id: contactId },
+              types: [
+                {
+                  associationCategory: "HUBSPOT_DEFINED" as any,
+                  associationTypeId: 202,
+                },
+              ],
+            },
+          ],
         });
       } catch (err: any) {
         console.error("[HUBSPOT] Error creating note:", err.message);

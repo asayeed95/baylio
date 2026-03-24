@@ -1,10 +1,24 @@
 import DashboardLayout from "@/components/DashboardLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { trpc } from "@/lib/trpc";
-import { ArrowLeft, Award, Lightbulb, Loader2, AlertCircle } from "lucide-react";
+import {
+  ArrowLeft,
+  Award,
+  Lightbulb,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
 import { useParams, useLocation } from "wouter";
+import { usePostHog } from "@posthog/react";
+import { useEffect } from "react";
 import {
   RadarChart,
   PolarGrid,
@@ -28,7 +42,9 @@ function getScoreColor(score: number): string {
   return "text-red-600";
 }
 
-function getScoreBadgeVariant(score: number): "default" | "secondary" | "destructive" {
+function getScoreBadgeVariant(
+  score: number
+): "default" | "secondary" | "destructive" {
   if (score >= 7) return "default";
   if (score >= 5) return "secondary";
   return "destructive";
@@ -39,6 +55,7 @@ function CallScorecardContent() {
   const shopId = parseInt(params.id || "0", 10);
   const callId = parseInt(params.callId || "0", 10);
   const [, setLocation] = useLocation();
+  const posthog = usePostHog();
 
   const { data: callData, isLoading } = trpc.calls.list.useQuery(
     { shopId, limit: 1, offset: 0 },
@@ -47,16 +64,28 @@ function CallScorecardContent() {
 
   // Find the specific call
   const call = callData?.calls?.find((c: any) => c.id === callId);
-  const scorecard = (call as any)?.scorecardData as {
-    greeting: number;
-    problemId: number;
-    serviceRec: number;
-    upsell: number;
-    appointment: number;
-    closing: number;
-    overall: number;
-    suggestions: string[];
-  } | null | undefined;
+  const scorecard = (call as any)?.scorecardData as
+    | {
+        greeting: number;
+        problemId: number;
+        serviceRec: number;
+        upsell: number;
+        appointment: number;
+        closing: number;
+        overall: number;
+        suggestions: string[];
+      }
+    | null
+    | undefined;
+
+  useEffect(() => {
+    if (!call || !scorecard) return;
+    posthog?.capture("call_scorecard_viewed", {
+      shop_id: shopId,
+      call_id: callId,
+      overall_score: scorecard.overall,
+    });
+  }, [call?.id]);
 
   if (isLoading) {
     return (
@@ -70,7 +99,11 @@ function CallScorecardContent() {
     return (
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}/calls`)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation(`/shops/${shopId}/calls`)}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">Call Scorecard</h1>
@@ -79,7 +112,9 @@ function CallScorecardContent() {
           <CardContent className="flex flex-col items-center justify-center py-12">
             <AlertCircle className="h-12 w-12 text-muted-foreground mb-4" />
             <p className="text-lg font-medium">Call not found</p>
-            <p className="text-sm text-muted-foreground">This call may have been removed or you lack access.</p>
+            <p className="text-sm text-muted-foreground">
+              This call may have been removed or you lack access.
+            </p>
           </CardContent>
         </Card>
       </div>
@@ -90,7 +125,11 @@ function CallScorecardContent() {
     return (
       <div className="space-y-6 max-w-3xl">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}/calls`)}>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setLocation(`/shops/${shopId}/calls`)}
+          >
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-bold tracking-tight">Call Scorecard</h1>
@@ -118,25 +157,55 @@ function CallScorecardContent() {
   ];
 
   const dimensions = [
-    { label: "Greeting", score: scorecard.greeting, desc: "Opening warmth and professionalism" },
-    { label: "Problem Identification", score: scorecard.problemId, desc: "Understanding the customer need" },
-    { label: "Service Recommendation", score: scorecard.serviceRec, desc: "Matching service to need" },
-    { label: "Upsell", score: scorecard.upsell, desc: "Relevant additional service offer" },
-    { label: "Appointment", score: scorecard.appointment, desc: "Booking attempt and success" },
-    { label: "Closing", score: scorecard.closing, desc: "Professional call wrap-up" },
+    {
+      label: "Greeting",
+      score: scorecard.greeting,
+      desc: "Opening warmth and professionalism",
+    },
+    {
+      label: "Problem Identification",
+      score: scorecard.problemId,
+      desc: "Understanding the customer need",
+    },
+    {
+      label: "Service Recommendation",
+      score: scorecard.serviceRec,
+      desc: "Matching service to need",
+    },
+    {
+      label: "Upsell",
+      score: scorecard.upsell,
+      desc: "Relevant additional service offer",
+    },
+    {
+      label: "Appointment",
+      score: scorecard.appointment,
+      desc: "Booking attempt and success",
+    },
+    {
+      label: "Closing",
+      score: scorecard.closing,
+      desc: "Professional call wrap-up",
+    },
   ];
 
   return (
     <div className="space-y-6 max-w-4xl">
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}/calls`)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation(`/shops/${shopId}/calls`)}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
           <h1 className="text-2xl font-bold tracking-tight">Call Scorecard</h1>
           <p className="text-muted-foreground text-sm">
             {call.callerName || call.callerPhone || "Unknown caller"} &middot;{" "}
-            {call.createdAt ? new Date(call.createdAt).toLocaleDateString() : ""}
+            {call.createdAt
+              ? new Date(call.createdAt).toLocaleDateString()
+              : ""}
           </p>
         </div>
       </div>
@@ -145,14 +214,25 @@ function CallScorecardContent() {
       <Card className="border-border">
         <CardContent className="flex items-center gap-6 py-6">
           <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
-            <span className={`text-3xl font-mono font-bold ${getScoreColor(scorecard.overall)}`}>
+            <span
+              className={`text-3xl font-mono font-bold ${getScoreColor(scorecard.overall)}`}
+            >
               {scorecard.overall}
             </span>
           </div>
           <div>
-            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Overall Score</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Overall Score
+            </p>
             <p className="text-xl font-semibold">
-              {scorecard.overall >= 8 ? "Excellent" : scorecard.overall >= 6 ? "Good" : scorecard.overall >= 4 ? "Needs Improvement" : "Poor"} Performance
+              {scorecard.overall >= 8
+                ? "Excellent"
+                : scorecard.overall >= 6
+                  ? "Good"
+                  : scorecard.overall >= 4
+                    ? "Needs Improvement"
+                    : "Poor"}{" "}
+              Performance
             </p>
             <p className="text-sm text-muted-foreground mt-1">
               Based on 6 dimensions of call quality
@@ -166,7 +246,9 @@ function CallScorecardContent() {
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-base">Performance Radar</CardTitle>
-            <CardDescription>Visual breakdown of call handling quality</CardDescription>
+            <CardDescription>
+              Visual breakdown of call handling quality
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={300}>
@@ -191,17 +273,25 @@ function CallScorecardContent() {
         <Card className="border-border">
           <CardHeader>
             <CardTitle className="text-base">Score Breakdown</CardTitle>
-            <CardDescription>Individual dimension scores (0-10)</CardDescription>
+            <CardDescription>
+              Individual dimension scores (0-10)
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
-              {dimensions.map((dim) => (
-                <div key={dim.label} className="flex items-center justify-between">
+              {dimensions.map(dim => (
+                <div
+                  key={dim.label}
+                  className="flex items-center justify-between"
+                >
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium">{dim.label}</p>
                     <p className="text-xs text-muted-foreground">{dim.desc}</p>
                   </div>
-                  <Badge variant={getScoreBadgeVariant(dim.score)} className="ml-3 font-mono tabular-nums">
+                  <Badge
+                    variant={getScoreBadgeVariant(dim.score)}
+                    className="ml-3 font-mono tabular-nums"
+                  >
                     {dim.score}/10
                   </Badge>
                 </div>
@@ -217,7 +307,9 @@ function CallScorecardContent() {
           <CardHeader>
             <div className="flex items-center gap-2">
               <Lightbulb className="h-5 w-5 text-yellow-500" />
-              <CardTitle className="text-base">AI Improvement Suggestions</CardTitle>
+              <CardTitle className="text-base">
+                AI Improvement Suggestions
+              </CardTitle>
             </div>
           </CardHeader>
           <CardContent>

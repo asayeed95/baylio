@@ -37,23 +37,46 @@ export default function Contact() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="dark min-h-screen bg-background text-foreground">
       {/* ─── Navbar ─── */}
       <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary" />
-            <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+            <span className="font-semibold tracking-wider uppercase text-sm">
+              Baylio
+            </span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
-            <Link href="/contact" className="text-sm text-foreground font-medium">Contact</Link>
+            <Link
+              href="/faq"
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+            >
+              FAQ
+            </Link>
+            <Link
+              href="/contact"
+              className="text-sm text-foreground font-medium"
+            >
+              Contact
+            </Link>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="ghost" size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Sign In
             </Button>
-            <Button size="sm" onClick={() => { window.location.href = getLoginUrl(); }}>
+            <Button
+              size="sm"
+              onClick={() => {
+                window.location.href = getLoginUrl();
+              }}
+            >
               Get Started
             </Button>
           </div>
@@ -77,13 +100,17 @@ export default function Contact() {
           <div className="space-y-6">
             <Card className="bg-card border border-border rounded-sm">
               <CardHeader>
-                <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Contact Information</CardTitle>
+                <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  Contact Information
+                </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-sm border border-border">
                   <Mail className="h-5 w-5 text-primary shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest">Email</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest">
+                      Email
+                    </p>
                     <a
                       href="mailto:hello@baylio.io"
                       className="text-sm font-mono font-medium hover:text-primary transition-colors"
@@ -95,7 +122,9 @@ export default function Contact() {
                 <div className="flex items-center gap-3 p-3 bg-secondary/30 rounded-sm border border-border">
                   <Phone className="h-5 w-5 text-primary shrink-0" />
                   <div>
-                    <p className="text-xs text-muted-foreground uppercase tracking-widest">Phone</p>
+                    <p className="text-xs text-muted-foreground uppercase tracking-widest">
+                      Phone
+                    </p>
                     <a
                       href="tel:+18448752441"
                       className="text-sm font-mono font-medium hover:text-primary transition-colors"
@@ -115,7 +144,9 @@ export default function Contact() {
                 </p>
                 <Button
                   className="w-full rounded-sm"
-                  onClick={() => { window.location.href = getLoginUrl(); }}
+                  onClick={() => {
+                    window.location.href = getLoginUrl();
+                  }}
                 >
                   Get Started Free
                   <ArrowRight className="ml-2 h-4 w-4" />
@@ -127,7 +158,9 @@ export default function Contact() {
           {/* ─── Contact Form ─── */}
           <Card className="bg-card border border-border rounded-sm">
             <CardHeader>
-              <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Send Us a Message</CardTitle>
+              <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Send Us a Message
+              </CardTitle>
             </CardHeader>
             <CardContent>
               {submitted ? (
@@ -143,63 +176,85 @@ export default function Contact() {
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-4">
                   <div className="space-y-2">
-                    <Label htmlFor="name" className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Name</Label>
+                    <Label
+                      htmlFor="name"
+                      className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
+                    >
+                      Name
+                    </Label>
                     <Input
                       id="name"
                       placeholder="Your name"
                       required
                       value={formState.name}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, name: e.target.value }))
+                      onChange={e =>
+                        setFormState(s => ({ ...s, name: e.target.value }))
                       }
                       className="font-mono rounded-sm bg-background border-border"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Email</Label>
+                    <Label
+                      htmlFor="email"
+                      className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
+                    >
+                      Email
+                    </Label>
                     <Input
                       id="email"
                       type="email"
                       placeholder="you@example.com"
                       required
                       value={formState.email}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, email: e.target.value }))
+                      onChange={e =>
+                        setFormState(s => ({ ...s, email: e.target.value }))
                       }
                       className="font-mono rounded-sm bg-background border-border"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="phone" className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Phone (optional)</Label>
+                    <Label
+                      htmlFor="phone"
+                      className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
+                    >
+                      Phone (optional)
+                    </Label>
                     <Input
                       id="phone"
                       type="tel"
                       placeholder="(555) 123-4567"
                       value={formState.phone}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, phone: e.target.value }))
+                      onChange={e =>
+                        setFormState(s => ({ ...s, phone: e.target.value }))
                       }
                       className="font-mono rounded-sm bg-background border-border"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="message" className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Message</Label>
+                    <Label
+                      htmlFor="message"
+                      className="text-xs font-medium uppercase tracking-widest text-muted-foreground"
+                    >
+                      Message
+                    </Label>
                     <Textarea
                       id="message"
                       placeholder="How can we help?"
                       rows={4}
                       required
                       value={formState.message}
-                      onChange={(e) =>
-                        setFormState((s) => ({ ...s, message: e.target.value }))
+                      onChange={e =>
+                        setFormState(s => ({ ...s, message: e.target.value }))
                       }
                       className="font-mono rounded-sm bg-background border-border"
                     />
                   </div>
-                  {error && (
-                    <p className="text-sm text-destructive">{error}</p>
-                  )}
-                  <Button type="submit" className="w-full rounded-sm" disabled={submitMutation.isPending}>
+                  {error && <p className="text-sm text-destructive">{error}</p>}
+                  <Button
+                    type="submit"
+                    className="w-full rounded-sm"
+                    disabled={submitMutation.isPending}
+                  >
                     {submitMutation.isPending ? "Sending..." : "Send Message"}
                   </Button>
                 </form>
@@ -215,16 +270,38 @@ export default function Contact() {
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">
               <div className="w-2 h-2 rounded-full bg-primary" />
-              <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
+              <span className="font-semibold tracking-wider uppercase text-sm">
+                Baylio
+              </span>
             </Link>
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
             <div className="flex gap-6">
-              <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
-              <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
-              <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
+              <Link
+                href="/contact"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Contact
+              </Link>
+              <Link
+                href="/faq"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                FAQ
+              </Link>
+              <a
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Privacy
+              </a>
+              <a
+                href="#"
+                className="text-sm text-muted-foreground hover:text-foreground"
+              >
+                Terms
+              </a>
             </div>
           </div>
         </div>

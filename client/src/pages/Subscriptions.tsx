@@ -1,12 +1,24 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+} from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
 import { Separator } from "@/components/ui/separator";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import {
   CreditCard,
   Store,
@@ -17,17 +29,18 @@ import {
 } from "lucide-react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import { usePostHog } from "@posthog/react";
 
 /**
  * Subscriptions Page
- * 
+ *
  * Shows all shops with their subscription status:
  * - Current tier and usage
  * - Minutes used vs included
  * - Overage charges
  * - Upgrade/downgrade options
  * - Billing cycle info
- * 
+ *
  * Stripe integration will be added later for actual payment processing.
  */
 export default function Subscriptions() {
@@ -40,6 +53,7 @@ export default function Subscriptions() {
 
 function SubscriptionsContent() {
   const [, setLocation] = useLocation();
+  const posthog = usePostHog();
   const { data: allSubs, isLoading } = trpc.subscription.listAll.useQuery();
 
   if (isLoading) {
@@ -47,7 +61,9 @@ function SubscriptionsContent() {
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
         <div className="space-y-4">
-          {[1, 2].map(i => <Skeleton key={i} className="h-48" />)}
+          {[1, 2].map(i => (
+            <Skeleton key={i} className="h-48" />
+          ))}
         </div>
       </div>
     );
@@ -69,7 +85,9 @@ function SubscriptionsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div>
-        <h1 className="text-2xl font-semibold tracking-tight">Subscriptions & Billing</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">
+          Subscriptions & Billing
+        </h1>
         <p className="text-muted-foreground">
           Manage plans, track usage, and view billing for all your shops.
         </p>
@@ -79,7 +97,9 @@ function SubscriptionsContent() {
       {!allSubs || allSubs.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><CreditCard /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <CreditCard />
+            </EmptyMedia>
             <EmptyTitle>No subscriptions</EmptyTitle>
             <EmptyDescription>
               Add a shop from the dashboard to set up a subscription plan.
@@ -98,12 +118,16 @@ function SubscriptionsContent() {
                     </div>
                     <div>
                       <CardTitle className="text-base">{shop.name}</CardTitle>
-                      <p className="text-xs text-muted-foreground">{shop.phone || "No phone"}</p>
+                      <p className="text-xs text-muted-foreground">
+                        {shop.phone || "No phone"}
+                      </p>
                     </div>
                   </div>
                   {subscription ? (
                     <Badge className={tierColors[subscription.tier] || ""}>
-                      {subscription.tier.charAt(0).toUpperCase() + subscription.tier.slice(1)} — ${tierPrices[subscription.tier]}/mo
+                      {subscription.tier.charAt(0).toUpperCase() +
+                        subscription.tier.slice(1)}{" "}
+                      — ${tierPrices[subscription.tier]}/mo
                     </Badge>
                   ) : (
                     <Badge variant="secondary">No Plan</Badge>
@@ -116,13 +140,24 @@ function SubscriptionsContent() {
                     {/* Usage bar */}
                     <div>
                       <div className="flex items-center justify-between text-sm mb-1">
-                        <span className="font-mono">{subscription.usedMinutes} min used</span>
-                        <span className="font-mono">{subscription.includedMinutes} min included</span>
+                        <span className="font-mono">
+                          {subscription.usedMinutes} min used
+                        </span>
+                        <span className="font-mono">
+                          {subscription.includedMinutes} min included
+                        </span>
                       </div>
                       <Progress
-                        value={subscription.includedMinutes > 0
-                          ? Math.min(100, (subscription.usedMinutes / subscription.includedMinutes) * 100)
-                          : 0}
+                        value={
+                          subscription.includedMinutes > 0
+                            ? Math.min(
+                                100,
+                                (subscription.usedMinutes /
+                                  subscription.includedMinutes) *
+                                  100
+                              )
+                            : 0
+                        }
                         className="h-2"
                       />
                     </div>
@@ -137,11 +172,14 @@ function SubscriptionsContent() {
                         <CheckCircle2 className="h-3.5 w-3.5" />
                         <span>{subscription.status}</span>
                       </div>
-                      {subscription.usedMinutes > subscription.includedMinutes && (
+                      {subscription.usedMinutes >
+                        subscription.includedMinutes && (
                         <div className="flex items-center gap-1 text-destructive">
                           <AlertTriangle className="h-3.5 w-3.5" />
                           <span>
-                            {subscription.usedMinutes - subscription.includedMinutes} min overage
+                            {subscription.usedMinutes -
+                              subscription.includedMinutes}{" "}
+                            min overage
                           </span>
                         </div>
                       )}
@@ -152,14 +190,18 @@ function SubscriptionsContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => setLocation(`/shops/${shop.id}/analytics`)}
+                        onClick={() =>
+                          setLocation(`/shops/${shop.id}/analytics`)
+                        }
                       >
                         View Usage
                       </Button>
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => toast.info("Stripe billing integration coming soon")}
+                        onClick={() =>
+                          toast.info("Stripe billing integration coming soon")
+                        }
                       >
                         Manage Billing
                       </Button>
@@ -168,11 +210,15 @@ function SubscriptionsContent() {
                 ) : (
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      No subscription active. Choose a plan to start AI call handling.
+                      No subscription active. Choose a plan to start AI call
+                      handling.
                     </p>
                     <Button
                       size="sm"
-                      onClick={() => toast.info("Subscription creation coming soon")}
+                      onClick={() => {
+                        posthog?.capture("subscription_checkout_started", { shop_id: shop.id, shop_name: shop.name });
+                        toast.info("Subscription creation coming soon");
+                      }}
                     >
                       Choose Plan
                     </Button>
@@ -192,16 +238,54 @@ function SubscriptionsContent() {
         <CardContent>
           <div className="grid md:grid-cols-3 gap-4">
             {[
-              { tier: "Starter", price: 199, minutes: 300, features: ["AI receptionist", "Call logging", "Basic analytics"] },
-              { tier: "Pro", price: 349, minutes: 750, features: ["Calendar integration", "Advanced analytics", "Custom AI voice"] },
-              { tier: "Elite", price: 599, minutes: 1500, features: ["Upsell engine", "CRM integration", "Multi-location", "Priority support"] },
-            ].map((plan) => (
-              <div key={plan.tier} className="p-4 rounded-lg bg-background border">
+              {
+                tier: "Starter",
+                price: 199,
+                minutes: 300,
+                features: [
+                  "AI receptionist",
+                  "Call logging",
+                  "Basic analytics",
+                ],
+              },
+              {
+                tier: "Pro",
+                price: 349,
+                minutes: 750,
+                features: [
+                  "Calendar integration",
+                  "Advanced analytics",
+                  "Custom AI voice",
+                ],
+              },
+              {
+                tier: "Elite",
+                price: 599,
+                minutes: 1500,
+                features: [
+                  "Upsell engine",
+                  "CRM integration",
+                  "Multi-location",
+                  "Priority support",
+                ],
+              },
+            ].map(plan => (
+              <div
+                key={plan.tier}
+                className="p-4 rounded-lg bg-background border"
+              >
                 <h3 className="font-semibold">{plan.tier}</h3>
-                <p className="text-2xl font-mono font-medium mt-1">${plan.price}<span className="text-sm text-muted-foreground font-normal font-sans">/mo</span></p>
-                <p className="text-xs text-muted-foreground mt-1"><span className="font-mono">{plan.minutes}</span> min included</p>
+                <p className="text-2xl font-mono font-medium mt-1">
+                  ${plan.price}
+                  <span className="text-sm text-muted-foreground font-normal font-sans">
+                    /mo
+                  </span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  <span className="font-mono">{plan.minutes}</span> min included
+                </p>
                 <ul className="mt-3 space-y-1">
-                  {plan.features.map((f) => (
+                  {plan.features.map(f => (
                     <li key={f} className="text-xs flex items-center gap-1">
                       <CheckCircle2 className="h-3 w-3 text-primary" />
                       {f}

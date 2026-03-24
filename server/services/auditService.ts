@@ -1,8 +1,8 @@
 /**
  * Missed Call Audit Service
- * 
+ *
  * Implements the automated 7-day missed call audit workflow:
- * 
+ *
  * 1. Forwarding Wizard: Provision a Twilio capture number, set up
  *    call forwarding from the shop's existing line
  * 2. 7-Day Tracking: Log every missed call with timestamp, day part,
@@ -11,7 +11,7 @@
  *    scorecard with revenue estimates (ranges, not fake precision)
  * 4. Peak Call Analysis: Identify when missed calls cluster to show
  *    the shop owner their worst coverage gaps
- * 
+ *
  * Revenue estimation uses conservative ranges:
  * - Low estimate: missed calls × 25% conversion × $300 avg order
  * - High estimate: missed calls × 40% conversion × $600 avg order
@@ -54,11 +54,13 @@ export interface AuditScorecard {
 
 /**
  * Generate a complete audit scorecard from the audit data.
- * 
+ *
  * Uses revenue RANGES (not fake precision) as recommended by
  * the market research to avoid the "made up number" objection.
  */
-export async function generateScorecard(auditId: number): Promise<AuditScorecard | null> {
+export async function generateScorecard(
+  auditId: number
+): Promise<AuditScorecard | null> {
   const db = await getDb();
   if (!db) return null;
 
@@ -121,14 +123,16 @@ export async function generateScorecard(auditId: number): Promise<AuditScorecard
   const dailyBreakdown = Object.entries(dailyCounts)
     .map(([date, missedCount]) => ({
       date,
-      dayOfWeek: new Date(date).toLocaleDateString("en-US", { weekday: "long" }),
+      dayOfWeek: new Date(date).toLocaleDateString("en-US", {
+        weekday: "long",
+      }),
       missedCount,
     }))
     .sort((a, b) => a.date.localeCompare(b.date));
 
   // Revenue estimate (RANGES, not fake precision)
   const lowConversion = 0.25;
-  const highConversion = 0.40;
+  const highConversion = 0.4;
   const lowARO = 300;
   const highARO = 600;
 
@@ -138,7 +142,9 @@ export async function generateScorecard(auditId: number): Promise<AuditScorecard
     high: Math.round(monthlyMissedEstimate * highConversion * highARO),
     midpoint: 0,
   };
-  revenueEstimate.midpoint = Math.round((revenueEstimate.low + revenueEstimate.high) / 2);
+  revenueEstimate.midpoint = Math.round(
+    (revenueEstimate.low + revenueEstimate.high) / 2
+  );
 
   // Urgency breakdown
   const urgencyBreakdown = Object.entries(urgencyCounts)
@@ -177,20 +183,28 @@ export async function generateScorecard(auditId: number): Promise<AuditScorecard
   // Competitor risk assessment
   let competitorRisk: string;
   if (totalMissed > 30) {
-    competitorRisk = "CRITICAL — At this volume, you're losing 4-5 customers per week to competitors who answer their phones.";
+    competitorRisk =
+      "CRITICAL — At this volume, you're losing 4-5 customers per week to competitors who answer their phones.";
   } else if (totalMissed > 15) {
-    competitorRisk = "HIGH — Multiple customers per week are likely going elsewhere after reaching your voicemail.";
+    competitorRisk =
+      "HIGH — Multiple customers per week are likely going elsewhere after reaching your voicemail.";
   } else if (totalMissed > 5) {
-    competitorRisk = "MODERATE — Some customers are being lost, especially during peak hours.";
+    competitorRisk =
+      "MODERATE — Some customers are being lost, especially during peak hours.";
   } else {
-    competitorRisk = "LOW — Your call coverage is reasonable, but there's still room for improvement.";
+    competitorRisk =
+      "LOW — Your call coverage is reasonable, but there's still room for improvement.";
   }
 
   return {
     shopName: shop?.name || "Your Shop",
     auditPeriod: {
-      start: audit.startDate ? new Date(audit.startDate).toISOString().split("T")[0] : "",
-      end: audit.endDate ? new Date(audit.endDate).toISOString().split("T")[0] : "",
+      start: audit.startDate
+        ? new Date(audit.startDate).toISOString().split("T")[0]
+        : "",
+      end: audit.endDate
+        ? new Date(audit.endDate).toISOString().split("T")[0]
+        : "",
     },
     totalMissedCalls: totalMissed,
     peakCallAnalysis,
@@ -206,7 +220,9 @@ export async function generateScorecard(auditId: number): Promise<AuditScorecard
  * Complete an audit and generate the final scorecard.
  * Updates the audit status and stores the scorecard data.
  */
-export async function completeAudit(auditId: number): Promise<AuditScorecard | null> {
+export async function completeAudit(
+  auditId: number
+): Promise<AuditScorecard | null> {
   const db = await getDb();
   if (!db) return null;
 

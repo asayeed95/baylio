@@ -71,7 +71,13 @@ export default function PartnersReferrals() {
               Track the status of every shop you've referred.
             </p>
           </div>
-          <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setPage(0); }}>
+          <Select
+            value={statusFilter}
+            onValueChange={v => {
+              setStatusFilter(v);
+              setPage(0);
+            }}
+          >
             <SelectTrigger className="w-[160px] bg-zinc-900 border-zinc-700 text-zinc-300">
               <SelectValue placeholder="Filter status" />
             </SelectTrigger>
@@ -89,7 +95,7 @@ export default function PartnersReferrals() {
         <div className="grid gap-4 grid-cols-2 lg:grid-cols-4">
           {Object.entries(STATUS_CONFIG).map(([key, config]) => {
             const count = referrals.filter(
-              (r) => statusFilter === "all" || r.status === statusFilter
+              r => statusFilter === "all" || r.status === statusFilter
             ).length;
             return (
               <Card key={key} className="bg-zinc-900 border-zinc-800">
@@ -97,13 +103,15 @@ export default function PartnersReferrals() {
                   <div
                     className={`h-10 w-10 rounded-lg flex items-center justify-center ${config.color.split(" ")[0]}`}
                   >
-                    <config.icon className={`h-5 w-5 ${config.color.split(" ")[1]}`} />
+                    <config.icon
+                      className={`h-5 w-5 ${config.color.split(" ")[1]}`}
+                    />
                   </div>
                   <div>
                     <p className="text-xs text-zinc-500">{config.label}</p>
                     <p className="text-lg font-bold text-white">
                       {statusFilter === key || statusFilter === "all"
-                        ? referrals.filter((r) => r.status === key).length
+                        ? referrals.filter(r => r.status === key).length
                         : 0}
                     </p>
                   </div>
@@ -143,11 +151,10 @@ export default function PartnersReferrals() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {referrals.map((ref) => {
+                  {referrals.map(ref => {
                     const statusCfg =
-                      STATUS_CONFIG[
-                        ref.status as keyof typeof STATUS_CONFIG
-                      ] || STATUS_CONFIG.pending;
+                      STATUS_CONFIG[ref.status as keyof typeof STATUS_CONFIG] ||
+                      STATUS_CONFIG.pending;
                     return (
                       <TableRow
                         key={ref.id}
@@ -160,10 +167,7 @@ export default function PartnersReferrals() {
                           {ref.referredEmail || "-"}
                         </TableCell>
                         <TableCell>
-                          <Badge
-                            variant="outline"
-                            className={statusCfg.color}
-                          >
+                          <Badge variant="outline" className={statusCfg.color}>
                             {statusCfg.label}
                           </Badge>
                         </TableCell>
@@ -171,7 +175,8 @@ export default function PartnersReferrals() {
                           {ref.subscriptionTier || "-"}
                         </TableCell>
                         <TableCell className="text-right text-emerald-400 font-mono font-medium">
-                          {parseFloat(ref.commissionEarned?.toString() || "0") > 0
+                          {parseFloat(ref.commissionEarned?.toString() || "0") >
+                          0
                             ? `$${parseFloat(ref.commissionEarned?.toString() || "0").toFixed(2)}`
                             : "-"}
                         </TableCell>
@@ -191,14 +196,14 @@ export default function PartnersReferrals() {
           {totalPages > 1 && (
             <div className="flex items-center justify-between p-4 border-t border-zinc-800">
               <p className="text-sm text-zinc-500">
-                Showing {page * limit + 1}-
-                {Math.min((page + 1) * limit, total)} of {total}
+                Showing {page * limit + 1}-{Math.min((page + 1) * limit, total)}{" "}
+                of {total}
               </p>
               <div className="flex gap-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setPage((p) => Math.max(0, p - 1))}
+                  onClick={() => setPage(p => Math.max(0, p - 1))}
                   disabled={page === 0}
                   className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                 >
@@ -207,9 +212,7 @@ export default function PartnersReferrals() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() =>
-                    setPage((p) => Math.min(totalPages - 1, p + 1))
-                  }
+                  onClick={() => setPage(p => Math.min(totalPages - 1, p + 1))}
                   disabled={page >= totalPages - 1}
                   className="border-zinc-700 text-zinc-400 hover:bg-zinc-800"
                 >

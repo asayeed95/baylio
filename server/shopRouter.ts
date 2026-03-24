@@ -23,7 +23,11 @@ import {
   createConversationalAgent,
   updateConversationalAgent,
 } from "./services/elevenLabsService";
-import { compileSystemPrompt, compileGreeting, type ShopContext } from "./services/promptCompiler";
+import {
+  compileSystemPrompt,
+  compileGreeting,
+  type ShopContext,
+} from "./services/promptCompiler";
 
 const shopInput = z.object({
   name: z.string().min(1).max(255),
@@ -35,12 +39,16 @@ const shopInput = z.object({
   timezone: z.string().default("America/New_York"),
   organizationId: z.number().optional(),
   businessHours: z.any().optional(),
-  serviceCatalog: z.array(z.object({
-    name: z.string(),
-    category: z.string(),
-    price: z.number().optional(),
-    description: z.string().optional(),
-  })).optional(),
+  serviceCatalog: z
+    .array(
+      z.object({
+        name: z.string(),
+        category: z.string(),
+        price: z.number().optional(),
+        description: z.string().optional(),
+      })
+    )
+    .optional(),
 });
 
 const agentConfigInput = z.object({
@@ -51,12 +59,16 @@ const agentConfigInput = z.object({
   systemPrompt: z.string().optional(),
   greeting: z.string().optional(),
   upsellEnabled: z.boolean().default(true),
-  upsellRules: z.array(z.object({
-    symptom: z.string(),
-    service: z.string(),
-    adjacent: z.string(),
-    confidence: z.number(),
-  })).optional(),
+  upsellRules: z
+    .array(
+      z.object({
+        symptom: z.string(),
+        service: z.string(),
+        adjacent: z.string(),
+        confidence: z.number(),
+      })
+    )
+    .optional(),
   confidenceThreshold: z.string().default("0.80"),
   maxUpsellsPerCall: z.number().default(1),
   language: z.string().default("en"),
@@ -89,7 +101,10 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.id);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Shop not found or unauthorized",
+        });
       }
       await updateShop(input.id, input.data as any);
       return { success: true };
@@ -100,7 +115,10 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.id);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Shop not found or unauthorized",
+        });
       }
       await deleteShop(input.id);
       return { success: true };
@@ -120,7 +138,10 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Shop not found or unauthorized",
+        });
       }
       const id = await upsertAgentConfig(input);
       return { id };
@@ -152,7 +173,10 @@ export const shopRouter = router({
     try {
       return await getAccountBalance();
     } catch (err: any) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: `Failed to fetch balance: ${err.message}` });
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Failed to fetch balance: ${err.message}`,
+      });
     }
   }),
 
@@ -175,7 +199,10 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Shop not found or unauthorized",
+        });
       }
 
       const provisioned = await purchasePhoneNumber(
@@ -200,12 +227,18 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Shop not found or unauthorized",
+        });
       }
 
       const phoneSid = (shop as any).twilioPhoneSid;
       if (!phoneSid) {
-        throw new TRPCError({ code: "BAD_REQUEST", message: "No Twilio phone number assigned to this shop" });
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "No Twilio phone number assigned to this shop",
+        });
       }
 
       await releasePhoneNumber(phoneSid);
@@ -232,7 +265,10 @@ export const shopRouter = router({
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
       if (!shop || shop.ownerId !== ctx.user.id) {
-        throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found or unauthorized" });
+        throw new TRPCError({
+          code: "NOT_FOUND",
+          message: "Shop not found or unauthorized",
+        });
       }
 
       const agentConfig = await getAgentConfigByShop(input.shopId);
@@ -255,7 +291,9 @@ export const shopRouter = router({
         businessHours: (shop.businessHours as any) || {},
         serviceCatalog: (shop.serviceCatalog as any) || [],
         upsellRules: (agentConfig.upsellRules as any) || [],
-        confidenceThreshold: parseFloat(agentConfig.confidenceThreshold?.toString() || "0.80"),
+        confidenceThreshold: parseFloat(
+          agentConfig.confidenceThreshold?.toString() || "0.80"
+        ),
         maxUpsellsPerCall: agentConfig.maxUpsellsPerCall || 1,
         greeting: agentConfig.greeting || "",
         language: agentConfig.language || "en",
@@ -326,7 +364,10 @@ export const shopRouter = router({
   createDemo: protectedProcedure.mutation(async ({ ctx }) => {
     const shopId = await seedDemoShop(ctx.user.id);
     if (!shopId) {
-      throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create demo shop" });
+      throw new TRPCError({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create demo shop",
+      });
     }
     return { shopId };
   }),

@@ -27,7 +27,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Empty, EmptyHeader, EmptyMedia, EmptyTitle, EmptyDescription } from "@/components/ui/empty";
+import {
+  Empty,
+  EmptyHeader,
+  EmptyMedia,
+  EmptyTitle,
+  EmptyDescription,
+} from "@/components/ui/empty";
 import {
   ArrowLeft,
   Phone,
@@ -46,7 +52,7 @@ import { useLocation, useParams } from "wouter";
 
 /**
  * Call Logs Page
- * 
+ *
  * Displays all calls for a shop with:
  * - Filterable table (date range, status, search)
  * - Call detail dialog with transcription
@@ -94,21 +100,31 @@ function CallLogsContent() {
   const filteredCalls = useMemo(() => {
     if (!searchTerm) return calls;
     const term = searchTerm.toLowerCase();
-    return calls.filter(c =>
-      c.callerPhone?.toLowerCase().includes(term) ||
-      c.callerName?.toLowerCase().includes(term) ||
-      c.customerIntent?.toLowerCase().includes(term)
+    return calls.filter(
+      c =>
+        c.callerPhone?.toLowerCase().includes(term) ||
+        c.callerName?.toLowerCase().includes(term) ||
+        c.customerIntent?.toLowerCase().includes(term)
     );
   }, [calls, searchTerm]);
 
   const getStatusBadge = (status: string) => {
-    const map: Record<string, { variant: "default" | "secondary" | "destructive" | "outline"; label: string }> = {
+    const map: Record<
+      string,
+      {
+        variant: "default" | "secondary" | "destructive" | "outline";
+        label: string;
+      }
+    > = {
       completed: { variant: "default", label: "Completed" },
       missed: { variant: "destructive", label: "Missed" },
       voicemail: { variant: "secondary", label: "Voicemail" },
       transferred: { variant: "outline", label: "Transferred" },
     };
-    const config = map[status] || { variant: "secondary" as const, label: status };
+    const config = map[status] || {
+      variant: "secondary" as const,
+      label: status,
+    };
     return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
@@ -128,12 +144,18 @@ function CallLogsContent() {
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setLocation(`/shops/${shopId}`)}
+        >
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
           <h1 className="text-2xl font-semibold tracking-tight">Call Logs</h1>
-          <p className="text-sm text-muted-foreground">{shop?.name} — {total} total calls</p>
+          <p className="text-sm text-muted-foreground">
+            {shop?.name} — {total} total calls
+          </p>
         </div>
       </div>
 
@@ -146,7 +168,7 @@ function CallLogsContent() {
               <Input
                 placeholder="Search by caller name, phone, or intent..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={e => setSearchTerm(e.target.value)}
                 className="pl-9"
               />
             </div>
@@ -170,15 +192,20 @@ function CallLogsContent() {
       {/* Table */}
       {isLoading ? (
         <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map(i => <Skeleton key={i} className="h-12" />)}
+          {[1, 2, 3, 4, 5].map(i => (
+            <Skeleton key={i} className="h-12" />
+          ))}
         </div>
       ) : filteredCalls.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon"><Phone /></EmptyMedia>
+            <EmptyMedia variant="icon">
+              <Phone />
+            </EmptyMedia>
             <EmptyTitle>No calls yet</EmptyTitle>
             <EmptyDescription>
-              Calls will appear here once your AI agent starts handling phone calls.
+              Calls will appear here once your AI agent starts handling phone
+              calls.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>
@@ -198,7 +225,7 @@ function CallLogsContent() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredCalls.map((call) => (
+                {filteredCalls.map(call => (
                   <TableRow
                     key={call.id}
                     className="cursor-pointer"
@@ -206,24 +233,34 @@ function CallLogsContent() {
                   >
                     <TableCell>
                       <div>
-                        <p className="font-medium text-sm">{call.callerName || "Unknown"}</p>
-                        <p className="text-xs text-muted-foreground font-mono">{call.callerPhone || "-"}</p>
+                        <p className="font-medium text-sm">
+                          {call.callerName || "Unknown"}
+                        </p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {call.callerPhone || "-"}
+                        </p>
                       </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(call.status)}</TableCell>
-                    <TableCell className="text-sm font-mono">{formatDuration(call.duration)}</TableCell>
+                    <TableCell className="text-sm font-mono">
+                      {formatDuration(call.duration)}
+                    </TableCell>
                     <TableCell className="text-sm max-w-[200px] truncate">
                       {call.customerIntent || "-"}
                     </TableCell>
                     <TableCell>
                       {call.appointmentBooked ? (
-                        <Badge variant="default" className="text-xs">Booked</Badge>
+                        <Badge variant="default" className="text-xs">
+                          Booked
+                        </Badge>
                       ) : (
                         <span className="text-xs text-muted-foreground">-</span>
                       )}
                     </TableCell>
                     <TableCell className="text-sm font-mono">
-                      {call.estimatedRevenue ? `$${parseFloat(call.estimatedRevenue).toFixed(0)}` : "-"}
+                      {call.estimatedRevenue
+                        ? `$${parseFloat(call.estimatedRevenue).toFixed(0)}`
+                        : "-"}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
                       {formatDate(call.callStartedAt)}
@@ -273,38 +310,62 @@ function CallLogsContent() {
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <Label className="text-xs text-muted-foreground">Caller</Label>
-                  <p className="text-sm font-medium">{selectedCall.callerName || "Unknown"}</p>
-                  <p className="text-xs text-muted-foreground font-mono">{selectedCall.callerPhone}</p>
+                  <Label className="text-xs text-muted-foreground">
+                    Caller
+                  </Label>
+                  <p className="text-sm font-medium">
+                    {selectedCall.callerName || "Unknown"}
+                  </p>
+                  <p className="text-xs text-muted-foreground font-mono">
+                    {selectedCall.callerPhone}
+                  </p>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Status</Label>
-                  <div className="mt-1">{getStatusBadge(selectedCall.status)}</div>
+                  <Label className="text-xs text-muted-foreground">
+                    Status
+                  </Label>
+                  <div className="mt-1">
+                    {getStatusBadge(selectedCall.status)}
+                  </div>
                 </div>
                 <div>
-                  <Label className="text-xs text-muted-foreground">Duration</Label>
-                  <p className="text-sm font-mono">{formatDuration(selectedCall.duration)}</p>
+                  <Label className="text-xs text-muted-foreground">
+                    Duration
+                  </Label>
+                  <p className="text-sm font-mono">
+                    {formatDuration(selectedCall.duration)}
+                  </p>
                 </div>
                 <div>
                   <Label className="text-xs text-muted-foreground">Date</Label>
-                  <p className="text-sm">{formatDate(selectedCall.callStartedAt)}</p>
+                  <p className="text-sm">
+                    {formatDate(selectedCall.callStartedAt)}
+                  </p>
                 </div>
               </div>
               {selectedCall.customerIntent && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Customer Intent</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Customer Intent
+                  </Label>
                   <p className="text-sm mt-1">{selectedCall.customerIntent}</p>
                 </div>
               )}
               {selectedCall.serviceRecommendations && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Service Recommendations</Label>
-                  <p className="text-sm mt-1">{selectedCall.serviceRecommendations}</p>
+                  <Label className="text-xs text-muted-foreground">
+                    Service Recommendations
+                  </Label>
+                  <p className="text-sm mt-1">
+                    {selectedCall.serviceRecommendations}
+                  </p>
                 </div>
               )}
               {selectedCall.transcription && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Transcription</Label>
+                  <Label className="text-xs text-muted-foreground">
+                    Transcription
+                  </Label>
                   <div className="mt-1 p-3 bg-muted rounded-lg text-sm max-h-64 overflow-y-auto whitespace-pre-wrap">
                     {selectedCall.transcription}
                   </div>
@@ -312,8 +373,12 @@ function CallLogsContent() {
               )}
               {selectedCall.sentimentScore != null && (
                 <div>
-                  <Label className="text-xs text-muted-foreground">Sentiment Score</Label>
-                  <p className="text-sm font-mono">{parseFloat(selectedCall.sentimentScore).toFixed(2)} / 1.00</p>
+                  <Label className="text-xs text-muted-foreground">
+                    Sentiment Score
+                  </Label>
+                  <p className="text-sm font-mono">
+                    {parseFloat(selectedCall.sentimentScore).toFixed(2)} / 1.00
+                  </p>
                 </div>
               )}
             </div>

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
-const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY || "test_api_key_mock";;
+const ELEVENLABS_API_KEY =
+  process.env.ELEVENLABS_API_KEY || "test_api_key_mock";
 
 describe("ElevenLabs API Validation", () => {
   it("should have ELEVENLABS_API_KEY set", () => {

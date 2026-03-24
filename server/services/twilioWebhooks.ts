@@ -1,28 +1,37 @@
 /**
  * Twilio Webhook Routes & ElevenLabs Bridge
- * 
+ *
  * Layer 1: Real-Time Call Path
- * 
- * Flow: Inbound Twilio Call → Tenant Resolver → Hot Context Cache → 
+ *
+ * Flow: Inbound Twilio Call → Tenant Resolver → Hot Context Cache →
  *       ElevenLabs Register Call API → TwiML Response
- * 
+ *
  * Critical constraints:
  * - NO database writes during live call
  * - NO heavy processing during live call
  * - Sub-2-second response time for TwiML
  * - Graceful fallback to voicemail if ElevenLabs fails
- * 
+ *
  * The Register Call API authenticates with ElevenLabs server-side,
  * then returns TwiML with an authenticated WebSocket URL.
  * This is the correct integration pattern per ElevenLabs docs.
  */
 import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
-import { compileSystemPrompt, compileGreeting, type ShopContext } from "./promptCompiler";
+import {
+  compileSystemPrompt,
+  compileGreeting,
+  type ShopContext,
+} from "./promptCompiler";
 import { processCompletedCall } from "./postCallPipeline";
 import { getDb } from "../db";
 import { eq, sql } from "drizzle-orm";
-import { shops, agentConfigs, callLogs, callerProfiles } from "../../drizzle/schema";
+import {
+  shops,
+  agentConfigs,
+  callLogs,
+  callerProfiles,
+} from "../../drizzle/schema";
 import { ENV } from "../_core/env";
 
 const twilioRouter = Router();
@@ -74,12 +83,12 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
 
 /**
  * Register a call with ElevenLabs and get authenticated TwiML.
- * 
+ *
  * This calls the ElevenLabs Register Call API which:
  * 1. Authenticates using our API key (server-side, never exposed)
  * 2. Creates a conversation session
  * 3. Returns TwiML with an authenticated WebSocket URL
- * 
+ *
  * This is the correct approach per ElevenLabs docs:
  * https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/register-call
  */
@@ -110,11 +119,10 @@ async function registerElevenLabsCall(
         direction: "inbound",
         conversation_initiation_client_data: {
           dynamic_variables: {
+            baylio_system_prompt: shopContext ? compileSystemPrompt(shopContext) : "You are a helpful assistant.",
+            baylio_greeting: shopContext ? compileGreeting(shopContext) : "Hello, how can I help you today?",
             caller_number: fromNumber,
-            caller_name: callerName || "Unknown Caller",
-            caller_role: callerRole || "unknown",
-            shop_name: shopContext?.shopName || "Auto Repair Shop",
-            agent_name: shopContext?.agentName || "Baylio",
+            caller_name: callerName || "Unknown Caller"
           },
         },
       }),
@@ -152,7 +160,11 @@ function escapeXml(str: string): string {
  */
 async function resolveShopContext(
   calledNumber: string
-): Promise<{ shopId: number; context: ShopContext; elevenLabsAgentId: string } | null> {
+): Promise<{
+  shopId: number;
+  context: ShopContext;
+  elevenLabsAgentId: string;
+} | null> {
   // Step 1: Check phone → shopId cache
   let shopId = contextCache.getShopIdByPhone(calledNumber);
 
@@ -212,7 +224,9 @@ async function resolveShopContext(
       businessHours: (shop.businessHours as any) || {},
       serviceCatalog: (shop.serviceCatalog as any) || [],
       upsellRules: (agent?.upsellRules as any) || [],
-      confidenceThreshold: parseFloat(agent?.confidenceThreshold?.toString() || "0.80"),
+      confidenceThreshold: parseFloat(
+        agent?.confidenceThreshold?.toString() || "0.80"
+      ),
       maxUpsellsPerCall: agent?.maxUpsellsPerCall || 1,
       greeting: agent?.greeting || "",
       language: agent?.language || "en",
@@ -252,7 +266,10 @@ async function lookupCallerProfile(
     if (!db) return null;
 
     const results = await db
-      .select({ name: callerProfiles.name, callerRole: callerProfiles.callerRole })
+      .select({
+        name: callerProfiles.name,
+        callerRole: callerProfiles.callerRole,
+      })
       .from(callerProfiles)
       .where(eq(callerProfiles.phone, phone))
       .limit(1);
@@ -295,7 +312,7 @@ async function ensureCallerProfile(phone: string): Promise<void> {
 
 /**
  * POST /api/twilio/voice
- * 
+ *
  * Main inbound call webhook. Twilio hits this when a call comes in.
  * Must respond with TwiML in <2 seconds.
  */
@@ -335,7 +352,9 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
 
     // Step 3: Register call with ElevenLabs (authenticated server-side)
     // Pass caller_name and caller_role as dynamic_variables so Alex can greet known callers
-    console.log(`[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`);
+    console.log(
+      `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
+    );
 
     const twiml = await registerElevenLabsCall(
       elevenLabsAgentId,
@@ -346,7 +365,9 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       callerRole
     );
 
-    console.log(`[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`);
+    console.log(
+      `[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`
+    );
 
     res.type("text/xml");
     return res.send(twiml);
@@ -360,15 +381,18 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
 
 /**
  * POST /api/twilio/status
- * 
+ *
  * Call status callback. Twilio sends updates as the call progresses.
  * This is Layer 2 — async processing, can be slower.
  */
 twilioRouter.post("/status", async (req: Request, res: Response) => {
   try {
-    const { CallSid, CallStatus, CallDuration, To, From, RecordingUrl } = req.body;
+    const { CallSid, CallStatus, CallDuration, To, From, RecordingUrl } =
+      req.body;
 
-    console.log(`[CALL-STATUS] ${CallSid}: ${CallStatus} (duration: ${CallDuration}s)`);
+    console.log(
+      `[CALL-STATUS] ${CallSid}: ${CallStatus} (duration: ${CallDuration}s)`
+    );
 
     // Queue async processing — do NOT block the response
     // In production, this would go to a job queue (Bull, BullMQ, etc.)
@@ -377,8 +401,12 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
         const db = await getDb();
         if (!db) return;
 
-
-        if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
+        if (
+          CallStatus === "completed" ||
+          CallStatus === "no-answer" ||
+          CallStatus === "busy" ||
+          CallStatus === "failed"
+        ) {
           // Look up shop by phone number
           const shopResult = await db
             .select({ id: shops.id, ownerId: shops.ownerId })
@@ -393,26 +421,29 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
             const callerProfile = await lookupCallerProfile(From);
             const callerName = callerProfile?.name || null;
 
-            await db.insert(callLogs).values({
-              shopId: shop.id,
-              ownerId: shop.ownerId,
-              twilioCallSid: CallSid,
-              callerPhone: From,
-              callerName,
-              direction: "inbound",
-              status: CallStatus === "completed" ? "completed" : "missed",
-              duration: parseInt(CallDuration) || 0,
-              recordingUrl: RecordingUrl || null,
-              callStartedAt: new Date(),
-              callEndedAt: new Date(),
-            }).onDuplicateKeyUpdate({
-              set: {
+            await db
+              .insert(callLogs)
+              .values({
+                shopId: shop.id,
+                ownerId: shop.ownerId,
+                twilioCallSid: CallSid,
+                callerPhone: From,
+                callerName,
+                direction: "inbound",
                 status: CallStatus === "completed" ? "completed" : "missed",
                 duration: parseInt(CallDuration) || 0,
                 recordingUrl: RecordingUrl || null,
+                callStartedAt: new Date(),
                 callEndedAt: new Date(),
-              },
-            });
+              })
+              .onDuplicateKeyUpdate({
+                set: {
+                  status: CallStatus === "completed" ? "completed" : "missed",
+                  duration: parseInt(CallDuration) || 0,
+                  recordingUrl: RecordingUrl || null,
+                  callEndedAt: new Date(),
+                },
+              });
 
             // Wire up post-call processing for completed calls
             if (CallStatus === "completed") {
@@ -428,7 +459,10 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
                   await processCompletedCall(callLogResult[0].id);
                 }
               } catch (pipelineErr) {
-                console.error("[CALL-STATUS] Post-call pipeline error (non-fatal):", pipelineErr);
+                console.error(
+                  "[CALL-STATUS] Post-call pipeline error (non-fatal):",
+                  pipelineErr
+                );
               }
             }
           }
@@ -448,81 +482,87 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
 
 /**
  * POST /api/twilio/recording-complete
- * 
+ *
  * Called when a voicemail recording is complete.
  * Layer 2 — async processing.
  */
-twilioRouter.post("/recording-complete", async (req: Request, res: Response) => {
-  try {
-    const { CallSid, RecordingUrl, RecordingDuration } = req.body;
+twilioRouter.post(
+  "/recording-complete",
+  async (req: Request, res: Response) => {
+    try {
+      const { CallSid, RecordingUrl, RecordingDuration } = req.body;
 
-    console.log(`[RECORDING] Recording complete for ${CallSid}: ${RecordingUrl} (${RecordingDuration}s)`);
+      console.log(
+        `[RECORDING] Recording complete for ${CallSid}: ${RecordingUrl} (${RecordingDuration}s)`
+      );
 
-    // Queue for async transcription and analysis
-    setImmediate(async () => {
-      try {
-        const db = await getDb();
-        if (!db) return;
-
-
-        // Update the call log with recording URL
-        await db
-          .update(callLogs)
-          .set({ recordingUrl: RecordingUrl })
-          .where(eq(callLogs.twilioCallSid, CallSid));
-      } catch (err) {
-        console.error("[RECORDING] Error updating call log:", err);
-      }
-    });
-
-    res.type("text/xml");
-    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
-  } catch (error) {
-    console.error("[RECORDING] Error:", error);
-    res.type("text/xml");
-    res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
-  }
-});
-
-/**
- * POST /api/twilio/transcription-complete
- * 
- * Called when Twilio finishes transcribing a voicemail.
- * Layer 2 — async processing.
- */
-twilioRouter.post("/transcription-complete", async (req: Request, res: Response) => {
-  try {
-    const { CallSid, TranscriptionText, TranscriptionStatus } = req.body;
-
-    console.log(`[TRANSCRIPTION] ${CallSid}: ${TranscriptionStatus}`);
-
-    if (TranscriptionStatus === "completed" && TranscriptionText) {
+      // Queue for async transcription and analysis
       setImmediate(async () => {
         try {
           const db = await getDb();
           if (!db) return;
 
-  
+          // Update the call log with recording URL
           await db
             .update(callLogs)
-            .set({ transcription: TranscriptionText })
+            .set({ recordingUrl: RecordingUrl })
             .where(eq(callLogs.twilioCallSid, CallSid));
         } catch (err) {
-          console.error("[TRANSCRIPTION] Error updating call log:", err);
+          console.error("[RECORDING] Error updating call log:", err);
         }
       });
-    }
 
-    res.status(200).send("OK");
-  } catch (error) {
-    console.error("[TRANSCRIPTION] Error:", error);
-    res.status(200).send("OK");
+      res.type("text/xml");
+      res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    } catch (error) {
+      console.error("[RECORDING] Error:", error);
+      res.type("text/xml");
+      res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    }
   }
-});
+);
+
+/**
+ * POST /api/twilio/transcription-complete
+ *
+ * Called when Twilio finishes transcribing a voicemail.
+ * Layer 2 — async processing.
+ */
+twilioRouter.post(
+  "/transcription-complete",
+  async (req: Request, res: Response) => {
+    try {
+      const { CallSid, TranscriptionText, TranscriptionStatus } = req.body;
+
+      console.log(`[TRANSCRIPTION] ${CallSid}: ${TranscriptionStatus}`);
+
+      if (TranscriptionStatus === "completed" && TranscriptionText) {
+        setImmediate(async () => {
+          try {
+            const db = await getDb();
+            if (!db) return;
+
+            await db
+              .update(callLogs)
+              .set({ transcription: TranscriptionText })
+              .where(eq(callLogs.twilioCallSid, CallSid));
+          } catch (err) {
+            console.error("[TRANSCRIPTION] Error updating call log:", err);
+          }
+        });
+      }
+
+      res.status(200).send("OK");
+    } catch (error) {
+      console.error("[TRANSCRIPTION] Error:", error);
+      res.status(200).send("OK");
+    }
+  }
+);
 
 /**
  * GET /api/twilio/health
- * 
+ *
  * Health check endpoint for monitoring.
  */
 twilioRouter.get("/health", (_req: Request, res: Response) => {

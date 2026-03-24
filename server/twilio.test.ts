@@ -45,7 +45,9 @@ describe("Twilio Credentials & API", () => {
     expect(result.accountSid.startsWith("AC")).toBe(true);
     expect(result.status).toBe("active");
     expect(result.friendlyName).toBeTruthy();
-    console.log(`[TWILIO] Connected: ${result.friendlyName} (${result.accountSid})`);
+    console.log(
+      `[TWILIO] Connected: ${result.friendlyName} (${result.accountSid})`
+    );
   }, 15000);
 
   it("should fetch account balance", async () => {
