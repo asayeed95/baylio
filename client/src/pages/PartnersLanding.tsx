@@ -14,7 +14,15 @@ import {
   Star,
   CheckCircle2,
   ArrowRight,
+  ArrowLeft,
 } from "lucide-react";
+
+/** Returns the main baylio.io URL — production subdomain or same-origin root in dev */
+function getMainSiteUrl(): string {
+  const hostname = window.location.hostname;
+  if (hostname === "partners.baylio.io") return "https://baylio.io";
+  return window.location.origin;
+}
 
 const TIERS = [
   {
@@ -143,14 +151,24 @@ export default function PartnersLanding() {
       {/* Nav */}
       <nav className="border-b border-zinc-800/60 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-6xl mx-auto px-4 sm:px-6 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-lg bg-emerald-500 flex items-center justify-center">
-              <Zap className="h-4 w-4 text-white" />
+          <div className="flex items-center gap-3">
+            <a
+              href={getMainSiteUrl()}
+              className="flex items-center gap-1.5 text-xs text-zinc-500 hover:text-zinc-300 transition-colors group"
+            >
+              <ArrowLeft className="h-3 w-3 group-hover:-translate-x-0.5 transition-transform" />
+              <span>baylio.io</span>
+            </a>
+            <div className="w-px h-4 bg-zinc-700" />
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg bg-emerald-500 flex items-center justify-center">
+                <Zap className="h-4 w-4 text-white" />
+              </div>
+              <span className="font-bold text-white text-lg">Baylio</span>
+              <Badge variant="outline" className="ml-2 text-xs border-emerald-700 text-emerald-400 bg-emerald-500/10">
+                Partner Program
+              </Badge>
             </div>
-            <span className="font-bold text-white text-lg">Baylio</span>
-            <Badge variant="outline" className="ml-2 text-xs border-emerald-700 text-emerald-400 bg-emerald-500/10">
-              Partner Program
-            </Badge>
           </div>
           <div className="flex items-center gap-3">
             <a
