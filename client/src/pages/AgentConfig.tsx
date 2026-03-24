@@ -150,7 +150,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">AI Agent Configuration</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">AI Agent Configuration</h1>
           <p className="text-sm text-muted-foreground">{shop?.name}</p>
         </div>
         <Button onClick={handleSave} disabled={saveConfig.isPending}>
@@ -223,7 +223,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         <CardHeader>
           <div className="flex items-center gap-2">
             <Volume2 className="h-5 w-5 text-primary" />
-            <CardTitle>Voice & Identity</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Voice & Identity</CardTitle>
           </div>
           <CardDescription>
             Configure how your AI agent sounds and introduces itself.
@@ -296,7 +296,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
-            <CardTitle>System Prompt</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">System Prompt</CardTitle>
           </div>
           <CardDescription>
             Define your AI agent's personality, knowledge, and behavior rules.
@@ -333,7 +333,7 @@ Always be helpful and never pushy. If you don't know something, offer to have th
         <CardHeader>
           <div className="flex items-center gap-2">
             <TrendingUp className="h-5 w-5 text-primary" />
-            <CardTitle>Upsell Engine</CardTitle>
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Upsell Engine</CardTitle>
           </div>
           <CardDescription>
             Configure intelligent service recommendations. The AI suggests complementary

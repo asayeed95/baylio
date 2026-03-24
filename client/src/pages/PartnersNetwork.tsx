@@ -47,10 +47,10 @@ export default function PartnersNetwork() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Network Size</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Network Size</p>
                 <Network className="h-4 w-4 text-zinc-500" />
               </div>
-              <p className="text-2xl font-bold text-white mt-2">
+              <p className="text-2xl font-mono font-medium text-white mt-2">
                 {network.length}
               </p>
               <p className="text-xs text-zinc-500 mt-1">
@@ -62,10 +62,10 @@ export default function PartnersNetwork() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Network MRR</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Network MRR</p>
                 <TrendingUp className="h-4 w-4 text-emerald-500" />
               </div>
-              <p className="text-2xl font-bold text-emerald-400 mt-2">
+              <p className="text-2xl font-mono font-medium text-emerald-400 mt-2">
                 ${totalMRR.toFixed(0)}
                 <span className="text-sm text-zinc-500">/mo</span>
               </p>
@@ -78,10 +78,10 @@ export default function PartnersNetwork() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Your Monthly Cut</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Your Monthly Cut</p>
                 <DollarSign className="h-4 w-4 text-amber-500" />
               </div>
-              <p className="text-2xl font-bold text-amber-400 mt-2">
+              <p className="text-2xl font-mono font-medium text-amber-400 mt-2">
                 ${(totalMRR * 0.2).toFixed(0)}
                 <span className="text-sm text-zinc-500">/mo</span>
               </p>
@@ -170,15 +170,15 @@ export default function PartnersNetwork() {
                       <div className="text-right shrink-0">
                         {member.status === "subscribed" && monthlyValue > 0 ? (
                           <>
-                            <p className="text-emerald-400 font-medium">
+                            <p className="text-emerald-400 font-mono font-medium">
                               ${(monthlyValue * 0.2).toFixed(0)}/mo
                             </p>
-                            <p className="text-xs text-zinc-500">
+                            <p className="text-xs text-zinc-500 font-mono">
                               ${monthlyValue.toFixed(0)}/mo plan
                             </p>
                           </>
                         ) : commission > 0 ? (
-                          <p className="text-zinc-400 font-medium">
+                          <p className="text-zinc-400 font-mono font-medium">
                             ${commission.toFixed(2)} earned
                           </p>
                         ) : (

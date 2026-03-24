@@ -162,7 +162,7 @@ function IntegrationsContent() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Integrations</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Integrations</h1>
           <p className="text-muted-foreground text-sm">
             Connect third-party tools for {shop?.name || "your shop"}
           </p>
@@ -184,7 +184,7 @@ function IntegrationsContent() {
                 </div>
               </div>
               {isConnected("google_calendar") ? (
-                <Badge variant="default" className="bg-green-600 text-xs">Connected</Badge>
+                <span className="badge-live">Connected</span>
               ) : (
                 <Badge variant="secondary" className="text-xs">Not Connected</Badge>
               )}
@@ -232,7 +232,7 @@ function IntegrationsContent() {
                 </div>
               </div>
               {isConnected("google_sheets") ? (
-                <Badge variant="default" className="bg-green-600 text-xs">Connected</Badge>
+                <span className="badge-live">Connected</span>
               ) : (
                 <Badge variant="secondary" className="text-xs">Not Connected</Badge>
               )}
@@ -280,7 +280,7 @@ function IntegrationsContent() {
                 </div>
               </div>
               {isConnected("hubspot") ? (
-                <Badge variant="default" className="bg-green-600 text-xs">Connected</Badge>
+                <span className="badge-live">Connected</span>
               ) : (
                 <Badge variant="secondary" className="text-xs">Not Connected</Badge>
               )}
@@ -342,7 +342,7 @@ function IntegrationsContent() {
                 </div>
               </div>
               {isConnected("shopmonkey") ? (
-                <Badge variant="default" className="bg-green-600 text-xs">Connected</Badge>
+                <span className="badge-live">Connected</span>
               ) : (
                 <Badge variant="secondary" className="text-xs">Not Connected</Badge>
               )}
@@ -413,7 +413,7 @@ function IntegrationsContent() {
                   <CardDescription className="text-xs">Automated texts</CardDescription>
                 </div>
               </div>
-              <Badge variant="default" className="bg-green-600 text-xs">Active</Badge>
+              <span className="badge-live">Active</span>
             </div>
           </CardHeader>
           <CardContent>
@@ -444,7 +444,7 @@ function IntegrationsContent() {
                   <CardDescription className="text-xs">Billing & payments</CardDescription>
                 </div>
               </div>
-              <Badge variant="default" className="bg-green-600 text-xs">Connected via Platform</Badge>
+              <span className="badge-live">Connected via Platform</span>
             </div>
           </CardHeader>
           <CardContent>

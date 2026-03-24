@@ -144,20 +144,20 @@ export default function PartnersSettings() {
             <div className="p-3 rounded-lg bg-zinc-800 border border-zinc-700">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-sm text-zinc-400">Referral Code</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Referral Code</p>
                   <p className="text-white font-mono font-medium">
                     {profile.referralCode}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-zinc-400">Partner Tier</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Partner Tier</p>
                   <p className="text-white capitalize font-medium">
                     {profile.tier}
                   </p>
                 </div>
                 <div>
-                  <p className="text-sm text-zinc-400">Commission Rate</p>
-                  <p className="text-emerald-400 font-medium">
+                  <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Commission Rate</p>
+                  <p className="text-emerald-400 font-mono font-medium">
                     {(
                       parseFloat(profile.commissionRate?.toString() || "0.20") *
                       100

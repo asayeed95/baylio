@@ -25,6 +25,14 @@ import {
   BadgeDollarSign,
   Gift,
   Menu,
+  PhoneIncoming,
+  MessageSquare,
+  ClipboardList,
+  BellRing,
+  Headphones,
+  Wrench,
+  FileText,
+  Target,
 } from "lucide-react";
 
 /**
@@ -41,52 +49,61 @@ function getPartnersUrl(): string {
 }
 
 /**
- * Landing Page — Public, sales-focused
- * 
- * This is the first page prospects see when visiting baylio.io.
- * Designed for door-to-door sales: the sales rep can pull up
- * this page on a tablet to demo the product to shop owners.
- * 
- * Sections:
- * 1. Hero — Value proposition + CTA
- * 2. Problem — Pain points auto repair shops face
- * 3. Solution — How Baylio solves it
- * 4. Features — Key capabilities
- * 5. Pricing — Three tiers
- * 6. Social proof — Testimonials (placeholder)
- * 7. CTA — Final conversion
+ * Landing Page — Public, conversion-focused
+ *
+ * Written for busy auto repair shop owners, service managers,
+ * and multi-location operators. Every sentence answers:
+ * "Why should a shop owner care?"
+ *
+ * Section order:
+ *  1. Navbar
+ *  2. Hero — Instant clarity
+ *  3. What Happens When a Customer Calls — 4-step flow
+ *  4. Outcomes / Business Results
+ *  5. ROI Calculator
+ *  6. Hear Baylio in Action — Sample calls
+ *  7. Features
+ *  8. Who Baylio Is For
+ *  9. Trust / Credibility
+ * 10. Pricing
+ * 11. Blog / Resources Preview
+ * 12. Partner Program CTA
+ * 13. Final CTA
+ * 14. Footer
  */
+
+// ─── Data ────────────────────────────────────────────────────────────
 
 const FEATURES = [
   {
     icon: Phone,
     title: "24/7 AI Receptionist",
-    description: "Never miss a call again. Baylio answers every call with a natural-sounding AI voice, even after hours, weekends, and holidays.",
+    description: "Answers every call with a natural voice. After hours, weekends, holidays — covered.",
   },
   {
     icon: Calendar,
     title: "Automatic Appointment Booking",
-    description: "The AI captures vehicle info, understands the customer's needs, and books appointments directly into your schedule.",
+    description: "Captures vehicle info, understands the problem, books the appointment. No human needed.",
   },
   {
     icon: TrendingUp,
     title: "Intelligent Upselling",
-    description: "When a customer calls about brakes, Baylio knows to suggest a fluid flush. Smart, subtle, and effective.",
+    description: "Brakes? Suggest a fluid flush. Oil change? Mention the tire rotation. Subtle and effective.",
   },
   {
     icon: BarChart3,
     title: "Call Analytics Dashboard",
-    description: "See every call, every outcome, every dollar recovered. Real-time insights into your shop's phone performance.",
+    description: "Every call, every outcome, every dollar. Real-time visibility into phone performance.",
   },
   {
     icon: Bot,
     title: "Custom AI Persona",
-    description: "Configure your AI's voice, name, greeting, and personality. It sounds like your best employee, not a robot.",
+    description: "Your AI sounds like your best employee. Configure voice, name, greeting, and personality.",
   },
   {
     icon: Building2,
     title: "Multi-Location Support",
-    description: "Manage multiple shops from one dashboard. Each location gets its own AI agent, phone number, and analytics.",
+    description: "One dashboard, multiple shops. Each location gets its own AI agent and analytics.",
   },
 ];
 
@@ -136,29 +153,76 @@ const PRICING_TIERS = [
       "Priority support",
       "Weekly performance reports",
     ],
-    cta: "Contact Sales",
+    cta: "Book a Demo",
     popular: false,
   },
 ];
 
-const PAIN_POINTS = [
-  { stat: "62%", label: "of calls to auto shops go unanswered" },
-  { stat: "$1,200", label: "average revenue lost per missed call" },
-  { stat: "85%", label: "of callers won't call back after being ignored" },
-  { stat: "$28K+", label: "annual revenue lost from missed calls alone" },
+const SAMPLE_CALLS = [
+  {
+    icon: Wrench,
+    title: "Brake Service Inquiry",
+    description: "Customer calls about squeaking brakes. Baylio identifies the issue, checks availability, and books a brake inspection.",
+    transcript: [
+      { role: "AI", text: "Thanks for calling Precision Auto! This is Alex, how can I help?" },
+      { role: "Caller", text: "Yeah, my brakes have been squeaking pretty bad." },
+      { role: "AI", text: "I can get you in for a brake inspection. What kind of car are you driving?" },
+      { role: "Caller", text: "2019 Honda Civic, about 65,000 miles." },
+    ],
+  },
+  {
+    icon: Clock,
+    title: "After-Hours Call",
+    description: "9:47 PM on a Tuesday. Instead of voicemail, Baylio answers, captures the problem, and schedules a morning callback.",
+    transcript: [
+      { role: "AI", text: "Thanks for calling! We're closed for the evening, but I can help." },
+      { role: "Caller", text: "My check engine light just came on. Should I be worried?" },
+      { role: "AI", text: "I'll make a note and have our team call you first thing tomorrow morning. Can I get your name?" },
+      { role: "Caller", text: "Sure, it's Maria. My number is the one I'm calling from." },
+    ],
+  },
+  {
+    icon: Calendar,
+    title: "Oil Change Booking",
+    description: "Quick and efficient. Baylio confirms the vehicle, finds an open slot, and books the appointment in under 90 seconds.",
+    transcript: [
+      { role: "AI", text: "Hi, this is Alex at Downtown Auto. How can I help you today?" },
+      { role: "Caller", text: "I need to schedule an oil change for my truck." },
+      { role: "AI", text: "Absolutely. What year and model is it?" },
+      { role: "Caller", text: "2021 Ford F-150. Can you do Thursday afternoon?" },
+    ],
+  },
 ];
 
+const BLOG_POSTS = [
+  {
+    slug: "missed-call-revenue-loss",
+    title: "How Much Revenue Auto Repair Shops Lose From Missed Calls",
+    category: "Revenue Recovery",
+    excerpt: "The average shop misses 62% of incoming calls. Here's what that costs you annually and how to fix it.",
+  },
+  {
+    slug: "after-hours-calls",
+    title: "After-Hours Calls: What Shop Owners Are Missing",
+    category: "Operations",
+    excerpt: "35% of customer calls come outside business hours. Most go to voicemail. Most never call back.",
+  },
+  {
+    slug: "ai-receptionist-for-shops",
+    title: "How AI Receptionists Help Front Desks Book More Jobs",
+    category: "Technology",
+    excerpt: "AI phone answering isn't science fiction. Here's how modern shops are using it to grow revenue.",
+  },
+];
+
+// ─── ROI Calculator ──────────────────────────────────────────────────
+
 /**
- * ROI Calculator Component
- * 
  * Interactive calculator that shows shop owners how much revenue
  * they're losing to missed calls. Uses real industry data:
  * - Average repair order: $466 (AAA/IBISWorld)
  * - 62% of calls go unanswered (industry average)
  * - 85% of callers won't call back
- * 
- * This is the #1 sales tool for door-to-door: pull it up on a tablet,
- * enter the shop's numbers, and show them the money they're leaving on the table.
  */
 function ROICalculator() {
   const [callsPerDay, setCallsPerDay] = useState([15]);
@@ -169,21 +233,19 @@ function ROICalculator() {
     const dailyCalls = callsPerDay[0];
     const missedRate = missedPercent[0] / 100;
     const aro = avgRepairOrder[0];
-    const conversionRate = 0.35; // 35% of answered calls convert to appointments
+    const conversionRate = 0.35;
 
     const dailyMissed = Math.round(dailyCalls * missedRate);
-    const monthlyMissed = dailyMissed * 22; // business days
+    const monthlyMissed = dailyMissed * 22;
     const potentialBookings = Math.round(monthlyMissed * conversionRate);
     const monthlyRevenueLost = potentialBookings * aro;
     const annualRevenueLost = monthlyRevenueLost * 12;
 
-    // With Baylio: capture 90% of previously missed calls
     const capturedCalls = Math.round(monthlyMissed * 0.90);
     const newBookings = Math.round(capturedCalls * conversionRate);
     const monthlyRecovered = newBookings * aro;
     const annualRecovered = monthlyRecovered * 12;
 
-    // ROI: recovered revenue vs Baylio Pro cost ($349/mo)
     const baylioCost = 349;
     const monthlyROI = monthlyRecovered - baylioCost;
     const roiMultiple = monthlyRecovered > 0 ? Math.round(monthlyRecovered / baylioCost) : 0;
@@ -216,7 +278,6 @@ function ROICalculator() {
       </p>
 
       <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8">
-        {/* Inputs */}
         <Card className="border">
           <CardHeader>
             <CardTitle className="text-lg">Your Shop's Numbers</CardTitle>
@@ -249,12 +310,11 @@ function ROICalculator() {
           </CardContent>
         </Card>
 
-        {/* Results */}
         <div className="space-y-4">
           <Card className="border border-destructive/30 bg-destructive/5">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground mb-1">Revenue you're losing monthly</p>
-              <p className="text-3xl font-bold text-destructive">{formatCurrency(calculations.monthlyRevenueLost)}</p>
+              <p className="text-3xl font-mono font-bold text-destructive">{formatCurrency(calculations.monthlyRevenueLost)}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {calculations.monthlyMissed} missed calls/mo &times; 35% conversion &times; {formatCurrency(avgRepairOrder[0])} avg order
               </p>
@@ -264,7 +324,7 @@ function ROICalculator() {
           <Card className="border border-primary/30 bg-primary/5">
             <CardContent className="pt-6">
               <p className="text-sm text-muted-foreground mb-1">Revenue Baylio recovers monthly</p>
-              <p className="text-3xl font-bold text-primary">{formatCurrency(calculations.monthlyRecovered)}</p>
+              <p className="text-3xl font-mono font-bold text-primary">{formatCurrency(calculations.monthlyRecovered)}</p>
               <p className="text-xs text-muted-foreground mt-1">
                 {calculations.capturedCalls} calls captured &rarr; {calculations.newBookings} new bookings
               </p>
@@ -276,11 +336,11 @@ function ROICalculator() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Annual recovery</p>
-                  <p className="text-xl font-bold">{formatCurrency(calculations.annualRecovered)}</p>
+                  <p className="text-xl font-mono font-bold">{formatCurrency(calculations.annualRecovered)}</p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">ROI multiple</p>
-                  <p className="text-xl font-bold text-primary">{calculations.roiMultiple}x return</p>
+                  <p className="text-xl font-mono font-bold text-primary">{calculations.roiMultiple}x return</p>
                 </div>
               </div>
             </CardContent>
@@ -296,21 +356,24 @@ function ROICalculator() {
   );
 }
 
+// ─── Page ────────────────────────────────────────────────────────────
+
 export default function Landing() {
   return (
     <div className="min-h-screen bg-background">
-      {/* ─── Navbar ─── */}
+      {/* ─── 1. Navbar ─── */}
       <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-2">
-            <Phone className="h-6 w-6 text-primary" />
-            <span className="text-xl font-bold tracking-tight">Baylio</span>
+            <div className="w-2 h-2 rounded-full bg-primary" />
+            <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
           </div>
           <div className="hidden md:flex items-center gap-8">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
             <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
             <a href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</a>
             <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors">FAQ</Link>
+            <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Blog</Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
             <a
               href={getPartnersUrl()}
@@ -321,7 +384,6 @@ export default function Landing() {
             </a>
           </div>
           <div className="flex items-center gap-3">
-            {/* Mobile menu */}
             <Sheet>
               <SheetTrigger asChild>
                 <Button variant="ghost" size="icon" className="md:hidden">
@@ -334,6 +396,9 @@ export default function Landing() {
                   <a href="#features" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Features</a>
                   <a href="#pricing" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Pricing</a>
                   <a href="#how-it-works" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">How It Works</a>
+                  <Link href="/faq" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">FAQ</Link>
+                  <Link href="/blog" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Blog</Link>
+                  <Link href="/contact" className="text-base font-medium text-foreground hover:text-primary transition-colors py-2">Contact</Link>
                   <a
                     href={getPartnersUrl()}
                     className="text-base font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-2 py-2"
@@ -346,246 +411,373 @@ export default function Landing() {
                     Sign In
                   </Button>
                   <Button className="w-full" onClick={() => { window.location.href = getLoginUrl(); }}>
-                    Get Started
+                    Book a Demo
                   </Button>
                 </nav>
               </SheetContent>
             </Sheet>
-            {/* Desktop buttons */}
             <Button variant="ghost" size="sm" className="hidden md:inline-flex" onClick={() => { window.location.href = getLoginUrl(); }}>
               Sign In
             </Button>
             <Button size="sm" className="hidden md:inline-flex" onClick={() => { window.location.href = getLoginUrl(); }}>
-              Get Started
+              Book a Demo
             </Button>
           </div>
         </div>
       </nav>
 
-      {/* ─── Hero ─── */}
+      {/* ─── 2. Hero ─── */}
       <section className="container py-20 md:py-32">
         <div className="max-w-4xl mx-auto text-center">
           <Badge variant="secondary" className="mb-6">
-            <Zap className="h-3 w-3 mr-1" />
-            AI-Powered Call Handling for Auto Repair Shops
+            <Phone className="h-3 w-3 mr-1" />
+            AI Receptionist for Auto Repair Shops
           </Badge>
           <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Stop Losing Customers
+            Answer Every Call.
             <br />
-            <span className="text-primary">To Missed Calls</span>
+            <span className="text-primary">Book More Jobs. Recover Lost Revenue.</span>
           </h1>
           <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Baylio is an AI receptionist that answers every call to your auto repair shop 24/7.
-            It books appointments, captures vehicle details, and intelligently upsells services — 
-            so you never lose another dollar to a ringing phone.
+            Baylio answers your shop's phone 24/7 with a human-sounding AI voice. It captures
+            caller details, books appointments, and makes sure you never lose a customer to a
+            missed call again.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-              Start Free Trial
+              Book a Demo
               <ArrowRight className="ml-2 h-4 w-4" />
             </Button>
-            <Button size="lg" variant="outline" className="text-base px-8">
-              Watch Demo
+            <Button size="lg" variant="outline" className="text-base px-8" asChild>
+              <a href="#how-it-works">See How It Works</a>
             </Button>
           </div>
           <p className="text-sm text-muted-foreground mt-4">
-            No credit card required. 14-day free trial on all plans.
+            Setup in under 10 minutes · No hardware required · 14-day free trial
           </p>
         </div>
       </section>
 
-      {/* ─── Pain Points ─── */}
-      <section className="border-y bg-muted/30">
-        <div className="container py-16">
-          <h2 className="text-center text-2xl font-bold mb-12">
-            The Missed Call Problem Is Costing You Thousands
-          </h2>
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {PAIN_POINTS.map((point, i) => (
-              <div key={i} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-primary mb-2">{point.stat}</div>
-                <p className="text-sm text-muted-foreground">{point.label}</p>
-              </div>
+      {/* ─── 3. What Happens When a Customer Calls ─── */}
+      <section id="how-it-works" className="border-y bg-muted/30">
+        <div className="container py-20">
+          <h2 className="text-3xl font-bold text-center mb-4">What Happens When a Customer Calls</h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            From ring to resolution in seconds. No training. No staffing. No missed opportunities.
+          </p>
+          <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
+            {[
+              {
+                step: "1",
+                icon: PhoneIncoming,
+                title: "Customer calls your shop",
+                desc: "Your existing number or a new local number. No changes to your current setup.",
+              },
+              {
+                step: "2",
+                icon: Headphones,
+                title: "Baylio answers instantly",
+                desc: "Under 2 seconds. Professional greeting with your shop's name. No hold music.",
+              },
+              {
+                step: "3",
+                icon: ClipboardList,
+                title: "AI captures the details",
+                desc: "Vehicle info, problem description, urgency level — all documented automatically.",
+              },
+              {
+                step: "4",
+                icon: BellRing,
+                title: "You get the result",
+                desc: "Appointment booked, lead logged, or owner notified. Nothing falls through the cracks.",
+              },
+            ].map((item) => (
+              <Card key={item.step} className="border bg-card text-center">
+                <CardContent className="pt-6">
+                  <div className="w-10 h-10 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-lg font-bold mx-auto mb-3">
+                    {item.step}
+                  </div>
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-3">
+                    <item.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <h3 className="text-sm font-semibold mb-1">{item.title}</h3>
+                  <p className="text-xs text-muted-foreground">{item.desc}</p>
+                </CardContent>
+              </Card>
             ))}
           </div>
         </div>
       </section>
 
-      {/* ─── ROI Calculator ─── */}
+      {/* ─── 4. Outcomes / Business Results ─── */}
+      <section className="container py-20">
+        <h2 className="text-3xl font-bold text-center mb-4">What Baylio Does for Your Bottom Line</h2>
+        <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+          This isn't about software features. It's about the business results shop owners see.
+        </p>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {[
+            {
+              icon: DollarSign,
+              title: "Recover missed revenue",
+              desc: "62% of shop calls go unanswered. Each one is $1,200+ walking out the door.",
+            },
+            {
+              icon: Calendar,
+              title: "Book more appointments",
+              desc: "AI converts calls to bookings while your techs stay focused on the bay.",
+            },
+            {
+              icon: Clock,
+              title: "Respond after hours",
+              desc: "Evenings, weekends, holidays. Your phone never goes to voicemail again.",
+            },
+            {
+              icon: Users,
+              title: "Reduce front desk chaos",
+              desc: "Stop pulling your service writer off the counter to answer the phone.",
+            },
+            {
+              icon: BarChart3,
+              title: "See every call in one dashboard",
+              desc: "Who called, what they needed, what happened. Complete visibility.",
+            },
+          ].map((item, i) => (
+            <Card key={i} className="border bg-card">
+              <CardContent className="pt-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                  <item.icon className="h-5 w-5 text-primary" />
+                </div>
+                <h3 className="text-base font-semibold mb-1">{item.title}</h3>
+                <p className="text-sm text-muted-foreground">{item.desc}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── 5. ROI Calculator ─── */}
       <ROICalculator />
 
-      {/* ─── How It Works ─── */}
-      <section id="how-it-works" className="container py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">How Baylio Works</h2>
+      {/* ─── 6. Hear Baylio in Action ─── */}
+      <section className="border-y bg-muted/30">
+        <div className="container py-20">
+          <h2 className="text-3xl font-bold text-center mb-4">Hear What Your Customers Will Experience</h2>
+          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+            Real scenarios. Real conversations. Real results.
+          </p>
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {SAMPLE_CALLS.map((call, i) => (
+              <Card key={i} className="border bg-card">
+                <CardHeader className="pb-3">
+                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-2">
+                    <call.icon className="h-5 w-5 text-primary" />
+                  </div>
+                  <CardTitle className="text-base">{call.title}</CardTitle>
+                  <p className="text-xs text-muted-foreground">{call.description}</p>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 bg-muted/50 rounded-lg p-3">
+                    {call.transcript.map((line, j) => (
+                      <div key={j} className="text-xs">
+                        <span className={`font-semibold ${line.role === "AI" ? "text-primary" : "text-foreground"}`}>
+                          {line.role === "AI" ? "Baylio:" : "Caller:"}
+                        </span>{" "}
+                        <span className="text-muted-foreground">{line.text}</span>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+          <div className="text-center mt-10">
+            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Book a Live Demo
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── 7. Features ─── */}
+      <section id="features" className="container py-20">
+        <h2 className="text-3xl font-bold text-center mb-4">Everything Your Shop Needs to Never Miss a Call</h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Three steps to never miss a call again. Setup takes less than 10 minutes.
+          Built specifically for auto repair shops. Every feature earns its place.
         </p>
-        <div className="grid md:grid-cols-3 gap-8 max-w-4xl mx-auto">
-          {[
-            { step: "1", title: "Connect Your Phone", desc: "We provision a local phone number or forward your existing line to Baylio. No hardware needed." },
-            { step: "2", title: "Configure Your AI", desc: "Tell Baylio about your shop — services, hours, pricing, and personality. It learns your business." },
-            { step: "3", title: "Start Capturing Revenue", desc: "Every call is answered, every appointment is booked, every upsell opportunity is captured." },
-          ].map((item) => (
-            <div key={item.step} className="text-center">
-              <div className="w-12 h-12 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xl font-bold mx-auto mb-4">
-                {item.step}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {FEATURES.map((feature, i) => (
+            <Card key={i} className="border bg-card">
+              <CardHeader className="pb-3">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
+                  <feature.icon className="h-5 w-5 text-primary" />
+                </div>
+                <CardTitle className="text-lg">{feature.title}</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </section>
+
+      {/* ─── 8. Who Baylio Is For ─── */}
+      <section className="border-y bg-muted/30">
+        <div className="container py-16">
+          <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">Built for Shops That Can't Afford to Miss the Phone</h2>
+          <div className="max-w-3xl mx-auto grid md:grid-cols-2 gap-4">
+            {[
+              { icon: Wrench, text: "Independent auto repair shops" },
+              { icon: Phone, text: "Busy front desks drowning in phone calls" },
+              { icon: Building2, text: "Multi-location operators who need consistency" },
+              { icon: Clock, text: "Shops losing revenue to after-hours calls" },
+              { icon: BarChart3, text: "Owners who want visibility into phone performance" },
+              { icon: Target, text: "Shops ready to grow without adding headcount" },
+            ].map((item, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-lg bg-card border">
+                <item.icon className="h-5 w-5 text-primary shrink-0" />
+                <span className="text-sm font-medium">{item.text}</span>
               </div>
-              <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-              <p className="text-sm text-muted-foreground">{item.desc}</p>
+            ))}
+          </div>
+          <p className="text-center text-xs text-muted-foreground mt-8 max-w-xl mx-auto">
+            Not built for generic call centers or retail. Baylio is purpose-built for automotive service businesses.
+          </p>
+        </div>
+      </section>
+
+      {/* ─── 9. Trust / Credibility ─── */}
+      <section className="container py-20">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">Why Shop Owners Trust Baylio</h2>
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-5xl mx-auto">
+          {[
+            {
+              icon: Zap,
+              title: "Setup in under 10 minutes",
+              desc: "Forward your number or get a new local line. No hardware, no IT team needed.",
+            },
+            {
+              icon: Clock,
+              title: "Answers in under 2 seconds",
+              desc: "Faster than any human receptionist. Your customers never hear a busy signal.",
+            },
+            {
+              icon: Shield,
+              title: "14-day free trial",
+              desc: "See the results before you pay. No credit card required to start.",
+            },
+            {
+              icon: Users,
+              title: "Hands-on onboarding",
+              desc: "We configure your AI agent with you. Your service catalog, your hours, your voice.",
+            },
+            {
+              icon: Wrench,
+              title: "Built by operators, not just engineers",
+              desc: "Founded by people who understand auto repair. Not a generic AI tool bolted onto your shop.",
+            },
+            {
+              icon: Building2,
+              title: "Enterprise-grade infrastructure",
+              desc: "Same telephony platform used by major contact centers. 99.9% uptime SLA.",
+            },
+          ].map((item, i) => (
+            <div key={i} className="flex gap-4 p-4 rounded-lg bg-muted/30 border">
+              <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <item.icon className="h-5 w-5 text-primary" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold mb-1">{item.title}</h3>
+                <p className="text-xs text-muted-foreground">{item.desc}</p>
+              </div>
             </div>
           ))}
         </div>
       </section>
 
-      {/* ─── Features ─── */}
-      <section id="features" className="border-y bg-muted/30">
+      {/* ─── 10. Pricing ─── */}
+      <section id="pricing" className="border-y bg-muted/30">
         <div className="container py-20">
-          <h2 className="text-3xl font-bold text-center mb-4">Everything Your Shop Needs</h2>
+          <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            Built specifically for auto repair shops. Every feature is designed to capture more revenue and save you time.
+            Choose the plan that fits your shop. All plans include a 14-day free trial. No contracts.
           </p>
-          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {FEATURES.map((feature, i) => (
-              <Card key={i} className="border bg-card">
-                <CardHeader className="pb-3">
-                  <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-3">
-                    <feature.icon className="h-5 w-5 text-primary" />
+          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
+            {PRICING_TIERS.map((tier) => (
+              <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary" : ""}`}>
+                {tier.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
                   </div>
-                  <CardTitle className="text-lg">{feature.title}</CardTitle>
+                )}
+                <CardHeader className="text-center pb-4">
+                  <CardTitle className="text-xl">{tier.name}</CardTitle>
+                  <p className="text-sm text-muted-foreground">{tier.description}</p>
+                  <div className="mt-4">
+                    <span className="text-4xl font-mono font-bold">${tier.price}</span>
+                    <span className="text-muted-foreground">/month</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-1">{tier.minutes} minutes included</p>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-sm text-muted-foreground leading-relaxed">{feature.description}</p>
+                  <ul className="space-y-3 mb-6">
+                    {tier.features.map((feature, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm">
+                        <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                        <span>{feature}</span>
+                      </li>
+                    ))}
+                  </ul>
+                  <Button
+                    className="w-full"
+                    variant={tier.popular ? "default" : "outline"}
+                    onClick={() => { window.location.href = getLoginUrl(); }}
+                  >
+                    {tier.cta}
+                  </Button>
                 </CardContent>
               </Card>
             ))}
           </div>
+          <p className="text-center text-sm text-muted-foreground mt-8">
+            Overage: $0.15/minute beyond your plan. Annual billing saves 20%.
+          </p>
         </div>
       </section>
 
-      {/* ─── Pricing ─── */}
-      <section id="pricing" className="container py-20">
-        <h2 className="text-3xl font-bold text-center mb-4">Simple, Transparent Pricing</h2>
+      {/* ─── 11. Blog / Resources Preview ─── */}
+      <section className="container py-20">
+        <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Resources for Shop Owners</h2>
         <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-          Choose the plan that fits your shop. All plans include a 14-day free trial. No contracts.
+          Phone strategy, missed-call recovery, front-desk efficiency, and AI for repair shops.
         </p>
         <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-          {PRICING_TIERS.map((tier) => (
-            <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary shadow-lg" : ""}`}>
-              {tier.popular && (
-                <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                  <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
-                </div>
-              )}
-              <CardHeader className="text-center pb-4">
-                <CardTitle className="text-xl">{tier.name}</CardTitle>
-                <p className="text-sm text-muted-foreground">{tier.description}</p>
-                <div className="mt-4">
-                  <span className="text-4xl font-bold">${tier.price}</span>
-                  <span className="text-muted-foreground">/month</span>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1">{tier.minutes} minutes included</p>
-              </CardHeader>
-              <CardContent>
-                <ul className="space-y-3 mb-6">
-                  {tier.features.map((feature, i) => (
-                    <li key={i} className="flex items-start gap-2 text-sm">
-                      <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                      <span>{feature}</span>
-                    </li>
-                  ))}
-                </ul>
-                <Button
-                  className="w-full"
-                  variant={tier.popular ? "default" : "outline"}
-                  onClick={() => { window.location.href = getLoginUrl(); }}
-                >
-                  {tier.cta}
-                </Button>
+          {BLOG_POSTS.map((post) => (
+            <Card key={post.slug} className="border bg-card hover:border-primary/30 transition-colors">
+              <CardContent className="pt-6">
+                <Badge variant="secondary" className="mb-3 text-xs">{post.category}</Badge>
+                <h3 className="text-base font-semibold mb-2 leading-snug">{post.title}</h3>
+                <p className="text-sm text-muted-foreground mb-4">{post.excerpt}</p>
+                <Link href={`/blog/${post.slug}`} className="text-sm text-primary font-medium hover:underline inline-flex items-center gap-1">
+                  Read More <ArrowRight className="h-3 w-3" />
+                </Link>
               </CardContent>
             </Card>
           ))}
         </div>
-        <p className="text-center text-sm text-muted-foreground mt-8">
-          Overage: $0.15/minute beyond your plan. Annual billing saves 20%.
-        </p>
-      </section>
-
-      {/* ─── Credibility Section ─── */}
-      <section className="border-y bg-muted/30">
-        <div className="container py-16">
-          <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">Built for Shop Owners, by Operators Who Get It</h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
-            We didn't build Baylio in a lab. We built it because we saw how many shops were bleeding revenue from unanswered phones.
-          </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            <Card className="border bg-card">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Shield className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Enterprise-Grade Voice Infrastructure</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  Built on the same telephony platform used by major contact centers. 99.9% uptime SLA. If Baylio ever goes down, calls automatically route to your backup number.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border bg-card">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Clock className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Answers in Under 2 Seconds. Every Time.</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  No ringing. No hold music. No voicemail. Your customers hear a live, professional AI voice before the second ring completes.
-                </p>
-              </CardContent>
-            </Card>
-            <Card className="border bg-card">
-              <CardContent className="pt-6">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
-                  <Users className="h-6 w-6 text-primary" />
-                </div>
-                <h3 className="text-lg font-semibold mb-2">Be One of Our First 50 Shops</h3>
-                <p className="text-sm text-muted-foreground leading-relaxed">
-                  We are onboarding a small group of auto repair shops for hands-on launch support. Early adopters get direct access to our team, priority feature requests, and locked-in pricing.
-                </p>
-              </CardContent>
-            </Card>
-          </div>
-          <div className="text-center mt-10">
-            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-              Apply for Early Access
+        <div className="text-center mt-8">
+          <Button variant="outline" asChild>
+            <Link href="/blog">
+              Visit the Blog
               <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-          </div>
+            </Link>
+          </Button>
         </div>
       </section>
 
-      {/* ─── Trust / Social Proof ─── */}
-      <section className="border-y bg-muted/30">
-        <div className="container py-16">
-          <h2 className="text-2xl font-bold text-center mb-8">Trusted by Auto Repair Shops</h2>
-          <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
-            {[
-              { quote: "We were missing 15+ calls a week. Baylio caught every single one. Our bookings went up 40% in the first month.", name: "Mike R.", shop: "Mike's Auto Care" },
-              { quote: "The upsell feature alone pays for the subscription. Customers don't mind when it's done right.", name: "Sarah T.", shop: "Precision Auto Works" },
-              { quote: "I manage 3 locations. Having one dashboard for all of them with individual AI agents is a game changer.", name: "James K.", shop: "Metro Auto Group" },
-            ].map((testimonial, i) => (
-              <Card key={i} className="border bg-card">
-                <CardContent className="pt-6">
-                  <p className="text-sm text-muted-foreground italic mb-4">"{testimonial.quote}"</p>
-                  <div>
-                    <p className="text-sm font-semibold">{testimonial.name}</p>
-                    <p className="text-xs text-muted-foreground">{testimonial.shop}</p>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ─── Partner Program CTA ─── */}
+      {/* ─── 12. Partner Program CTA ─── */}
       <section id="partners" className="border-y bg-gradient-to-br from-primary/5 via-background to-primary/10">
         <div className="container py-20">
           <div className="max-w-5xl mx-auto">
@@ -609,7 +801,7 @@ export default function Landing() {
               {[
                 {
                   icon: BadgeDollarSign,
-                  title: "20–30% Recurring Commission",
+                  title: "20-30% Recurring Commission",
                   desc: "Earn a percentage of every monthly subscription your referrals pay. Not a one-time bonus — every single month, on autopilot.",
                 },
                 {
@@ -637,8 +829,7 @@ export default function Landing() {
               ))}
             </div>
 
-            {/* Earnings example table */}
-            <div className="bg-muted/50 border rounded-2xl p-6 md:p-8 mb-10">
+            <div className="bg-muted/50 border rounded-sm p-6 md:p-8 mb-10">
               <p className="text-center text-sm font-semibold text-muted-foreground mb-6 uppercase tracking-wide">Example monthly earnings</p>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-center">
                 {[
@@ -648,7 +839,7 @@ export default function Landing() {
                   { referrals: "50 shops", tier: "Mixed", monthly: "$5,000+/mo", rate: "30%" },
                 ].map((ex, i) => (
                   <div key={i}>
-                    <p className="text-2xl font-bold text-primary">{ex.monthly}</p>
+                    <p className="text-2xl font-mono font-bold text-primary">{ex.monthly}</p>
                     <p className="text-sm font-medium mt-1">{ex.referrals}</p>
                     <p className="text-xs text-muted-foreground">{ex.tier} · {ex.rate}</p>
                   </div>
@@ -679,36 +870,45 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* ─── Final CTA ─── */}
+      {/* ─── 13. Final CTA ─── */}
       <section className="container py-20">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
-            Ready to Stop Losing Money to Missed Calls?
+            Stop Losing Customers to Missed Calls
           </h2>
           <p className="text-lg text-muted-foreground mb-8">
-            Start your 14-day free trial today. No credit card required. Setup takes 10 minutes.
+            Join the shops that answer every call, book more jobs, and recover thousands in lost revenue.
           </p>
-          <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
-            Get Started Free
-            <ArrowRight className="ml-2 h-4 w-4" />
-          </Button>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Start Your Free Trial
+              <ArrowRight className="ml-2 h-4 w-4" />
+            </Button>
+            <Button size="lg" variant="outline" className="text-base px-8" onClick={() => { window.location.href = getLoginUrl(); }}>
+              Book a Demo
+            </Button>
+          </div>
+          <p className="text-sm text-muted-foreground mt-4">
+            14-day free trial · No credit card required · Setup in 10 minutes
+          </p>
         </div>
       </section>
 
-      {/* ─── Footer ─── */}
+      {/* ─── 14. Footer ─── */}
       <footer className="border-t">
         <div className="container py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <Phone className="h-5 w-5 text-primary" />
-              <span className="font-semibold">Baylio</span>
+              <div className="w-2 h-2 rounded-full bg-primary" />
+              <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
             </div>
             <p className="text-sm text-muted-foreground">
               &copy; {new Date().getFullYear()} Baylio. All rights reserved.
             </p>
-            <div className="flex gap-6">
+            <div className="flex flex-wrap gap-6 justify-center">
               <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground">Contact</Link>
               <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground">FAQ</Link>
+              <Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground">Blog</Link>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Privacy</a>
               <a href="#" className="text-sm text-muted-foreground hover:text-foreground">Terms</a>
               <a href={getPartnersUrl()} className="text-sm text-primary hover:text-primary/80 font-medium">Partners</a>

@@ -150,7 +150,7 @@ function AnalyticsContent() {
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-bold tracking-tight">Analytics</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
           <p className="text-sm text-muted-foreground">{shop?.name}</p>
         </div>
       </div>
@@ -165,8 +165,8 @@ function AnalyticsContent() {
                   <metric.icon className={`h-4 w-4 ${metric.color}`} />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">{metric.title}</p>
-                  <p className="text-xl font-bold mt-0.5">{metric.value}</p>
+                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{metric.title}</p>
+                  <p className="text-xl font-mono font-medium mt-0.5">{metric.value}</p>
                   <p className="text-xs text-muted-foreground mt-1">{metric.description}</p>
                 </div>
               </div>
@@ -182,9 +182,9 @@ function AnalyticsContent() {
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-2">
                 <metric.icon className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs text-muted-foreground">{metric.title}</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">{metric.title}</p>
               </div>
-              <p className="text-lg font-semibold mt-1">{metric.value}</p>
+              <p className="text-lg font-mono font-medium mt-1">{metric.value}</p>
             </CardContent>
           </Card>
         ))}
@@ -201,8 +201,8 @@ function AnalyticsContent() {
           </CardHeader>
           <CardContent className="space-y-3">
             <div className="flex items-center justify-between text-sm">
-              <span>{subscription.usedMinutes} minutes used</span>
-              <span>{subscription.includedMinutes} minutes total</span>
+              <span className="font-mono">{subscription.usedMinutes} minutes used</span>
+              <span className="font-mono">{subscription.includedMinutes} minutes total</span>
             </div>
             <Progress
               value={subscription.usagePercent}

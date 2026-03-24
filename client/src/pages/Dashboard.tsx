@@ -99,7 +99,7 @@ function DashboardContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Dashboard</h1>
           <p className="text-muted-foreground">
             Manage your shops and monitor AI call performance.
           </p>
@@ -170,7 +170,7 @@ function DashboardContent() {
           {shops.map((shop) => (
             <Card
               key={shop.id}
-              className="cursor-pointer hover:shadow-md transition-shadow border"
+              className="cursor-pointer hover:border-primary/30 transition-colors border border-border rounded-sm"
               onClick={() => setLocation(`/shops/${shop.id}`)}
             >
               <CardHeader className="pb-3">
@@ -182,7 +182,7 @@ function DashboardContent() {
                     <div>
                       <CardTitle className="text-base">{shop.name}</CardTitle>
                       {shop.phone && (
-                        <p className="text-xs text-muted-foreground mt-0.5">{shop.phone}</p>
+                        <p className="text-xs text-muted-foreground font-mono mt-0.5">{shop.phone}</p>
                       )}
                     </div>
                   </div>

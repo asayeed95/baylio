@@ -117,7 +117,7 @@ export default function PartnersEarnings() {
                   <p className="text-sm text-zinc-400 mb-1">
                     Available balance
                   </p>
-                  <p className="text-2xl font-bold text-emerald-400">
+                  <p className="text-2xl font-mono font-bold text-emerald-400">
                     ${pendingEarnings.toFixed(2)}
                   </p>
                 </div>
@@ -165,10 +165,10 @@ export default function PartnersEarnings() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Total Earned</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Total Earned</p>
                 <DollarSign className="h-4 w-4 text-emerald-500" />
               </div>
-              <p className="text-2xl font-bold text-emerald-400 mt-2">
+              <p className="text-2xl font-mono font-medium text-emerald-400 mt-2">
                 ${totalEarnings.toLocaleString()}
               </p>
               <p className="text-xs text-zinc-500 mt-1">All time</p>
@@ -178,10 +178,10 @@ export default function PartnersEarnings() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Available to Withdraw</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Available to Withdraw</p>
                 <Wallet className="h-4 w-4 text-amber-500" />
               </div>
-              <p className="text-2xl font-bold text-amber-400 mt-2">
+              <p className="text-2xl font-mono font-medium text-amber-400 mt-2">
                 ${pendingEarnings.toFixed(2)}
               </p>
               <p className="text-xs text-zinc-500 mt-1">
@@ -195,10 +195,10 @@ export default function PartnersEarnings() {
           <Card className="bg-zinc-900 border-zinc-800">
             <CardContent className="p-4">
               <div className="flex items-center justify-between">
-                <p className="text-sm text-zinc-400">Commission Rate</p>
+                <p className="text-xs font-medium uppercase tracking-widest text-zinc-400">Commission Rate</p>
                 <TrendingUp className="h-4 w-4 text-blue-500" />
               </div>
-              <p className="text-2xl font-bold text-white mt-2">
+              <p className="text-2xl font-mono font-medium text-white mt-2">
                 {(commissionRate * 100).toFixed(0)}%
               </p>
               <p className="text-xs text-zinc-500 mt-1">
@@ -226,7 +226,7 @@ export default function PartnersEarnings() {
                     <p className="text-sm text-zinc-400 capitalize">
                       {t.tier || "Unknown"} Tier
                     </p>
-                    <p className="text-xl font-bold text-white mt-1">
+                    <p className="text-xl font-mono font-bold text-white mt-1">
                       ${parseFloat(t.earned || "0").toFixed(2)}
                     </p>
                     <p className="text-xs text-zinc-500 mt-1">
@@ -268,7 +268,7 @@ export default function PartnersEarnings() {
                           }}
                         />
                       </div>
-                      <span className="text-sm text-emerald-400 font-medium w-20 text-right">
+                      <span className="text-sm font-mono text-emerald-400 font-medium w-20 text-right">
                         ${earned.toFixed(2)}
                       </span>
                     </div>
@@ -314,7 +314,7 @@ export default function PartnersEarnings() {
                       <TableCell className="text-zinc-300">
                         {new Date(payout.requestedAt).toLocaleDateString()}
                       </TableCell>
-                      <TableCell className="text-emerald-400 font-medium">
+                      <TableCell className="text-emerald-400 font-mono font-medium">
                         ${parseFloat(payout.amount?.toString() || "0").toFixed(2)}
                       </TableCell>
                       <TableCell className="text-zinc-400 capitalize">

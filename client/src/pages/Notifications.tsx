@@ -79,7 +79,7 @@ function NotificationsContent() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Notifications</h1>
+          <h1 className="text-2xl font-semibold tracking-tight">Notifications</h1>
           <p className="text-muted-foreground">
             {unreadCount > 0 ? `${unreadCount} unread` : "All caught up"}
           </p>
@@ -128,7 +128,7 @@ function NotificationsContent() {
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground mt-0.5">{notification.message}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
+                    <p className="text-xs text-muted-foreground font-mono mt-1">
                       {new Date(notification.createdAt).toLocaleString()}
                     </p>
                   </div>

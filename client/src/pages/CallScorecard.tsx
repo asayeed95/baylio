@@ -145,12 +145,12 @@ function CallScorecardContent() {
       <Card className="border-border">
         <CardContent className="flex items-center gap-6 py-6">
           <div className="flex items-center justify-center w-20 h-20 rounded-full bg-primary/10">
-            <span className={`text-3xl font-bold ${getScoreColor(scorecard.overall)}`}>
+            <span className={`text-3xl font-mono font-bold ${getScoreColor(scorecard.overall)}`}>
               {scorecard.overall}
             </span>
           </div>
           <div>
-            <p className="text-sm text-muted-foreground">Overall Score</p>
+            <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">Overall Score</p>
             <p className="text-xl font-semibold">
               {scorecard.overall >= 8 ? "Excellent" : scorecard.overall >= 6 ? "Good" : scorecard.overall >= 4 ? "Needs Improvement" : "Poor"} Performance
             </p>
@@ -201,7 +201,7 @@ function CallScorecardContent() {
                     <p className="text-sm font-medium">{dim.label}</p>
                     <p className="text-xs text-muted-foreground">{dim.desc}</p>
                   </div>
-                  <Badge variant={getScoreBadgeVariant(dim.score)} className="ml-3 tabular-nums">
+                  <Badge variant={getScoreBadgeVariant(dim.score)} className="ml-3 font-mono tabular-nums">
                     {dim.score}/10
                   </Badge>
                 </div>

@@ -1,9 +1,0 @@
-{
-  "query": "CREATE TABLE IF NOT EXISTS caller_profiles (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  phone VARCHAR(32) NOT NULL UNIQUE,\n  name VARCHAR(255),\n  callerRole ENUM('prospect', 'shop_owner', 'founder', 'tester', 'vendor', 'unknown') NOT NULL DEFAULT 'unknown',\n  shopName VARCHAR(255),\n  callCount INT NOT NULL DEFAULT 0,\n  lastCalledAt TIMESTAMP NULL,\n  notes TEXT,\n  doNotSell BOOLEAN NOT NULL DEFAULT FALSE,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
-  "command": "mysql --batch --raw --column-names --default-character-set=utf8mb4 --host gateway02.us-east-1.prod.aws.tidbcloud.com --port 4000 --user 39fg1sDfiK7nkvT.1d9cd463fbda --database LRTLctKwgGEqbGCoN4bV83 --execute CREATE TABLE IF NOT EXISTS caller_profiles (\n  id INT AUTO_INCREMENT PRIMARY KEY,\n  phone VARCHAR(32) NOT NULL UNIQUE,\n  name VARCHAR(255),\n  callerRole ENUM('prospect', 'shop_owner', 'founder', 'tester', 'vendor', 'unknown') NOT NULL DEFAULT 'unknown',\n  shopName VARCHAR(255),\n  callCount INT NOT NULL DEFAULT 0,\n  lastCalledAt TIMESTAMP NULL,\n  notes TEXT,\n  doNotSell BOOLEAN NOT NULL DEFAULT FALSE,\n  createdAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,\n  updatedAt TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP\n);",
-  "rows": [],
-  "messages": [],
-  "stdout": "",
-  "stderr": "",
-  "execution_time_ms": 194
-}
