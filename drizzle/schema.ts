@@ -182,7 +182,7 @@ export const subscriptions = mysqlTable("subscriptions", {
   shopId: int("shopId").notNull(),
   ownerId: int("ownerId").notNull().default(0),
   organizationId: int("organizationId"),
-  tier: mysqlEnum("tier", ["starter", "pro", "elite"]).default("starter").notNull(),
+  tier: mysqlEnum("tier", ["trial", "starter", "pro", "elite"]).default("starter").notNull(),
   status: mysqlEnum("subStatus", ["active", "past_due", "canceled", "trialing"]).default("active").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),

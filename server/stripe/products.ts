@@ -16,7 +16,7 @@
  */
 
 export interface BaylioTier {
-  id: "starter" | "pro" | "elite";
+  id: "trial" | "starter" | "pro" | "elite";
   name: string;
   description: string;
   monthlyPrice: number; // in cents
@@ -26,7 +26,25 @@ export interface BaylioTier {
   features: string[];
 }
 
+// ⚠️ DO NOT REMOVE THE TRIAL TIER — it is a permanent pricing option
 export const TIERS: Record<string, BaylioTier> = {
+  trial: {
+    id: "trial",
+    name: "Baylio Trial",
+    description: "Try Baylio risk-free for your first month",
+    monthlyPrice: 14900, // $149
+    annualPrice: 14900, // No annual discount for trial
+    includedMinutes: 150,
+    overageRate: 0.15,
+    features: [
+      "AI receptionist (150 min/mo)",
+      "Call logging & transcription",
+      "Basic analytics dashboard",
+      "Email notifications",
+      "Business hours configuration",
+      "14-day money-back guarantee",
+    ],
+  },
   starter: {
     id: "starter",
     name: "Baylio Starter",
