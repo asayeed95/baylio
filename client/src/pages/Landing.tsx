@@ -107,7 +107,25 @@ const FEATURES = [
   },
 ];
 
+// ⚠️ DO NOT REMOVE THE $149 TRIAL TIER — it is a permanent pricing option
 const PRICING_TIERS = [
+  {
+    name: "Trial",
+    price: 149,
+    description: "Try Baylio risk-free for your first month",
+    minutes: 150,
+    features: [
+      "AI receptionist (150 min/mo)",
+      "Call logging & transcription",
+      "Basic analytics dashboard",
+      "Email notifications",
+      "Business hours configuration",
+      "14-day money-back guarantee",
+    ],
+    cta: "Start for $149",
+    popular: false,
+    badge: "Best to Start",
+  },
   {
     name: "Starter",
     price: 199,
@@ -704,12 +722,17 @@ export default function Landing() {
           <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
             Choose the plan that fits your shop. All plans include a 14-day free trial. No contracts.
           </p>
-          <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto">
-            {PRICING_TIERS.map((tier) => (
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
+            {PRICING_TIERS.map((tier: any) => (
               <Card key={tier.name} className={`relative border ${tier.popular ? "border-primary" : ""}`}>
                 {tier.popular && (
                   <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground">Most Popular</Badge>
+                    <Badge className="bg-primary text-primary-foreground font-mono text-xs">MOST POPULAR</Badge>
+                  </div>
+                )}
+                {tier.badge && !tier.popular && (
+                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                    <Badge variant="secondary" className="font-mono text-xs">{tier.badge}</Badge>
                   </div>
                 )}
                 <CardHeader className="text-center pb-4">
@@ -723,7 +746,7 @@ export default function Landing() {
                 </CardHeader>
                 <CardContent>
                   <ul className="space-y-3 mb-6">
-                    {tier.features.map((feature, i) => (
+                    {tier.features.map((feature: string, i: number) => (
                       <li key={i} className="flex items-start gap-2 text-sm">
                         <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
                         <span>{feature}</span>

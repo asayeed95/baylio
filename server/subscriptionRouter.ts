@@ -29,6 +29,7 @@ import {
  */
 
 const TIER_CONFIG = {
+  trial: { includedMinutes: 150, monthlyPrice: 149, setupFee: 0 },
   starter: { includedMinutes: 300, monthlyPrice: 199, setupFee: 500 },
   pro: { includedMinutes: 750, monthlyPrice: 349, setupFee: 1000 },
   elite: { includedMinutes: 1500, monthlyPrice: 599, setupFee: 2000 },
@@ -82,7 +83,7 @@ export const subscriptionRouter = router({
   create: protectedProcedure
     .input(z.object({
       shopId: z.number(),
-      tier: z.enum(["starter", "pro", "elite"]).default("starter"),
+      tier: z.enum(["trial", "starter", "pro", "elite"]).default("starter"),
       billingCycle: z.enum(["monthly", "annual"]).default("monthly"),
     }))
     .mutation(async ({ ctx, input }) => {
@@ -121,7 +122,7 @@ export const subscriptionRouter = router({
   changeTier: protectedProcedure
     .input(z.object({
       shopId: z.number(),
-      newTier: z.enum(["starter", "pro", "elite"]),
+      newTier: z.enum(["trial", "starter", "pro", "elite"]),
     }))
     .mutation(async ({ ctx, input }) => {
       const shop = await getShopById(input.shopId);
