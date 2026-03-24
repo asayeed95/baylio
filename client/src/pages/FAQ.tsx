@@ -6,7 +6,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { getLoginUrl } from "@/const";
-import { Phone, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
 const FAQ_ITEMS = [
@@ -28,7 +28,7 @@ const FAQ_ITEMS = [
   {
     question: "How much does Baylio cost?",
     answer:
-      "Baylio offers three plans to fit shops of any size:\n\n• Starter — $199/month: Perfect for single-location shops. Includes AI call answering, appointment booking, and basic analytics.\n\n• Pro — $349/month: Our most popular plan. Adds intelligent upselling, advanced analytics, priority support, and multi-location support.\n\n• Elite — $599/month: For high-volume shops and multi-location businesses. Includes everything in Pro plus dedicated account management, custom AI training, and API access.\n\nAll plans come with a 14-day free trial — no credit card required.",
+      "Baylio offers four plans to fit shops of any size:\n\n• Trial — $149/month: Try Baylio risk-free. Includes 150 minutes of AI call handling, call logging, basic analytics, and a 14-day money-back guarantee.\n\n• Starter — $199/month: Perfect for single-location shops. 300 minutes of AI call answering, appointment booking, and basic analytics.\n\n• Pro — $349/month: Our most popular plan. 750 minutes, calendar integration, advanced analytics, SMS notifications, and custom AI voice.\n\n• Elite — $599/month: For high-volume shops and multi-location businesses. 1,500 minutes, CRM integration, upsell engine, priority support, and weekly reports.\n\nAll plans come with a 14-day free trial — no credit card required.",
   },
   {
     question: "Can I customize what the AI says?",
@@ -46,14 +46,14 @@ export default function FAQ() {
   return (
     <div className="min-h-screen bg-background text-foreground">
       {/* ─── Navbar ─── */}
-      <nav className="sticky top-0 z-50 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <nav className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-primary" />
             <span className="font-semibold tracking-wider uppercase text-sm">Baylio</span>
           </Link>
           <div className="hidden md:flex items-center gap-8">
-            <Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors font-medium text-foreground">FAQ</Link>
+            <Link href="/faq" className="text-sm text-foreground font-medium">FAQ</Link>
             <Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Contact</Link>
           </div>
           <div className="flex items-center gap-3">
@@ -70,7 +70,7 @@ export default function FAQ() {
       {/* ─── FAQ Content ─── */}
       <section className="container py-16 md:py-24">
         <div className="max-w-2xl mx-auto text-center mb-12">
-          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4">
+          <h1 className="text-4xl md:text-5xl font-bold tracking-tight mb-4 text-foreground">
             Frequently Asked Questions
           </h1>
           <p className="text-lg text-muted-foreground">
@@ -82,11 +82,11 @@ export default function FAQ() {
         <div className="max-w-3xl mx-auto">
           <Accordion type="single" collapsible className="w-full">
             {FAQ_ITEMS.map((item, i) => (
-              <AccordionItem key={i} value={`item-${i}`}>
-                <AccordionTrigger className="text-base text-left">
+              <AccordionItem key={i} value={`item-${i}`} className="border-border">
+                <AccordionTrigger className="text-base text-left text-foreground font-medium hover:no-underline hover:text-primary transition-colors py-4">
                   {item.question}
                 </AccordionTrigger>
-                <AccordionContent className="text-muted-foreground whitespace-pre-line">
+                <AccordionContent className="text-sm text-muted-foreground whitespace-pre-line leading-relaxed pb-4">
                   {item.answer}
                 </AccordionContent>
               </AccordionItem>
@@ -95,15 +95,15 @@ export default function FAQ() {
         </div>
 
         {/* ─── CTA ─── */}
-        <div className="max-w-2xl mx-auto text-center mt-16">
-          <h2 className="text-2xl font-bold mb-4">Still have questions?</h2>
+        <div className="max-w-2xl mx-auto text-center mt-16 p-8 bg-card border border-border rounded-sm">
+          <h2 className="text-2xl font-bold mb-4 text-foreground">Still have questions?</h2>
           <p className="text-muted-foreground mb-6">
             Our team is here to help. Reach out and we'll get back to you within
             24 hours.
           </p>
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
             <Link href="/contact">
-              <Button size="lg">
+              <Button size="lg" className="rounded-sm">
                 Contact Us
                 <ArrowRight className="ml-2 h-4 w-4" />
               </Button>
@@ -111,6 +111,7 @@ export default function FAQ() {
             <Button
               variant="outline"
               size="lg"
+              className="rounded-sm"
               onClick={() => { window.location.href = getLoginUrl(); }}
             >
               Get Started Free
@@ -120,7 +121,7 @@ export default function FAQ() {
       </section>
 
       {/* ─── Footer ─── */}
-      <footer className="border-t">
+      <footer className="border-t border-border">
         <div className="container py-8">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <Link href="/" className="flex items-center gap-2">

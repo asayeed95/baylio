@@ -136,3 +136,9 @@
 - [x] Design automated voice agent testing strategy using OpenClaw/Claude Code for 24/7 QA
 - [ ] Build Cost Analytics admin dashboard (Claude Code task) — real-time COGS per shop, Twilio + ElevenLabs usage, margin tracking
 - [x] Write SUPABASE_MIGRATION.md — complete one-day migration runbook from TiDB/MySQL to Supabase/PostgreSQL
+
+## Redesign Branch Fixes (before merge to main)
+- [ ] Contact form email notification to hello@baylio.io via nodemailer/sendmail
+- [ ] Contact.tsx dark theme (Industrial Minimal — match rest of redesign)
+- [ ] FAQ.tsx dark theme (Industrial Minimal — match rest of redesign)
+- [ ] Restore $149/month pricing plan in Landing.tsx pricing section
