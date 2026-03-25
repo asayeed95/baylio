@@ -1,33 +1,47 @@
+import { lazy, Suspense } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/NotFound";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useAuth } from "@/_core/hooks/useAuth";
-import Landing from "./pages/Landing";
-import Dashboard from "./pages/Dashboard";
-import ShopDetail from "./pages/ShopDetail";
-import AgentConfig from "./pages/AgentConfig";
-import CallLogs from "./pages/CallLogs";
-import Analytics from "./pages/Analytics";
-import MissedCallAudit from "./pages/MissedCallAudit";
-import Subscriptions from "./pages/Subscriptions";
-import Notifications from "./pages/Notifications";
-import ShopSettings from "./pages/ShopSettings";
-import PartnersPortal from "./pages/PartnersPortal";
-import PartnersLanding from "./pages/PartnersLanding";
-import PartnersReferrals from "./pages/PartnersReferrals";
-import PartnersEarnings from "./pages/PartnersEarnings";
-import PartnersNetwork from "./pages/PartnersNetwork";
-import PartnersResources from "./pages/PartnersResources";
-import PartnersSettings from "./pages/PartnersSettings";
-import AdminPortal from "./pages/AdminPortal";
-import CostAnalytics from "./pages/CostAnalytics";
-import FAQ from "./pages/FAQ";
-import Contact from "./pages/Contact";
-import Integrations from "./pages/Integrations";
-import CallScorecard from "./pages/CallScorecard";
+import { Loader2 } from "lucide-react";
+
+// ─── Lazy-loaded page components (code-split per route) ─────────────
+const Landing = lazy(() => import("./pages/Landing"));
+const Dashboard = lazy(() => import("./pages/Dashboard"));
+const ShopDetail = lazy(() => import("./pages/ShopDetail"));
+const AgentConfig = lazy(() => import("./pages/AgentConfig"));
+const CallLogs = lazy(() => import("./pages/CallLogs"));
+const Analytics = lazy(() => import("./pages/Analytics"));
+const MissedCallAudit = lazy(() => import("./pages/MissedCallAudit"));
+const Subscriptions = lazy(() => import("./pages/Subscriptions"));
+const Notifications = lazy(() => import("./pages/Notifications"));
+const ShopSettings = lazy(() => import("./pages/ShopSettings"));
+const PartnersPortal = lazy(() => import("./pages/PartnersPortal"));
+const PartnersLanding = lazy(() => import("./pages/PartnersLanding"));
+const PartnersReferrals = lazy(() => import("./pages/PartnersReferrals"));
+const PartnersEarnings = lazy(() => import("./pages/PartnersEarnings"));
+const PartnersNetwork = lazy(() => import("./pages/PartnersNetwork"));
+const PartnersResources = lazy(() => import("./pages/PartnersResources"));
+const PartnersSettings = lazy(() => import("./pages/PartnersSettings"));
+const AdminPortal = lazy(() => import("./pages/AdminPortal"));
+const CostAnalytics = lazy(() => import("./pages/CostAnalytics"));
+const FAQ = lazy(() => import("./pages/FAQ"));
+const Contact = lazy(() => import("./pages/Contact"));
+const Integrations = lazy(() => import("./pages/Integrations"));
+const CallScorecard = lazy(() => import("./pages/CallScorecard"));
+const Help = lazy(() => import("./pages/Help"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+
+// ─── Loading fallback ───────────────────────────────────────────────
+function PageLoader() {
+  return (
+    <div className="flex items-center justify-center min-h-[50vh]">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  );
+}
 
 /**
  * Detect which portal to render based on hostname or ?portal= query param.
@@ -50,24 +64,16 @@ function detectPortal(): "admin" | "partners" | "main" {
 
 /**
  * Root of the partners portal:
- * - Unauthenticated visitors → public landing page (commission tiers, calculator, CTA)
+ * - Unauthenticated visitors → public landing page
  * - Authenticated partners   → partner dashboard
  */
 function PartnersLandingOrDashboard() {
   const { isAuthenticated, loading } = useAuth();
-  // While auth is resolving, show the landing page (no flash of login wall)
   if (loading) return <PartnersLanding />;
-  // Authenticated partners go straight to their dashboard
   if (isAuthenticated) return <PartnersPortal />;
-  // Everyone else sees the public landing page
   return <PartnersLanding />;
 }
 
-/**
- * Partners portal router.
- * Sidebar nav uses /partners/* paths so they work on both
- * partners.baylio.io and baylio.io/partners/*.
- */
 function PartnersRouter() {
   return (
     <Switch>
@@ -105,15 +111,13 @@ function MainRouter() {
       <Route path="/shops/:id/analytics" component={Analytics} />
       <Route path="/shops/:id/settings" component={ShopSettings} />
       <Route path="/shops/:id/integrations" component={Integrations} />
-      <Route
-        path="/shops/:id/calls/:callId/scorecard"
-        component={CallScorecard}
-      />
+      <Route path="/shops/:id/calls/:callId/scorecard" component={CallScorecard} />
       <Route path="/audits" component={MissedCallAudit} />
       <Route path="/subscriptions" component={Subscriptions} />
       <Route path="/notifications" component={Notifications} />
       <Route path="/dashboard/costs" component={CostAnalytics} />
       <Route path="/faq" component={FAQ} />
+      <Route path="/help" component={Help} />
       <Route path="/contact" component={Contact} />
       {/* Partners routes accessible from main domain too */}
       <Route path="/partners" component={PartnersLandingOrDashboard} />
@@ -141,7 +145,9 @@ function App() {
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
           <Toaster />
-          <Router />
+          <Suspense fallback={<PageLoader />}>
+            <Router />
+          </Suspense>
         </TooltipProvider>
       </ThemeProvider>
     </ErrorBoundary>

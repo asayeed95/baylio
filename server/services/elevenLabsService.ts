@@ -16,6 +16,38 @@ import axios, { AxiosError } from "axios";
 const ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
 
 /**
+ * Retry helper with exponential backoff.
+ * Retries on 429 (rate limit) or 5xx (server error) up to maxRetries times.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  maxRetries: number = 3,
+  label: string = "API call"
+): Promise<T> {
+  let lastError: Error | undefined;
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await fn();
+    } catch (error: any) {
+      lastError = error;
+      const status = error?.response?.status || error?.status;
+      const isRetryable = status === 429 || (status >= 500 && status < 600);
+
+      if (!isRetryable || attempt === maxRetries) {
+        throw error;
+      }
+
+      const delayMs = Math.pow(2, attempt) * 1000; // 1s, 2s, 4s
+      console.warn(
+        `[ElevenLabs] ${label} failed (${status}), retrying in ${delayMs}ms (attempt ${attempt + 1}/${maxRetries})`
+      );
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+    }
+  }
+  throw lastError;
+}
+
+/**
  * Get the ElevenLabs API key from environment.
  */
 function getApiKey(): string {
@@ -57,9 +89,11 @@ export interface Voice {
  */
 export async function listVoices(): Promise<Voice[]> {
   try {
-    const client = createClient();
-    const response = await client.get("/v1/voices");
-    return response.data.voices || [];
+    return await withRetry(async () => {
+      const client = createClient();
+      const response = await client.get("/v1/voices");
+      return response.data.voices || [];
+    }, 3, "listVoices");
   } catch (error) {
     console.error("[ElevenLabs] Error listing voices:", error);
     throw new Error("Failed to list voices from ElevenLabs");
@@ -92,40 +126,26 @@ export async function createConversationalAgent(
   params: CreateAgentParams
 ): Promise<AgentResponse> {
   try {
-    const client = createClient();
-
-    const payload = {
-      conversation_config: {
-        agent: {
-          prompt: {
-            prompt: params.systemPrompt,
+    return await withRetry(async () => {
+      const client = createClient();
+      const payload = {
+        conversation_config: {
+          agent: {
+            prompt: { prompt: params.systemPrompt },
+            first_message: params.firstMessage,
+            language: params.language || "en",
           },
-          first_message: params.firstMessage,
-          language: params.language || "en",
+          tts: { voice_id: params.voiceId },
         },
-        tts: {
-          voice_id: params.voiceId,
-        },
-      },
-      name: params.name,
-      // Platform settings for Twilio integration
-      platform_settings: {
-        auth: {
-          // Allow Twilio to connect without additional auth
-          // (Twilio signature validation happens at our middleware layer)
-          enable_auth: false,
-        },
-      },
-    };
-
-    const response = await client.post("/v1/convai/agents/create", payload);
-    return response.data;
+        name: params.name,
+        platform_settings: { auth: { enable_auth: false } },
+      };
+      const response = await client.post("/v1/convai/agents/create", payload);
+      return response.data;
+    }, 3, "createAgent");
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error(
-      "[ElevenLabs] Error creating agent:",
-      axiosError.response?.data || axiosError.message
-    );
+    console.error("[ElevenLabs] Error creating agent:", axiosError.response?.data || axiosError.message);
     throw new Error(`Failed to create ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -138,49 +158,23 @@ export async function updateConversationalAgent(
   params: Partial<CreateAgentParams>
 ): Promise<AgentResponse> {
   try {
-    const client = createClient();
-
-    const payload: Record<string, unknown> = {
-      conversation_config: {},
-    };
-
-    if (params.systemPrompt || params.firstMessage || params.language) {
-      (payload.conversation_config as any).agent = {};
-      if (params.systemPrompt) {
-        (payload.conversation_config as any).agent.prompt = {
-          prompt: params.systemPrompt,
-        };
+    return await withRetry(async () => {
+      const client = createClient();
+      const payload: Record<string, unknown> = { conversation_config: {} };
+      if (params.systemPrompt || params.firstMessage || params.language) {
+        (payload.conversation_config as any).agent = {};
+        if (params.systemPrompt) (payload.conversation_config as any).agent.prompt = { prompt: params.systemPrompt };
+        if (params.firstMessage) (payload.conversation_config as any).agent.first_message = params.firstMessage;
+        if (params.language) (payload.conversation_config as any).agent.language = params.language;
       }
-      if (params.firstMessage) {
-        (payload.conversation_config as any).agent.first_message =
-          params.firstMessage;
-      }
-      if (params.language) {
-        (payload.conversation_config as any).agent.language = params.language;
-      }
-    }
-
-    if (params.voiceId) {
-      (payload.conversation_config as any).tts = {
-        voice_id: params.voiceId,
-      };
-    }
-
-    if (params.name) {
-      payload.name = params.name;
-    }
-
-    const response = await client.patch(
-      `/v1/convai/agents/${agentId}`,
-      payload
-    );
-    return response.data;
+      if (params.voiceId) (payload.conversation_config as any).tts = { voice_id: params.voiceId };
+      if (params.name) payload.name = params.name;
+      const response = await client.patch(`/v1/convai/agents/${agentId}`, payload);
+      return response.data;
+    }, 3, "updateAgent");
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error(
-      "[ElevenLabs] Error updating agent:",
-      axiosError.response?.data || axiosError.message
-    );
+    console.error("[ElevenLabs] Error updating agent:", axiosError.response?.data || axiosError.message);
     throw new Error(`Failed to update ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -192,14 +186,13 @@ export async function deleteConversationalAgent(
   agentId: string
 ): Promise<void> {
   try {
-    const client = createClient();
-    await client.delete(`/v1/convai/agents/${agentId}`);
+    await withRetry(async () => {
+      const client = createClient();
+      await client.delete(`/v1/convai/agents/${agentId}`);
+    }, 3, "deleteAgent");
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error(
-      "[ElevenLabs] Error deleting agent:",
-      axiosError.response?.data || axiosError.message
-    );
+    console.error("[ElevenLabs] Error deleting agent:", axiosError.response?.data || axiosError.message);
     throw new Error(`Failed to delete ElevenLabs agent: ${axiosError.message}`);
   }
 }
@@ -209,15 +202,14 @@ export async function deleteConversationalAgent(
  */
 export async function getAgent(agentId: string): Promise<AgentResponse> {
   try {
-    const client = createClient();
-    const response = await client.get(`/v1/convai/agents/${agentId}`);
-    return response.data;
+    return await withRetry(async () => {
+      const client = createClient();
+      const response = await client.get(`/v1/convai/agents/${agentId}`);
+      return response.data;
+    }, 3, "getAgent");
   } catch (error) {
     const axiosError = error as AxiosError;
-    console.error(
-      "[ElevenLabs] Error getting agent:",
-      axiosError.response?.data || axiosError.message
-    );
+    console.error("[ElevenLabs] Error getting agent:", axiosError.response?.data || axiosError.message);
     throw new Error(`Failed to get ElevenLabs agent: ${axiosError.message}`);
   }
 }

@@ -34,6 +34,7 @@ import {
   Handshake,
   BarChart2,
   Plug,
+  HelpCircle,
 } from "lucide-react";
 import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
@@ -60,6 +61,7 @@ const menuItems = [
   { icon: BarChart2, label: "Cost Analytics", path: "/dashboard/costs" },
   { icon: Plug, label: "Integrations", path: "/integrations" },
   { icon: Handshake, label: "Partners", path: "/partners" },
+  { icon: HelpCircle, label: "Help", path: "/help" },
 ];
 
 const SIDEBAR_WIDTH_KEY = "sidebar-width";

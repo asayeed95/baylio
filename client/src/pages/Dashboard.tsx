@@ -37,6 +37,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { usePostHog } from "@posthog/react";
+import OnboardingWizard from "@/components/OnboardingWizard";
 
 /**
  * Dashboard Page
@@ -95,9 +96,9 @@ function DashboardContent() {
           <Skeleton className="h-8 w-48" />
           <Skeleton className="h-10 w-32" />
         </div>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4 mt-8">
           {[1, 2, 3].map(i => (
-            <Skeleton key={i} className="h-48" />
+            <Skeleton key={i} className="h-[180px] rounded-xl border-border/50" />
           ))}
         </div>
       </div>
@@ -121,37 +122,11 @@ function DashboardContent() {
               Add Shop
             </Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Add New Shop</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 pt-2">
-              <div className="space-y-2">
-                <Label htmlFor="shop-name">Shop Name</Label>
-                <Input
-                  id="shop-name"
-                  placeholder="e.g., Mike's Auto Care"
-                  value={newShopName}
-                  onChange={e => setNewShopName(e.target.value)}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="shop-phone">Phone Number (optional)</Label>
-                <Input
-                  id="shop-phone"
-                  placeholder="e.g., (555) 123-4567"
-                  value={newShopPhone}
-                  onChange={e => setNewShopPhone(e.target.value)}
-                />
-              </div>
-              <Button
-                className="w-full"
-                onClick={handleCreateShop}
-                disabled={createShop.isPending}
-              >
-                {createShop.isPending ? "Creating..." : "Create Shop"}
-              </Button>
-            </div>
+          <DialogContent className="max-w-3xl p-0 overflow-hidden border-0 bg-transparent shadow-none">
+            <OnboardingWizard onComplete={() => {
+              setCreateOpen(false);
+              refetch();
+            }} />
           </DialogContent>
         </Dialog>
       </div>
@@ -160,19 +135,18 @@ function DashboardContent() {
       {!shops || shops.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Store />
+            <EmptyMedia variant="icon" className="mb-4 bg-primary/10 text-primary">
+              <Store className="w-8 h-8" />
             </EmptyMedia>
-            <EmptyTitle>No shops yet</EmptyTitle>
-            <EmptyDescription>
-              Add your first auto repair shop to get started with Baylio AI call
-              handling.
+            <EmptyTitle>Welcome to Baylio Dashboard</EmptyTitle>
+            <EmptyDescription className="max-w-md mx-auto">
+              Add your first auto repair shop to deploy your AI receptionist and start recovering missed revenue today.
             </EmptyDescription>
           </EmptyHeader>
           <EmptyContent>
-            <Button onClick={() => setCreateOpen(true)}>
+            <Button onClick={() => setCreateOpen(true)} size="lg" className="mt-4">
               <Plus className="h-4 w-4 mr-2" />
-              Add Your First Shop
+              Create Your First Shop
             </Button>
           </EmptyContent>
         </Empty>

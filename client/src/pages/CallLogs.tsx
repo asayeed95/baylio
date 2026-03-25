@@ -191,21 +191,47 @@ function CallLogsContent() {
 
       {/* Table */}
       {isLoading ? (
-        <div className="space-y-2">
-          {[1, 2, 3, 4, 5].map(i => (
-            <Skeleton key={i} className="h-12" />
-          ))}
-        </div>
+        <Card>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Caller</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Duration</TableHead>
+                <TableHead>Intent</TableHead>
+                <TableHead>Appointment</TableHead>
+                <TableHead>Revenue</TableHead>
+                <TableHead>Date</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <TableRow key={i}>
+                  <TableCell>
+                    <Skeleton className="h-4 w-24 mb-2" />
+                    <Skeleton className="h-3 w-16" />
+                  </TableCell>
+                  <TableCell><Skeleton className="h-5 w-20 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-32" /></TableCell>
+                  <TableCell><Skeleton className="h-5 w-16 rounded-full" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-12" /></TableCell>
+                  <TableCell><Skeleton className="h-4 w-24" /></TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </Card>
       ) : filteredCalls.length === 0 ? (
         <Empty>
           <EmptyHeader>
             <EmptyMedia variant="icon">
               <Phone />
             </EmptyMedia>
-            <EmptyTitle>No calls yet</EmptyTitle>
+            <EmptyTitle>Your AI is ready for its first call</EmptyTitle>
             <EmptyDescription>
-              Calls will appear here once your AI agent starts handling phone
-              calls.
+              Test your AI agent by calling your Twilio number: <strong>{shop?.twilioPhoneNumber || shop?.phone || "No number provisioned"}</strong>. 
+              Live call logs, transcriptions, and sentiment scores will appear here.
             </EmptyDescription>
           </EmptyHeader>
         </Empty>

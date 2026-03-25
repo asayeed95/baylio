@@ -249,6 +249,12 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
 
   console.log(`[Stripe] Payment failed for subscription: ${subscriptionId}`);
 
+  const subs = await db
+    .select()
+    .from(subscriptions)
+    .where(eq(subscriptions.stripeSubscriptionId, subscriptionId))
+    .limit(1);
+
   if (subs.length > 0) {
     const ph = getPostHog();
     ph.capture({

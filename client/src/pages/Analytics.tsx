@@ -70,9 +70,14 @@ function AnalyticsContent() {
     return (
       <div className="space-y-6">
         <Skeleton className="h-8 w-64" />
-        <div className="grid md:grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {[1, 2, 3, 4].map(i => (
-            <Skeleton key={i} className="h-32" />
+            <Skeleton key={`p-${i}`} className="h-28 rounded-xl" />
+          ))}
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-2">
+          {[1, 2, 3, 4].map(i => (
+            <Skeleton key={`s-${i}`} className="h-24 rounded-xl" />
           ))}
         </div>
       </div>
@@ -80,6 +85,31 @@ function AnalyticsContent() {
   }
 
   const totalCalls = analytics?.totalCalls ?? 0;
+
+  if (totalCalls === 0) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="flex-1">
+            <h1 className="text-2xl font-semibold tracking-tight">Analytics</h1>
+            <p className="text-sm text-muted-foreground">{shop?.name}</p>
+          </div>
+        </div>
+        <div className="py-24 text-center border-2 border-dashed rounded-xl bg-card">
+          <div className="w-16 h-16 bg-primary/10 rounded-full flex items-center justify-center mx-auto mb-4">
+            <TrendingUp className="h-8 w-8 text-primary" />
+          </div>
+          <h2 className="text-xl font-bold tracking-tight mb-2">Awaiting the First Call</h2>
+          <p className="text-muted-foreground max-w-sm mx-auto">
+            Once {shop?.name} receives its first AI-handled call, your performance metrics, revenue estimations, and sentiment scores will populate here.
+          </p>
+        </div>
+      </div>
+    );
+  }
   const appointmentsBooked = analytics?.appointmentsBooked ?? 0;
   const missedCalls = analytics?.missedCalls ?? 0;
   const totalRevenue = parseFloat(analytics?.totalRevenue ?? "0");
