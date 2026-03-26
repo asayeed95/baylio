@@ -66,9 +66,9 @@ export async function seedDemoShop(
       { name: "State Inspection", category: "Inspection", price: 25 },
       { name: "Pre-Purchase Inspection", category: "Inspection", price: 149 },
     ],
-  });
+  }).returning({ id: shops.id });
 
-  const shopId = shopResult[0].insertId;
+  const shopId = shopResult[0].id;
 
   // Create agent config
   await db.insert(agentConfigs).values({
@@ -183,7 +183,7 @@ export async function seedDemoShop(
           Date.now() - Math.floor(Math.random() * 7) * 24 * 60 * 60 * 1000
         ),
       })
-      .onDuplicateKeyUpdate({ set: { callCount: 1 } });
+      .onConflictDoUpdate({ target: callerProfiles.phone, set: { callCount: 1 } });
   }
 
   return shopId;

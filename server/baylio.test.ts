@@ -165,7 +165,7 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([mockOrg]),
   createOrganization: vi.fn().mockResolvedValue(1),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
 }));
 
 // ─── Test Helpers ───────────────────────────────────────────────────────
@@ -174,7 +174,7 @@ type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 const testUser: AuthenticatedUser = {
   id: 1,
-  openId: "test-user-openid",
+  supabaseId: "test-user-openid",
   email: "test@baylio.io",
   name: "Test User",
   loginMethod: "manus",
@@ -204,7 +204,7 @@ describe("auth", () => {
     const caller = appRouter.createCaller(createContext(testUser));
     const result = await caller.auth.me();
     expect(result).toBeDefined();
-    expect(result?.openId).toBe("test-user-openid");
+    expect(result?.supabaseId).toBe("test-user-openid");
     expect(result?.email).toBe("test@baylio.io");
   });
 

@@ -297,7 +297,8 @@ async function ensureCallerProfile(phone: string): Promise<void> {
         callCount: 1,
         lastCalledAt: new Date(),
       })
-      .onDuplicateKeyUpdate({
+      .onConflictDoUpdate({
+        target: callerProfiles.phone,
         set: {
           callCount: sql`${callerProfiles.callCount} + 1`,
           lastCalledAt: new Date(),
@@ -440,7 +441,8 @@ twilioRouter.post("/status", async (req: Request, res: Response) => {
                 callStartedAt: new Date(),
                 callEndedAt: new Date(),
               })
-              .onDuplicateKeyUpdate({
+              .onConflictDoUpdate({
+                target: callLogs.twilioCallSid,
                 set: {
                   status: CallStatus === "completed" ? "completed" : "missed",
                   duration: parseInt(CallDuration) || 0,

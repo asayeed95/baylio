@@ -18,7 +18,7 @@ function createAuthContext(): {
 
   const user: AuthenticatedUser = {
     id: 1,
-    openId: "sample-user",
+    supabaseId: "sample-user",
     email: "sample@example.com",
     name: "Sample User",
     loginMethod: "manus",

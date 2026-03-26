@@ -33,7 +33,7 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([]),
   createOrganization: vi.fn(),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
   createContactSubmission: vi.fn().mockResolvedValue(1),
 }));
 

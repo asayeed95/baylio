@@ -72,30 +72,39 @@ googleAuthRouter.get("/callback", async (req: Request, res: Response) => {
 
     // Upsert integration for both Calendar and Sheets (same tokens)
     for (const provider of ["google_calendar", "google_sheets"] as const) {
-      await db
-        .insert(shopIntegrations)
-        .values({
+      const existing = await db
+        .select({ id: shopIntegrations.id })
+        .from(shopIntegrations)
+        .where(
+          and(
+            eq(shopIntegrations.shopId, parseInt(shopId)),
+            eq(shopIntegrations.provider, provider)
+          )
+        )
+        .limit(1);
+
+      const tokenData = {
+        accessToken: tokens.access_token || null,
+        refreshToken: tokens.refresh_token || null,
+        tokenExpiresAt: tokens.expiry_date
+          ? new Date(tokens.expiry_date)
+          : null,
+        externalAccountId: userInfo.data.email || null,
+        isActive: true,
+      };
+
+      if (existing.length > 0) {
+        await db
+          .update(shopIntegrations)
+          .set(tokenData)
+          .where(eq(shopIntegrations.id, existing[0].id));
+      } else {
+        await db.insert(shopIntegrations).values({
           shopId: parseInt(shopId),
           provider,
-          accessToken: tokens.access_token || null,
-          refreshToken: tokens.refresh_token || null,
-          tokenExpiresAt: tokens.expiry_date
-            ? new Date(tokens.expiry_date)
-            : null,
-          externalAccountId: userInfo.data.email || null,
-          isActive: true,
-        })
-        .onDuplicateKeyUpdate({
-          set: {
-            accessToken: tokens.access_token || null,
-            refreshToken: tokens.refresh_token || null,
-            tokenExpiresAt: tokens.expiry_date
-              ? new Date(tokens.expiry_date)
-              : null,
-            externalAccountId: userInfo.data.email || null,
-            isActive: true,
-          },
+          ...tokenData,
         });
+      }
     }
 
     res.redirect(`${origin}/shops/${shopId}/integrations?google=connected`);

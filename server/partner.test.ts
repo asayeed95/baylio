@@ -79,7 +79,7 @@ const { mockPartner, mockReferral, mockPayout } = vi.hoisted(() => {
 const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
   let responses: Array<unknown[]> = [];
   let callIndex = 0;
-  let mockValues = vi.fn().mockResolvedValue([{ insertId: 1 }]);
+  let mockReturningResult = [{ id: 1 }];
 
   const makeSetWhere: () => any = () => ({
     where: vi.fn().mockResolvedValue(undefined),
@@ -131,7 +131,11 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     db.insert = vi.fn().mockReturnValue({
       values: vi
         .fn()
-        .mockImplementation((...args: any[]) => mockValues(...args)),
+        .mockImplementation((...args: any[]) => ({
+          returning: vi.fn().mockResolvedValue(mockReturningResult),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(mockReturningResult),
+          then: (resolve: Function) => resolve(mockReturningResult),
+        })),
     });
     db.update = vi.fn().mockReturnValue({
       set: vi.fn().mockImplementation(() => makeSetWhere()),
@@ -147,13 +151,13 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     resetDbMock: () => {
       responses = [];
       callIndex = 0;
-      mockValues = vi.fn().mockResolvedValue([{ insertId: 1 }]);
+      mockReturningResult = [{ id: 1 }];
     },
     setDbResponses: (r: Array<unknown[]>, valuesResult?: any) => {
       responses = r;
       callIndex = 0;
       if (valuesResult) {
-        mockValues = vi.fn().mockResolvedValue(valuesResult);
+        mockReturningResult = valuesResult;
       }
     },
   };
@@ -186,14 +190,14 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([]),
   createOrganization: vi.fn(),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
 }));
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 const testUser: AuthenticatedUser = {
   id: 1,
-  openId: "test-partner-openid",
+  supabaseId: "test-partner-openid",
   email: "test@baylio.io",
   name: "Test Partner",
   loginMethod: "manus",
@@ -250,7 +254,7 @@ describe("partner", () => {
     it("creates a new partner profile with referral code", async () => {
       setDbResponses(
         [[]], // existing check returns empty
-        [{ insertId: 42 }]
+        [{ id: 42 }]
       );
 
       const caller = appRouter.createCaller(createContext());
@@ -387,7 +391,7 @@ describe("partner", () => {
     });
 
     it("creates payout for valid amount", async () => {
-      setDbResponses([[mockPartner]], [{ insertId: 5 }]);
+      setDbResponses([[mockPartner]], [{ id: 5 }]);
 
       const caller = appRouter.createCaller(createContext());
       const result = await caller.partner.requestPayout({ amount: 100 });
