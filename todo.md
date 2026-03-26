@@ -165,3 +165,18 @@
 - [x] Contact.tsx dark theme (Industrial Minimal — match rest of redesign)
 - [x] FAQ.tsx dark theme (Industrial Minimal — match rest of redesign)
 - [x] Restore $149/month pricing plan in Landing.tsx pricing section
+
+## Critical Bugs — March 25, 2026 (Post-Merge)
+- [x] BUG: White background instead of dark theme — Fixed: reverted to defaultTheme="dark"
+- [x] BUG: Login redirects back to landing page — Fixed: restored /onboarding route in App.tsx
+- [x] BUG: Production application error on baylio.io — Fixed: removed broken PostHog inline script, fixed PostHog init env var
+- [x] BUG: Phone number (844-875-2441) — Verified working: root cause was baylio.io being down (PostHog crash broke Twilio webhook)
+
+## Critical Bugs — March 25, 2026 (Round 2)
+- [ ] BUG: Phone calls not connecting — 3 rings then nothing. Twilio signature validation likely blocking real calls
+- [ ] BUG: Admin portal login not working at admin.baylio.io
+- [ ] BUG: Twilio fallback URL was pointing to dead sandbox — FIXED
+
+## Claude Code Handoff
+- [x] Write CLAUDE_HANDOFF.md — comprehensive lead developer briefing document (645 lines)
+- [x] Push CLAUDE_HANDOFF.md to GitHub
