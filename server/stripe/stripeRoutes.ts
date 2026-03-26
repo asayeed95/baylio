@@ -13,7 +13,8 @@
 import express from "express";
 import Stripe from "stripe";
 import { eq } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import { subscriptions, shops, users } from "../../drizzle/schema";
 import { TIERS, SETUP_FEES, getTierConfig } from "./products";
 import { PostHog } from "posthog-node";
@@ -36,7 +37,8 @@ function getStripe(): Stripe {
 
 async function getDb() {
   if (!process.env.DATABASE_URL) return null;
-  return drizzle(process.env.DATABASE_URL);
+  const client = postgres(process.env.DATABASE_URL, { prepare: false });
+  return drizzle(client);
 }
 
 // ─── Webhook Handler ────────────────────────────────────────────────

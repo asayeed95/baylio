@@ -45,8 +45,6 @@ const { mockShop } = vi.hoisted(() => ({
 const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
   let responses: Array<unknown[]> = [];
   let callIndex = 0;
-  const mockValues = vi.fn().mockResolvedValue([{ insertId: 1 }]);
-
   const makeSetWhere: () => any = () => ({
     where: vi.fn().mockResolvedValue(undefined),
   });
@@ -92,8 +90,9 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     db.select = vi.fn().mockImplementation(() => createChain());
     db.insert = vi.fn().mockReturnValue({
       values: vi.fn().mockImplementation((...args: any[]) => ({
-        onDuplicateKeyUpdate: vi.fn().mockResolvedValue([{ insertId: 1 }]),
-        then: (resolve: Function) => resolve([{ insertId: 1 }]),
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        onConflictDoUpdate: vi.fn().mockResolvedValue([{ id: 1 }]),
+        then: (resolve: Function) => resolve([{ id: 1 }]),
       })),
     });
     db.update = vi.fn().mockReturnValue({
@@ -144,7 +143,7 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([]),
   createOrganization: vi.fn(),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
 }));
 
 // Mock Google APIs
@@ -181,7 +180,7 @@ type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 const testUser: AuthenticatedUser = {
   id: 1,
-  openId: "test-user-openid",
+  supabaseId: "test-user-openid",
   email: "test@baylio.io",
   name: "Test User",
   loginMethod: "manus",

@@ -84,22 +84,35 @@ export const integrationRouter = router({
           message: "Database unavailable",
         });
 
-      await db
-        .insert(shopIntegrations)
-        .values({
+      const existing = await db
+        .select({ id: shopIntegrations.id })
+        .from(shopIntegrations)
+        .where(
+          and(
+            eq(shopIntegrations.shopId, input.shopId),
+            eq(shopIntegrations.provider, input.provider)
+          )
+        )
+        .limit(1);
+
+      if (existing.length > 0) {
+        await db
+          .update(shopIntegrations)
+          .set({
+            settings: input.settings || {},
+            ...(input.accessToken ? { accessToken: input.accessToken } : {}),
+            isActive: true,
+          })
+          .where(eq(shopIntegrations.id, existing[0].id));
+      } else {
+        await db.insert(shopIntegrations).values({
           shopId: input.shopId,
           provider: input.provider,
           settings: input.settings || {},
           accessToken: input.accessToken || null,
           isActive: true,
-        })
-        .onDuplicateKeyUpdate({
-          set: {
-            settings: input.settings || {},
-            ...(input.accessToken ? { accessToken: input.accessToken } : {}),
-            isActive: true,
-          },
         });
+      }
 
       return { success: true };
     }),

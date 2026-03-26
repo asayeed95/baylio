@@ -1,25 +1,50 @@
 import {
-  int,
-  mysqlEnum,
-  mysqlTable,
+  serial,
+  integer,
+  pgTable,
+  pgEnum,
   text,
   timestamp,
   varchar,
   boolean,
-  json,
-  decimal,
-} from "drizzle-orm/mysql-core";
+  jsonb,
+  numeric,
+  uniqueIndex,
+} from "drizzle-orm/pg-core";
+
+// ─── Enums ──────────────────────────────────────────────────────────
+export const roleEnum = pgEnum("role", ["user", "admin"]);
+export const directionEnum = pgEnum("direction", ["inbound", "outbound"]);
+export const callStatusEnum = pgEnum("call_status", ["completed", "missed", "voicemail", "transferred", "failed"]);
+export const auditStatusEnum = pgEnum("audit_status", ["pending", "active", "completed", "expired"]);
+export const dayPartEnum = pgEnum("day_part", ["morning", "afternoon", "evening", "night"]);
+export const urgencyLevelEnum = pgEnum("urgency_level", ["low", "medium", "high", "emergency"]);
+export const tierEnum = pgEnum("tier", ["trial", "starter", "pro", "elite"]);
+export const subStatusEnum = pgEnum("sub_status", ["active", "past_due", "canceled", "trialing"]);
+export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "annual"]);
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "new_call", "high_value_lead", "missed_call", "system_issue",
+  "weekly_summary", "usage_warning", "audit_complete", "payment_issue",
+]);
+export const partnerTierEnum = pgEnum("partner_tier", ["bronze", "silver", "gold", "platinum"]);
+export const partnerStatusEnum = pgEnum("partner_status", ["pending", "active", "suspended"]);
+export const payoutMethodEnum = pgEnum("payout_method", ["stripe", "paypal", "bank_transfer"]);
+export const referralStatusEnum = pgEnum("referral_status", ["pending", "signed_up", "subscribed", "churned"]);
+export const payoutStatusEnum = pgEnum("payout_status", ["pending", "processing", "completed", "failed"]);
+export const callerRoleEnum = pgEnum("caller_role", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]);
+export const integrationProviderEnum = pgEnum("integration_provider", ["google_calendar", "google_sheets", "shopmonkey", "tekmetric", "hubspot"]);
+export const syncStatusEnum = pgEnum("sync_status", ["success", "failed"]);
 
 // ─── Users ───────────────────────────────────────────────────────────
-export const users = mysqlTable("users", {
-  id: int("id").autoincrement().primaryKey(),
-  openId: varchar("openId", { length: 64 }).notNull().unique(),
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  supabaseId: varchar("supabaseId", { length: 128 }).notNull().unique(),
   name: text("name"),
   email: varchar("email", { length: 320 }),
   loginMethod: varchar("loginMethod", { length: 64 }),
-  role: mysqlEnum("role", ["user", "admin"]).default("user").notNull(),
+  role: roleEnum("role").default("user").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
   lastSignedIn: timestamp("lastSignedIn").defaultNow().notNull(),
 });
 
@@ -27,22 +52,22 @@ export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 
 // ─── Organizations (Multi-location grouping) ─────────────────────────
-export const organizations = mysqlTable("organizations", {
-  id: int("id").autoincrement().primaryKey(),
-  ownerId: int("ownerId").notNull(),
+export const organizations = pgTable("organizations", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("ownerId").notNull(),
   name: varchar("name", { length: 255 }).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = typeof organizations.$inferInsert;
 
 // ─── Shops ───────────────────────────────────────────────────────────
-export const shops = mysqlTable("shops", {
-  id: int("id").autoincrement().primaryKey(),
-  ownerId: int("ownerId").notNull(),
-  organizationId: int("organizationId"),
+export const shops = pgTable("shops", {
+  id: serial("id").primaryKey(),
+  ownerId: integer("ownerId").notNull(),
+  organizationId: integer("organizationId"),
   name: varchar("name", { length: 255 }).notNull(),
   phone: varchar("phone", { length: 32 }),
   address: text("address"),
@@ -50,86 +75,54 @@ export const shops = mysqlTable("shops", {
   state: varchar("state", { length: 64 }),
   zip: varchar("zip", { length: 16 }),
   timezone: varchar("timezone", { length: 64 }).default("America/New_York"),
-  businessHours:
-    json("businessHours").$type<
-      Record<string, { open: string; close: string; closed: boolean }>
-    >(),
-  serviceCatalog:
-    json("serviceCatalog").$type<
-      Array<{
-        name: string;
-        category: string;
-        price?: number;
-        description?: string;
-      }>
-    >(),
+  businessHours: jsonb("businessHours").$type<Record<string, { open: string; close: string; closed: boolean }>>(),
+  serviceCatalog: jsonb("serviceCatalog").$type<Array<{ name: string; category: string; price?: number; description?: string }>>(),
   isActive: boolean("isActive").default(true).notNull(),
   smsFollowUpEnabled: boolean("smsFollowUpEnabled").default(true).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
   twilioPhoneSid: varchar("twilioPhoneSid", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Shop = typeof shops.$inferSelect;
 export type InsertShop = typeof shops.$inferInsert;
 
 // ─── AI Agent Config ─────────────────────────────────────────────────
-export const agentConfigs = mysqlTable("agent_configs", {
-  id: int("id").autoincrement().primaryKey(),
-  shopId: int("shopId").notNull(),
-  ownerId: int("ownerId").notNull().default(0),
+export const agentConfigs = pgTable("agent_configs", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shopId").notNull(),
+  ownerId: integer("ownerId").notNull().default(0),
   voiceId: varchar("voiceId", { length: 128 }),
   voiceName: varchar("voiceName", { length: 128 }),
   agentName: varchar("agentName", { length: 128 }).default("Baylio"),
   systemPrompt: text("systemPrompt"),
   greeting: text("greeting"),
   upsellEnabled: boolean("upsellEnabled").default(true).notNull(),
-  upsellRules:
-    json("upsellRules").$type<
-      Array<{
-        symptom: string;
-        service: string;
-        adjacent: string;
-        confidence: number;
-      }>
-    >(),
-  confidenceThreshold: decimal("confidenceThreshold", {
-    precision: 3,
-    scale: 2,
-  }).default("0.80"),
-  maxUpsellsPerCall: int("maxUpsellsPerCall").default(1),
+  upsellRules: jsonb("upsellRules").$type<Array<{ symptom: string; service: string; adjacent: string; confidence: number }>>(),
+  confidenceThreshold: numeric("confidenceThreshold", { precision: 3, scale: 2 }).default("0.80"),
+  maxUpsellsPerCall: integer("maxUpsellsPerCall").default(1),
   language: varchar("language", { length: 16 }).default("en"),
   elevenLabsAgentId: varchar("elevenLabsAgentId", { length: 128 }),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type AgentConfig = typeof agentConfigs.$inferSelect;
 export type InsertAgentConfig = typeof agentConfigs.$inferInsert;
 
 // ─── Call Logs ───────────────────────────────────────────────────────
-export const callLogs = mysqlTable("call_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  shopId: int("shopId").notNull(),
-  ownerId: int("ownerId").notNull().default(0),
+export const callLogs = pgTable("call_logs", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shopId").notNull(),
+  ownerId: integer("ownerId").notNull().default(0),
   twilioCallSid: varchar("twilioCallSid", { length: 128 }).unique(),
   callerPhone: varchar("callerPhone", { length: 32 }),
   callerName: varchar("callerName", { length: 255 }),
-  direction: mysqlEnum("direction", ["inbound", "outbound"])
-    .default("inbound")
-    .notNull(),
-  status: mysqlEnum("status", [
-    "completed",
-    "missed",
-    "voicemail",
-    "transferred",
-    "failed",
-  ])
-    .default("completed")
-    .notNull(),
-  duration: int("duration").default(0),
+  direction: directionEnum("direction").default("inbound").notNull(),
+  status: callStatusEnum("status").default("completed").notNull(),
+  duration: integer("duration").default(0),
   recordingUrl: text("recordingUrl"),
   transcription: text("transcription"),
   summary: text("summary"),
@@ -138,19 +131,14 @@ export const callLogs = mysqlTable("call_logs", {
   appointmentBooked: boolean("appointmentBooked").default(false),
   upsellAttempted: boolean("upsellAttempted").default(false),
   upsellAccepted: boolean("upsellAccepted").default(false),
-  sentimentScore: decimal("sentimentScore", { precision: 3, scale: 2 }),
-  qualityScore: decimal("qualityScore", { precision: 3, scale: 2 }),
-  qaFlags: json("qaFlags").$type<string[]>(),
-  estimatedRevenue: decimal("estimatedRevenue", { precision: 10, scale: 2 }),
-  scorecardData: json("scorecardData").$type<{
-    greeting: number;
-    problemId: number;
-    serviceRec: number;
-    upsell: number;
-    appointment: number;
-    closing: number;
-    overall: number;
-    suggestions: string[];
+  sentimentScore: numeric("sentimentScore", { precision: 3, scale: 2 }),
+  qualityScore: numeric("qualityScore", { precision: 3, scale: 2 }),
+  qaFlags: jsonb("qaFlags").$type<string[]>(),
+  estimatedRevenue: numeric("estimatedRevenue", { precision: 10, scale: 2 }),
+  scorecardData: jsonb("scorecardData").$type<{
+    greeting: number; problemId: number; serviceRec: number;
+    upsell: number; appointment: number; closing: number;
+    overall: number; suggestions: string[];
   }>(),
   callStartedAt: timestamp("callStartedAt"),
   callEndedAt: timestamp("callEndedAt"),
@@ -161,64 +149,46 @@ export type CallLog = typeof callLogs.$inferSelect;
 export type InsertCallLog = typeof callLogs.$inferInsert;
 
 // ─── Missed Call Audits ──────────────────────────────────────────────
-export const missedCallAudits = mysqlTable("missed_call_audits", {
-  id: int("id").autoincrement().primaryKey(),
-  shopId: int("shopId"),
-  ownerId: int("ownerId").notNull().default(0),
+export const missedCallAudits = pgTable("missed_call_audits", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shopId"),
+  ownerId: integer("ownerId").notNull().default(0),
   prospectName: varchar("prospectName", { length: 255 }),
   prospectEmail: varchar("prospectEmail", { length: 320 }),
   prospectPhone: varchar("prospectPhone", { length: 32 }),
   shopName: varchar("shopName", { length: 255 }),
   forwardingNumber: varchar("forwardingNumber", { length: 32 }),
   forwardingNumberSid: varchar("forwardingNumberSid", { length: 64 }),
-  status: mysqlEnum("auditStatus", [
-    "pending",
-    "active",
-    "completed",
-    "expired",
-  ])
-    .default("pending")
-    .notNull(),
+  status: auditStatusEnum("status").default("pending").notNull(),
   startDate: timestamp("startDate"),
   endDate: timestamp("endDate"),
-  totalMissedCalls: int("totalMissedCalls").default(0),
-  estimatedLostRevenue: decimal("estimatedLostRevenue", {
-    precision: 10,
-    scale: 2,
-  }),
+  totalMissedCalls: integer("totalMissedCalls").default(0),
+  estimatedLostRevenue: numeric("estimatedLostRevenue", { precision: 10, scale: 2 }),
   scorecardUrl: text("scorecardUrl"),
-  scorecardData: json("scorecardData").$type<{
+  scorecardData: jsonb("scorecardData").$type<{
     callsByDayPart: Record<string, number>;
     intentBreakdown: Record<string, number>;
     urgencyBreakdown: Record<string, number>;
     estimatedRevenueRange: { low: number; high: number };
   }>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type MissedCallAudit = typeof missedCallAudits.$inferSelect;
 export type InsertMissedCallAudit = typeof missedCallAudits.$inferInsert;
 
 // ─── Audit Call Entries ──────────────────────────────────────────────
-export const auditCallEntries = mysqlTable("audit_call_entries", {
-  id: int("id").autoincrement().primaryKey(),
-  auditId: int("auditId").notNull(),
+export const auditCallEntries = pgTable("audit_call_entries", {
+  id: serial("id").primaryKey(),
+  auditId: integer("auditId").notNull(),
   callerPhone: varchar("callerPhone", { length: 32 }),
   callTimestamp: timestamp("callTimestamp"),
-  dayPart: mysqlEnum("dayPart", ["morning", "afternoon", "evening", "night"]),
+  dayPart: dayPartEnum("dayPart"),
   intentCategory: varchar("intentCategory", { length: 128 }),
-  urgencyLevel: mysqlEnum("urgencyLevel", [
-    "low",
-    "medium",
-    "high",
-    "emergency",
-  ]),
-  estimatedTicketValue: decimal("estimatedTicketValue", {
-    precision: 10,
-    scale: 2,
-  }),
-  bookingLikelihood: decimal("bookingLikelihood", { precision: 3, scale: 2 }),
+  urgencyLevel: urgencyLevelEnum("urgencyLevel"),
+  estimatedTicketValue: numeric("estimatedTicketValue", { precision: 10, scale: 2 }),
+  bookingLikelihood: numeric("bookingLikelihood", { precision: 3, scale: 2 }),
   isRepeatCaller: boolean("isRepeatCaller").default(false),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
@@ -227,48 +197,40 @@ export type AuditCallEntry = typeof auditCallEntries.$inferSelect;
 export type InsertAuditCallEntry = typeof auditCallEntries.$inferInsert;
 
 // ─── Subscriptions ───────────────────────────────────────────────────
-export const subscriptions = mysqlTable("subscriptions", {
-  id: int("id").autoincrement().primaryKey(),
-  shopId: int("shopId").notNull(),
-  ownerId: int("ownerId").notNull().default(0),
-  organizationId: int("organizationId"),
-  tier: mysqlEnum("tier", ["trial", "starter", "pro", "elite"])
-    .default("starter")
-    .notNull(),
-  status: mysqlEnum("subStatus", ["active", "past_due", "canceled", "trialing"])
-    .default("active")
-    .notNull(),
+export const subscriptions = pgTable("subscriptions", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shopId").notNull(),
+  ownerId: integer("ownerId").notNull().default(0),
+  organizationId: integer("organizationId"),
+  tier: tierEnum("tier").default("starter").notNull(),
+  status: subStatusEnum("status").default("active").notNull(),
   stripeCustomerId: varchar("stripeCustomerId", { length: 128 }),
   stripeSubscriptionId: varchar("stripeSubscriptionId", { length: 128 }),
-  includedMinutes: int("includedMinutes").default(300).notNull(),
-  usedMinutes: int("usedMinutes").default(0).notNull(),
-  overageRate: decimal("overageRate", { precision: 5, scale: 4 }).default(
-    "0.1500"
-  ),
-  billingCycle: mysqlEnum("billingCycle", ["monthly", "annual"])
-    .default("monthly")
-    .notNull(),
+  includedMinutes: integer("includedMinutes").default(300).notNull(),
+  usedMinutes: integer("usedMinutes").default(0).notNull(),
+  overageRate: numeric("overageRate", { precision: 5, scale: 4 }).default("0.1500"),
+  billingCycle: billingCycleEnum("billingCycle").default("monthly").notNull(),
   setupFeePaid: boolean("setupFeePaid").default(false),
-  setupFeeAmount: decimal("setupFeeAmount", { precision: 10, scale: 2 }),
+  setupFeeAmount: numeric("setupFeeAmount", { precision: 10, scale: 2 }),
   currentPeriodStart: timestamp("currentPeriodStart"),
   currentPeriodEnd: timestamp("currentPeriodEnd"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Subscription = typeof subscriptions.$inferSelect;
 export type InsertSubscription = typeof subscriptions.$inferInsert;
 
 // ─── Usage Records ───────────────────────────────────────────────────
-export const usageRecords = mysqlTable("usage_records", {
-  id: int("id").autoincrement().primaryKey(),
-  subscriptionId: int("subscriptionId").notNull(),
-  shopId: int("shopId").notNull(),
-  ownerId: int("ownerId").notNull().default(0),
-  callLogId: int("callLogId"),
-  minutesUsed: decimal("minutesUsed", { precision: 8, scale: 2 }).notNull(),
+export const usageRecords = pgTable("usage_records", {
+  id: serial("id").primaryKey(),
+  subscriptionId: integer("subscriptionId").notNull(),
+  shopId: integer("shopId").notNull(),
+  ownerId: integer("ownerId").notNull().default(0),
+  callLogId: integer("callLogId"),
+  minutesUsed: numeric("minutesUsed", { precision: 8, scale: 2 }).notNull(),
   isOverage: boolean("isOverage").default(false).notNull(),
-  overageCharge: decimal("overageCharge", { precision: 10, scale: 2 }),
+  overageCharge: numeric("overageCharge", { precision: 10, scale: 2 }),
   recordedAt: timestamp("recordedAt").defaultNow().notNull(),
 });
 
@@ -276,24 +238,15 @@ export type UsageRecord = typeof usageRecords.$inferSelect;
 export type InsertUsageRecord = typeof usageRecords.$inferInsert;
 
 // ─── Notifications ───────────────────────────────────────────────────
-export const notifications = mysqlTable("notifications", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull(),
-  shopId: int("shopId"),
-  type: mysqlEnum("notificationType", [
-    "new_call",
-    "high_value_lead",
-    "missed_call",
-    "system_issue",
-    "weekly_summary",
-    "usage_warning",
-    "audit_complete",
-    "payment_issue",
-  ]).notNull(),
+export const notifications = pgTable("notifications", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull(),
+  shopId: integer("shopId"),
+  type: notificationTypeEnum("type").notNull(),
   title: varchar("title", { length: 255 }).notNull(),
   message: text("message"),
   isRead: boolean("isRead").default(false).notNull(),
-  metadata: json("metadata").$type<Record<string, unknown>>(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 
@@ -301,31 +254,17 @@ export type Notification = typeof notifications.$inferSelect;
 export type InsertNotification = typeof notifications.$inferInsert;
 
 // ─── Partners ───────────────────────────────────────────────────────
-export const partners = mysqlTable("partners", {
-  id: int("id").autoincrement().primaryKey(),
-  userId: int("userId").notNull().unique(),
+export const partners = pgTable("partners", {
+  id: serial("id").primaryKey(),
+  userId: integer("userId").notNull().unique(),
   referralCode: varchar("referralCode", { length: 32 }).notNull().unique(),
-  commissionRate: decimal("commissionRate", { precision: 5, scale: 4 })
-    .default("0.2000")
-    .notNull(),
-  tier: mysqlEnum("partnerTier", ["bronze", "silver", "gold", "platinum"])
-    .default("bronze")
-    .notNull(),
-  status: mysqlEnum("partnerStatus", ["pending", "active", "suspended"])
-    .default("pending")
-    .notNull(),
-  totalReferrals: int("totalReferrals").default(0).notNull(),
-  totalEarnings: decimal("totalEarnings", { precision: 10, scale: 2 })
-    .default("0.00")
-    .notNull(),
-  pendingEarnings: decimal("pendingEarnings", { precision: 10, scale: 2 })
-    .default("0.00")
-    .notNull(),
-  payoutMethod: mysqlEnum("payoutMethod", [
-    "stripe",
-    "paypal",
-    "bank_transfer",
-  ]).default("stripe"),
+  commissionRate: numeric("commissionRate", { precision: 5, scale: 4 }).default("0.2000").notNull(),
+  tier: partnerTierEnum("tier").default("bronze").notNull(),
+  status: partnerStatusEnum("status").default("pending").notNull(),
+  totalReferrals: integer("totalReferrals").default(0).notNull(),
+  totalEarnings: numeric("totalEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  pendingEarnings: numeric("pendingEarnings", { precision: 10, scale: 2 }).default("0.00").notNull(),
+  payoutMethod: payoutMethodEnum("payoutMethod").default("stripe"),
   payoutEmail: varchar("payoutEmail", { length: 320 }),
   companyName: varchar("companyName", { length: 255 }),
   website: varchar("website", { length: 512 }),
@@ -333,54 +272,38 @@ export const partners = mysqlTable("partners", {
   notifyPayouts: boolean("notifyPayouts").default(true).notNull(),
   notifyNewsletter: boolean("notifyNewsletter").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Partner = typeof partners.$inferSelect;
 export type InsertPartner = typeof partners.$inferInsert;
 
 // ─── Referrals ──────────────────────────────────────────────────────
-export const referrals = mysqlTable("referrals", {
-  id: int("id").autoincrement().primaryKey(),
-  partnerId: int("partnerId").notNull(),
-  referredUserId: int("referredUserId"),
-  referredShopId: int("referredShopId"),
+export const referrals = pgTable("referrals", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partnerId").notNull(),
+  referredUserId: integer("referredUserId"),
+  referredShopId: integer("referredShopId"),
   referredEmail: varchar("referredEmail", { length: 320 }),
   referredName: varchar("referredName", { length: 255 }),
-  status: mysqlEnum("referralStatus", [
-    "pending",
-    "signed_up",
-    "subscribed",
-    "churned",
-  ])
-    .default("pending")
-    .notNull(),
+  status: referralStatusEnum("status").default("pending").notNull(),
   subscriptionTier: varchar("subscriptionTier", { length: 20 }),
-  monthlyValue: decimal("monthlyValue", { precision: 10, scale: 2 }),
-  commissionEarned: decimal("commissionEarned", { precision: 10, scale: 2 })
-    .default("0.00")
-    .notNull(),
+  monthlyValue: numeric("monthlyValue", { precision: 10, scale: 2 }),
+  commissionEarned: numeric("commissionEarned", { precision: 10, scale: 2 }).default("0.00").notNull(),
   convertedAt: timestamp("convertedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type Referral = typeof referrals.$inferSelect;
 export type InsertReferral = typeof referrals.$inferInsert;
 
 // ─── Partner Payouts ────────────────────────────────────────────────
-export const partnerPayouts = mysqlTable("partner_payouts", {
-  id: int("id").autoincrement().primaryKey(),
-  partnerId: int("partnerId").notNull(),
-  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
-  status: mysqlEnum("payoutStatus", [
-    "pending",
-    "processing",
-    "completed",
-    "failed",
-  ])
-    .default("pending")
-    .notNull(),
+export const partnerPayouts = pgTable("partner_payouts", {
+  id: serial("id").primaryKey(),
+  partnerId: integer("partnerId").notNull(),
+  amount: numeric("amount", { precision: 10, scale: 2 }).notNull(),
+  status: payoutStatusEnum("status").default("pending").notNull(),
   payoutMethod: varchar("payoutMethod", { length: 32 }),
   payoutEmail: varchar("payoutEmail", { length: 320 }),
   transactionId: varchar("transactionId", { length: 255 }),
@@ -394,36 +317,27 @@ export type PartnerPayout = typeof partnerPayouts.$inferSelect;
 export type InsertPartnerPayout = typeof partnerPayouts.$inferInsert;
 
 // ─── Caller Profiles ────────────────────────────────────────────────
-export const callerProfiles = mysqlTable("caller_profiles", {
-  id: int("id").autoincrement().primaryKey(),
+export const callerProfiles = pgTable("caller_profiles", {
+  id: serial("id").primaryKey(),
   phone: varchar("phone", { length: 32 }).notNull().unique(),
   name: varchar("name", { length: 255 }),
-  callerRole: mysqlEnum("callerRole", [
-    "prospect",
-    "shop_owner",
-    "founder",
-    "tester",
-    "vendor",
-    "unknown",
-  ])
-    .default("unknown")
-    .notNull(),
+  callerRole: callerRoleEnum("callerRole").default("unknown").notNull(),
   shopName: varchar("shopName", { length: 255 }),
-  callCount: int("callCount").default(0).notNull(),
+  callCount: integer("callCount").default(0).notNull(),
   lastCalledAt: timestamp("lastCalledAt"),
   notes: text("notes"),
   doNotSell: boolean("doNotSell").default(false).notNull(),
   smsOptOut: boolean("smsOptOut").default(false).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 
 export type CallerProfile = typeof callerProfiles.$inferSelect;
 export type InsertCallerProfile = typeof callerProfiles.$inferInsert;
 
 // ─── Contact Submissions ────────────────────────────────────────────
-export const contactSubmissions = mysqlTable("contact_submissions", {
-  id: int("id").autoincrement().primaryKey(),
+export const contactSubmissions = pgTable("contact_submissions", {
+  id: serial("id").primaryKey(),
   name: varchar("name", { length: 255 }).notNull(),
   email: varchar("email", { length: 320 }).notNull(),
   phone: varchar("phone", { length: 32 }),
@@ -435,37 +349,31 @@ export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
 
 // ─── Shop Integrations ──────────────────────────────────────────────
-export const shopIntegrations = mysqlTable("shop_integrations", {
-  id: int("id").autoincrement().primaryKey(),
-  shopId: int("shopId").notNull(),
-  provider: mysqlEnum("integrationProvider", [
-    "google_calendar",
-    "google_sheets",
-    "shopmonkey",
-    "tekmetric",
-    "hubspot",
-  ]).notNull(),
+export const shopIntegrations = pgTable("shop_integrations", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shopId").notNull(),
+  provider: integrationProviderEnum("provider").notNull(),
   accessToken: text("accessToken"),
   refreshToken: text("refreshToken"),
   tokenExpiresAt: timestamp("tokenExpiresAt"),
   externalAccountId: varchar("externalAccountId", { length: 255 }),
-  settings: json("settings").$type<Record<string, unknown>>(),
+  settings: jsonb("settings").$type<Record<string, unknown>>(),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
-  updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });
 export type ShopIntegration = typeof shopIntegrations.$inferSelect;
 export type InsertShopIntegration = typeof shopIntegrations.$inferInsert;
 
 // ─── Integration Sync Logs ─────────────────────────────────────────
-export const integrationSyncLogs = mysqlTable("integration_sync_logs", {
-  id: int("id").autoincrement().primaryKey(),
-  shopId: int("shopId").notNull(),
+export const integrationSyncLogs = pgTable("integration_sync_logs", {
+  id: serial("id").primaryKey(),
+  shopId: integer("shopId").notNull(),
   provider: varchar("provider", { length: 64 }).notNull(),
   action: varchar("action", { length: 64 }).notNull(),
-  status: mysqlEnum("syncStatus", ["success", "failed"]).notNull(),
+  status: syncStatusEnum("status").notNull(),
   errorMessage: text("errorMessage"),
-  metadata: json("metadata").$type<Record<string, unknown>>(),
+  metadata: jsonb("metadata").$type<Record<string, unknown>>(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
 });
 export type IntegrationSyncLog = typeof integrationSyncLogs.$inferSelect;

@@ -44,7 +44,11 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     const db: any = {};
     db.select = vi.fn().mockImplementation(() => createChain());
     db.insert = vi.fn().mockReturnValue({
-      values: vi.fn().mockResolvedValue([{ insertId: 1 }]),
+      values: vi.fn().mockReturnValue({
+        returning: vi.fn().mockResolvedValue([{ id: 1 }]),
+        onConflictDoUpdate: vi.fn().mockResolvedValue([{ id: 1 }]),
+        then: (resolve: Function) => resolve([{ id: 1 }]),
+      }),
     });
     db.update = vi.fn().mockReturnValue({
       set: vi.fn().mockImplementation(() => ({
@@ -92,14 +96,14 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([]),
   createOrganization: vi.fn(),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
 }));
 
 type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 const testUser: AuthenticatedUser = {
   id: 1,
-  openId: "test-analytics",
+  supabaseId: "test-analytics",
   email: "test@baylio.io",
   name: "Test User",
   loginMethod: "manus",

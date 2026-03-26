@@ -1,5 +1,6 @@
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import {
   InsertUser,
   users,
@@ -29,7 +30,8 @@ let _db: ReturnType<typeof drizzle> | null = null;
 export async function getDb() {
   if (!_db && process.env.DATABASE_URL) {
     try {
-      _db = drizzle(process.env.DATABASE_URL);
+      const client = postgres(process.env.DATABASE_URL, { prepare: false });
+      _db = drizzle(client);
     } catch (error) {
       console.warn("[Database] Failed to connect:", error);
       _db = null;
@@ -39,8 +41,8 @@ export async function getDb() {
 }
 
 export async function upsertUser(user: InsertUser): Promise<void> {
-  if (!user.openId) {
-    throw new Error("User openId is required for upsert");
+  if (!user.supabaseId) {
+    throw new Error("User supabaseId is required for upsert");
   }
 
   const db = await getDb();
@@ -51,7 +53,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
 
   try {
     const values: InsertUser = {
-      openId: user.openId,
+      supabaseId: user.supabaseId,
     };
     const updateSet: Record<string, unknown> = {};
 
@@ -75,7 +77,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
     if (user.role !== undefined) {
       values.role = user.role;
       updateSet.role = user.role;
-    } else if (user.openId === ENV.ownerOpenId) {
+    } else if (user.supabaseId === ENV.ownerOpenId) {
       values.role = "admin";
       updateSet.role = "admin";
     }
@@ -88,7 +90,8 @@ export async function upsertUser(user: InsertUser): Promise<void> {
       updateSet.lastSignedIn = new Date();
     }
 
-    await db.insert(users).values(values).onDuplicateKeyUpdate({
+    await db.insert(users).values(values).onConflictDoUpdate({
+      target: users.supabaseId,
       set: updateSet,
     });
   } catch (error) {
@@ -97,7 +100,7 @@ export async function upsertUser(user: InsertUser): Promise<void> {
   }
 }
 
-export async function getUserByOpenId(openId: string) {
+export async function getUserBySupabaseId(supabaseId: string) {
   const db = await getDb();
   if (!db) {
     console.warn("[Database] Cannot get user: database not available");
@@ -107,7 +110,7 @@ export async function getUserByOpenId(openId: string) {
   const result = await db
     .select()
     .from(users)
-    .where(eq(users.openId, openId))
+    .where(eq(users.supabaseId, supabaseId))
     .limit(1);
 
   return result.length > 0 ? result[0] : undefined;
@@ -117,8 +120,8 @@ export async function getUserByOpenId(openId: string) {
 export async function createOrganization(data: InsertOrganization) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(organizations).values(data);
-  return result[0].insertId;
+  const result = await db.insert(organizations).values(data).returning({ id: organizations.id });
+  return result[0].id;
 }
 
 export async function getOrganizationsByOwner(ownerId: number) {
@@ -134,8 +137,8 @@ export async function getOrganizationsByOwner(ownerId: number) {
 export async function createShop(data: InsertShop) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(shops).values(data);
-  return result[0].insertId;
+  const result = await db.insert(shops).values(data).returning({ id: shops.id });
+  return result[0].id;
 }
 
 export async function getShopsByOwner(ownerId: number) {
@@ -190,16 +193,16 @@ export async function upsertAgentConfig(data: InsertAgentConfig) {
       .where(eq(agentConfigs.id, existing.id));
     return existing.id;
   }
-  const result = await db.insert(agentConfigs).values(data);
-  return result[0].insertId;
+  const result = await db.insert(agentConfigs).values(data).returning({ id: agentConfigs.id });
+  return result[0].id;
 }
 
 // ─── Call Logs ────────────────────────────────────────────────────────
 export async function createCallLog(data: InsertCallLog) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(callLogs).values(data);
-  return result[0].insertId;
+  const result = await db.insert(callLogs).values(data).returning({ id: callLogs.id });
+  return result[0].id;
 }
 
 export async function getCallLogsByShop(
@@ -269,8 +272,8 @@ export async function getShopAnalytics(
 export async function createMissedCallAudit(data: InsertMissedCallAudit) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(missedCallAudits).values(data);
-  return result[0].insertId;
+  const result = await db.insert(missedCallAudits).values(data).returning({ id: missedCallAudits.id });
+  return result[0].id;
 }
 
 export async function getMissedCallAudits(shopId?: number) {
@@ -316,8 +319,8 @@ export async function getSubscriptionByShop(shopId: number) {
 export async function createSubscription(data: InsertSubscription) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(subscriptions).values(data);
-  return result[0].insertId;
+  const result = await db.insert(subscriptions).values(data).returning({ id: subscriptions.id });
+  return result[0].id;
 }
 
 export async function updateSubscription(
@@ -333,8 +336,8 @@ export async function updateSubscription(
 export async function createUsageRecord(data: InsertUsageRecord) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(usageRecords).values(data);
-  return result[0].insertId;
+  const result = await db.insert(usageRecords).values(data).returning({ id: usageRecords.id });
+  return result[0].id;
 }
 
 export async function getUsageBySubscription(subscriptionId: number) {
@@ -351,8 +354,8 @@ export async function getUsageBySubscription(subscriptionId: number) {
 export async function createNotification(data: InsertNotification) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(notifications).values(data);
-  return result[0].insertId;
+  const result = await db.insert(notifications).values(data).returning({ id: notifications.id });
+  return result[0].id;
 }
 
 export async function getNotificationsByUser(
@@ -393,6 +396,6 @@ export async function markAllNotificationsRead(userId: number) {
 export async function createContactSubmission(data: InsertContactSubmission) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(contactSubmissions).values(data);
-  return result[0].insertId;
+  const result = await db.insert(contactSubmissions).values(data).returning({ id: contactSubmissions.id });
+  return result[0].id;
 }

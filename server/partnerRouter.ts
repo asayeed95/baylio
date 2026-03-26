@@ -82,9 +82,9 @@ export const partnerRouter = router({
         website: input.website || null,
         payoutEmail: input.payoutEmail || ctx.user.email || null,
         status: "active",
-      });
+      }).returning({ id: partners.id });
 
-      return { id: result[0].insertId, referralCode };
+      return { id: result[0].id, referralCode };
     }),
 
   /**
@@ -214,14 +214,14 @@ export const partnerRouter = router({
     // Monthly earnings for last 12 months
     const monthlyEarnings = await db
       .select({
-        month: sql<string>`DATE_FORMAT(${referrals.createdAt}, '%Y-%m')`,
+        month: sql<string>`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`,
         earned: sql<string>`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
         count: sql<number>`COUNT(*)`,
       })
       .from(referrals)
       .where(eq(referrals.partnerId, p.id))
-      .groupBy(sql`DATE_FORMAT(${referrals.createdAt}, '%Y-%m')`)
-      .orderBy(sql`DATE_FORMAT(${referrals.createdAt}, '%Y-%m')`);
+      .groupBy(sql`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`)
+      .orderBy(sql`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`);
 
     // Earnings by tier
     const byTier = await db
@@ -332,7 +332,7 @@ export const partnerRouter = router({
         payoutMethod: p.payoutMethod || "stripe",
         payoutEmail: p.payoutEmail || null,
         status: "pending",
-      });
+      }).returning({ id: partnerPayouts.id });
 
       // Deduct from pending earnings
       await db
@@ -342,7 +342,7 @@ export const partnerRouter = router({
         })
         .where(eq(partners.id, p.id));
 
-      return { payoutId: result[0].insertId, amount: input.amount };
+      return { payoutId: result[0].id, amount: input.amount };
     }),
 
   /**

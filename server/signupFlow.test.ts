@@ -17,7 +17,7 @@ const now = new Date();
 const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
   let responses: Array<unknown[]> = [];
   let callIndex = 0;
-  let mockValues = vi.fn().mockResolvedValue([{ insertId: 1 }]);
+  let mockReturningResult = [{ id: 1 }];
 
   const resolveNext = () => {
     const result = responses[callIndex] ?? [];
@@ -51,7 +51,11 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     db.insert = vi.fn().mockReturnValue({
       values: vi
         .fn()
-        .mockImplementation((...args: any[]) => mockValues(...args)),
+        .mockImplementation((...args: any[]) => ({
+          returning: vi.fn().mockResolvedValue(mockReturningResult),
+          onConflictDoUpdate: vi.fn().mockResolvedValue(mockReturningResult),
+          then: (resolve: Function) => resolve(mockReturningResult),
+        })),
     });
     db.update = vi.fn().mockReturnValue({
       set: vi.fn().mockImplementation(() => ({
@@ -66,13 +70,13 @@ const { mockGetDb, resetDbMock, setDbResponses } = vi.hoisted(() => {
     resetDbMock: () => {
       responses = [];
       callIndex = 0;
-      mockValues = vi.fn().mockResolvedValue([{ insertId: 1 }]);
+      mockReturningResult = [{ id: 1 }];
     },
     setDbResponses: (r: Array<unknown[]>, valuesResult?: any) => {
       responses = r;
       callIndex = 0;
       if (valuesResult) {
-        mockValues = vi.fn().mockResolvedValue(valuesResult);
+        mockReturningResult = valuesResult;
       }
     },
   };
@@ -104,7 +108,7 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([]),
   createOrganization: vi.fn(),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
   createContactSubmission: vi.fn(),
 }));
 
@@ -140,7 +144,7 @@ type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 const testUser: AuthenticatedUser = {
   id: 1,
-  openId: "new-shop-owner",
+  supabaseId: "new-shop-owner",
   email: "owner@testshop.com",
   name: "New Shop Owner",
   loginMethod: "manus",

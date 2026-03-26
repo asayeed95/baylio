@@ -12,7 +12,8 @@
  * - 5 sample caller profiles
  */
 
-import { drizzle } from "drizzle-orm/mysql2";
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
 import {
   shops,
   agentConfigs,
@@ -29,7 +30,8 @@ if (!DATABASE_URL) {
   process.exit(1);
 }
 
-const db = drizzle(DATABASE_URL);
+const client = postgres(DATABASE_URL, { prepare: false });
+const db = drizzle(client);
 
 const SERVICES = [
   { name: "Oil Change", category: "Maintenance", price: 49, description: "Conventional or synthetic" },
@@ -76,8 +78,8 @@ const shopResult = await db.insert(shops).values({
     sunday: { open: "00:00", close: "00:00", closed: true },
   },
   serviceCatalog: SERVICES,
-});
-const shopId = shopResult[0].insertId;
+}).returning({ id: shops.id });
+const shopId = shopResult[0].id;
 console.log(`  Shop created: id=${shopId}`);
 
 // 2. Agent config
@@ -162,7 +164,7 @@ for (const caller of CALLERS) {
     callerRole: "prospect",
     callCount: 1 + Math.floor(Math.random() * 5),
     lastCalledAt: new Date(now.getTime() - Math.floor(Math.random() * 7) * 86400000),
-  }).onDuplicateKeyUpdate({ set: { callCount: 1 } });
+  }).onConflictDoUpdate({ target: callerProfiles.phone, set: { callCount: 1 } });
 }
 console.log("  5 caller profiles created");
 

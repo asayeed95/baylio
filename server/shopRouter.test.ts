@@ -36,7 +36,7 @@ vi.mock("./db", () => ({
   getOrganizationsByOwner: vi.fn().mockResolvedValue([]),
   createOrganization: vi.fn(),
   upsertUser: vi.fn(),
-  getUserByOpenId: vi.fn(),
+  getUserBySupabaseId: vi.fn(),
   createContactSubmission: vi.fn(),
 }));
 
@@ -84,7 +84,7 @@ type AuthenticatedUser = NonNullable<TrpcContext["user"]>;
 
 const testUser: AuthenticatedUser = {
   id: 1,
-  openId: "onboarding-test",
+  supabaseId: "onboarding-test",
   email: "owner@testshop.com",
   name: "New Owner",
   loginMethod: "manus",
