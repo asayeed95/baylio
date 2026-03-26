@@ -10,11 +10,13 @@ import "./index.css";
 import posthog from "posthog-js";
 import { PostHogProvider } from "@posthog/react";
 
-posthog.init(import.meta.env.VITE_PUBLIC_POSTHOG_PROJECT_TOKEN, {
-  api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-  defaults: "2026-01-30",
-  __add_tracing_headers: [window.location.host, "localhost"],
-});
+const posthogKey = import.meta.env.VITE_POSTHOG_KEY;
+if (posthogKey) {
+  posthog.init(posthogKey, {
+    api_host: "https://us.i.posthog.com",
+    person_profiles: "identified_only",
+  });
+}
 
 const queryClient = new QueryClient();
 
