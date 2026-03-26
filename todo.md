@@ -180,3 +180,19 @@
 ## Claude Code Handoff
 - [x] Write CLAUDE_HANDOFF.md — comprehensive lead developer briefing document (645 lines)
 - [x] Push CLAUDE_HANDOFF.md to GitHub
+
+## Phase 20: Supabase + Vercel Migration
+- [ ] Audit current architecture — map all dependencies, integrations, services
+- [ ] Research Supabase + Vercel best practices for tRPC/Express migration
+- [ ] Write comprehensive MIGRATION_PLAN.md for Claude Code to execute
+- [ ] Set up Supabase project (database, auth, storage, edge functions)
+- [ ] Set up Vercel project (connect GitHub repo, env vars, domains)
+- [ ] Migrate database schema from TiDB/Drizzle to Supabase Postgres
+- [ ] Migrate auth from Manus OAuth to Supabase Auth
+- [ ] Migrate file storage from S3 to Supabase Storage
+- [ ] Restructure Express server to Vercel serverless functions
+- [ ] Migrate Twilio webhooks to Vercel API routes
+- [ ] Migrate Stripe webhooks to Vercel API routes
+- [ ] Configure custom domains (baylio.io, admin.baylio.io, partners.baylio.io)
+- [ ] End-to-end testing on Vercel preview deployment
+- [ ] Production cutover and DNS switch
