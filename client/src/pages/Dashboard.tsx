@@ -33,7 +33,7 @@ import {
   Calendar,
   DollarSign,
 } from "lucide-react";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { usePostHog } from "@posthog/react";
@@ -64,6 +64,17 @@ function DashboardContent() {
   const [newShopPhone, setNewShopPhone] = useState("");
 
   const { data: shops, isLoading, refetch } = trpc.shop.list.useQuery();
+
+  // Auto-redirect first-time users (no shops) to onboarding wizard
+  useEffect(() => {
+    if (!isLoading && shops && shops.length === 0) {
+      // Check if user has dismissed onboarding before
+      const dismissed = sessionStorage.getItem("baylio_onboarding_dismissed");
+      if (!dismissed) {
+        setLocation("/onboarding");
+      }
+    }
+  }, [isLoading, shops, setLocation]);
   const createShop = trpc.shop.create.useMutation({
     onSuccess: data => {
       posthog?.capture("shop_created", { shop_name: newShopName.trim(), has_phone: Boolean(newShopPhone.trim()) });
