@@ -32,6 +32,7 @@ const Contact = lazy(() => import("./pages/Contact"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const CallScorecard = lazy(() => import("./pages/CallScorecard"));
 const Help = lazy(() => import("./pages/Help"));
+const Onboarding = lazy(() => import("./pages/Onboarding"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // ─── Loading fallback ───────────────────────────────────────────────
@@ -104,6 +105,7 @@ function MainRouter() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/shops/:id" component={ShopDetail} />
       <Route path="/shops/:id/agent" component={AgentConfig} />
@@ -142,7 +144,7 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="light">
+      <ThemeProvider defaultTheme="dark">
         <TooltipProvider>
           <Toaster />
           <Suspense fallback={<PageLoader />}>
