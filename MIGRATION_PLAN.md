@@ -103,19 +103,20 @@ These Express routes handle webhooks and OAuth callbacks that cannot go through 
 
 This phase requires manual setup in the Supabase dashboard. Claude Code cannot do this.
 
-### 1A. Create Supabase Project
+### 1A. Create Supabase Project — ✅ DONE
 
-1. Go to [supabase.com/dashboard](https://supabase.com/dashboard) and create a new project
-2. **Region:** US East (N. Virginia) — closest to Twilio/Stripe
-3. **Name:** `baylio-production`
-4. **Password:** Generate a strong password and save it
-5. Note the following from Project Settings → API:
-   - `SUPABASE_URL` (e.g., `https://xxxxx.supabase.co`)
-   - `SUPABASE_ANON_KEY` (public, safe for frontend)
-   - `SUPABASE_SERVICE_ROLE_KEY` (secret, server-only)
-6. Note the database connection string from Project Settings → Database:
-   - `DATABASE_URL` (e.g., `postgresql://postgres.[ref]:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres`)
-   - Use the **Session pooler** connection string for Drizzle ORM
+**Supabase project is already created and verified.** Credentials are stored as Manus secrets.
+
+| Credential | Value |
+|-----------|-------|
+| Project URL | `https://unpdaeldrshraaxdjkly.supabase.co` |
+| Project Ref | `unpdaeldrshraaxdjkly` |
+| Region | West US (Oregon) — `us-west-2` |
+| DB Version | PostgreSQL 17.6 |
+| Anon Key | `sb_publishable_s4DBrnG218bmokXmt7rwIg_kAQB3UlG` |
+| DB Password | `0GDH7wFdqXpkqsY2` |
+
+**Connection verified:** `pnpm test server/supabase.test.ts` — all 4 tests pass.
 
 ### 1B. Configure Supabase Auth
 
@@ -133,16 +134,25 @@ This phase requires manual setup in the Supabase dashboard. Claude Code cannot d
 3. Public: No (use signed URLs for access)
 4. File size limit: 50MB
 
-### 1D. Collect All Credentials
+### 1D. Live Credentials — ✅ VERIFIED
 
-After setup, provide Claude Code with these values (set as env vars):
+All credentials are already stored as Manus environment variables. For Vercel deployment, set these:
 
+```bash
+# Supabase
+SUPABASE_URL=https://unpdaeldrshraaxdjkly.supabase.co
+SUPABASE_ANON_KEY=sb_publishable_s4DBrnG218bmokXmt7rwIg_kAQB3UlG
+# SUPABASE_SERVICE_ROLE_KEY=<get from Supabase Dashboard → Settings → API → service_role key>
+
+# Database — use the SESSION POOLER for Drizzle ORM (supports connection pooling)
+DATABASE_URL=postgresql://postgres.unpdaeldrshraaxdjkly:0GDH7wFdqXpkqsY2@aws-0-us-west-2.pooler.supabase.com:6543/postgres
+
+# For Drizzle migrations only — use the DIRECT connection (not pooler)
+# DIRECT_URL=postgresql://postgres:0GDH7wFdqXpkqsY2@db.unpdaeldrshraaxdjkly.supabase.co:5432/postgres
+# Note: Direct URL only works from environments with direct DB access (not sandbox)
 ```
-SUPABASE_URL=https://xxxxx.supabase.co
-SUPABASE_ANON_KEY=eyJ...
-SUPABASE_SERVICE_ROLE_KEY=eyJ...
-DATABASE_URL=postgresql://postgres.[ref]:[password]@aws-0-us-east-1.pooler.supabase.com:6543/postgres
-```
+
+> **Note:** The `SUPABASE_SERVICE_ROLE_KEY` (service role) is different from the anon key. Get it from Supabase Dashboard → Settings → API → `service_role` (secret). This is needed for server-side admin operations that bypass Row Level Security.
 
 ---
 
