@@ -360,6 +360,218 @@ export const shopRouter = router({
       };
     }),
 
+  /**
+   * Onboarding: Complete setup in one call.
+   * Creates shop → saves agent config → provisions ElevenLabs agent → optionally provisions phone.
+   * For "forward" phone option, we provision a hidden Baylio number that the shop forwards to.
+   * For "new" phone option, we purchase the selected number.
+   */
+  completeOnboarding: protectedProcedure
+    .input(
+      z.object({
+        // Shop details
+        shopName: z.string().min(1),
+        shopPhone: z.string().optional(),
+        address: z.string().optional(),
+        city: z.string().optional(),
+        state: z.string().optional(),
+        zip: z.string().optional(),
+        timezone: z.string().default("America/New_York"),
+        businessHours: z.any().optional(),
+        serviceCatalog: z
+          .array(
+            z.object({
+              name: z.string(),
+              category: z.string(),
+              price: z.number().optional(),
+            })
+          )
+          .optional(),
+        // Phone setup
+        phoneOption: z.enum(["forward", "new"]),
+        selectedNewNumber: z.string().optional(),
+        // Agent config
+        agentName: z.string().min(1),
+        voiceId: z.string(),
+        voiceName: z.string(),
+        greeting: z.string().optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const steps: string[] = [];
+
+      // Step 1: Create the shop
+      const shopId = await createShop({
+        name: input.shopName,
+        phone: input.shopPhone || undefined,
+        address: input.address || undefined,
+        city: input.city || undefined,
+        state: input.state || undefined,
+        zip: input.zip || undefined,
+        timezone: input.timezone,
+        businessHours: input.businessHours || undefined,
+        serviceCatalog: input.serviceCatalog || undefined,
+        ownerId: ctx.user.id,
+      });
+
+      if (!shopId) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to create shop" });
+      }
+      steps.push("shop_created");
+
+      // Step 2: Save agent config
+      const defaultGreeting = `Thank you for calling ${input.shopName}! This is ${input.agentName}. How can I help you today?`;
+      await upsertAgentConfig({
+        shopId,
+        agentName: input.agentName,
+        voiceId: input.voiceId,
+        voiceName: input.voiceName,
+        greeting: input.greeting || defaultGreeting,
+        upsellEnabled: true,
+        confidenceThreshold: "0.80",
+        maxUpsellsPerCall: 1,
+        language: "en",
+        ownerId: ctx.user.id,
+      });
+      steps.push("agent_config_saved");
+
+      // Step 3: Provision ElevenLabs agent
+      const agentConfig = await getAgentConfigByShop(shopId);
+      const shop = await getShopById(shopId);
+
+      if (!agentConfig || !shop) {
+        throw new TRPCError({ code: "INTERNAL_SERVER_ERROR", message: "Failed to retrieve shop/config after creation" });
+      }
+
+      const shopContext: ShopContext = {
+        shopName: shop.name,
+        agentName: agentConfig.agentName || "Baylio",
+        phone: shop.phone || "",
+        address: shop.address || "",
+        city: shop.city || "",
+        state: shop.state || "",
+        timezone: shop.timezone || "America/New_York",
+        businessHours: (shop.businessHours as any) || {},
+        serviceCatalog: (shop.serviceCatalog as any) || [],
+        upsellRules: (agentConfig.upsellRules as any) || [],
+        confidenceThreshold: parseFloat(agentConfig.confidenceThreshold?.toString() || "0.80"),
+        maxUpsellsPerCall: agentConfig.maxUpsellsPerCall || 1,
+        greeting: agentConfig.greeting || "",
+        language: agentConfig.language || "en",
+        customSystemPrompt: agentConfig.systemPrompt || undefined,
+      };
+
+      const systemPrompt = compileSystemPrompt(shopContext);
+      const greeting = compileGreeting(shopContext);
+
+      let agentId: string;
+      try {
+        const result = await createConversationalAgent({
+          name: `Baylio — ${shop.name} (${agentConfig.agentName || "Agent"})`,
+          voiceId: input.voiceId || "cjVigY5qzO86Huf0OWal",
+          systemPrompt,
+          firstMessage: greeting,
+          language: "en",
+        });
+        agentId = result.agent_id;
+
+        // Save agent ID back to config
+        await upsertAgentConfig({
+          ...agentConfig,
+          shopId,
+          elevenLabsAgentId: agentId,
+        } as any);
+        steps.push("agent_provisioned");
+      } catch (err: any) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Failed to provision AI agent: ${err.message}`,
+        });
+      }
+
+      // Step 4: Phone provisioning
+      let twilioNumber: string | null = null;
+      const webhookBaseUrl = process.env.WEBHOOK_BASE_URL || ctx.req.headers.origin || "";
+
+      if (input.phoneOption === "new" && input.selectedNewNumber) {
+        // Purchase the selected number
+        try {
+          const provisioned = await purchasePhoneNumber(
+            input.selectedNewNumber,
+            shopId,
+            webhookBaseUrl,
+            `Baylio — ${shop.name}`
+          );
+          await updateShop(shopId, {
+            twilioPhoneNumber: provisioned.phoneNumber,
+            twilioPhoneSid: provisioned.sid,
+          } as any);
+          twilioNumber = provisioned.phoneNumber;
+          steps.push("new_number_purchased");
+        } catch (err: any) {
+          console.error("[Onboarding] Failed to purchase number:", err);
+          // Non-fatal — shop is still live, just without a dedicated number
+          steps.push("phone_purchase_failed");
+        }
+      } else if (input.phoneOption === "forward") {
+        // For call forwarding: provision a hidden Baylio number in the shop's area code
+        // The shop owner will forward their existing number to this Baylio number
+        try {
+          // Extract area code from shop's phone, or default to 800
+          const shopPhoneDigits = (input.shopPhone || "").replace(/\D/g, "");
+          const areaCode = shopPhoneDigits.length >= 10 ? shopPhoneDigits.slice(shopPhoneDigits.length - 10, shopPhoneDigits.length - 7) : "800";
+
+          // Search for an available number
+          const available = await searchAvailableNumbers(areaCode);
+          if (available.length > 0) {
+            const provisioned = await purchasePhoneNumber(
+              available[0].phoneNumber,
+              shopId,
+              webhookBaseUrl,
+              `Baylio FWD — ${shop.name}`
+            );
+            await updateShop(shopId, {
+              twilioPhoneNumber: provisioned.phoneNumber,
+              twilioPhoneSid: provisioned.sid,
+            } as any);
+            twilioNumber = provisioned.phoneNumber;
+            steps.push("forwarding_number_provisioned");
+          } else {
+            // Try toll-free as fallback
+            const tollFree = await searchAvailableNumbers("800");
+            if (tollFree.length > 0) {
+              const provisioned = await purchasePhoneNumber(
+                tollFree[0].phoneNumber,
+                shopId,
+                webhookBaseUrl,
+                `Baylio FWD — ${shop.name}`
+              );
+              await updateShop(shopId, {
+                twilioPhoneNumber: provisioned.phoneNumber,
+                twilioPhoneSid: provisioned.sid,
+              } as any);
+              twilioNumber = provisioned.phoneNumber;
+              steps.push("forwarding_number_provisioned_tollfree");
+            } else {
+              steps.push("forwarding_number_unavailable");
+            }
+          }
+        } catch (err: any) {
+          console.error("[Onboarding] Failed to provision forwarding number:", err);
+          steps.push("forwarding_number_failed");
+        }
+      }
+
+      return {
+        shopId,
+        agentId,
+        twilioNumber,
+        phoneOption: input.phoneOption,
+        steps,
+        isLive: !!agentId && !!twilioNumber,
+      };
+    }),
+
   /** Create a demo shop with sample data for product demos */
   createDemo: protectedProcedure.mutation(async ({ ctx }) => {
     const shopId = await seedDemoShop(ctx.user.id);
