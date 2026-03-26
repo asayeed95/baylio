@@ -2,7 +2,7 @@ import { z } from "zod";
 import { protectedProcedure, router } from "./_core/trpc";
 import {
   getNotificationsByUser,
-  markNotificationRead,
+  markNotificationReadForUser,
   markAllNotificationsRead,
 } from "./db";
 
@@ -51,8 +51,8 @@ export const notificationRouter = router({
    */
   markRead: protectedProcedure
     .input(z.object({ id: z.number() }))
-    .mutation(async ({ input }) => {
-      await markNotificationRead(input.id);
+    .mutation(async ({ ctx, input }) => {
+      await markNotificationReadForUser(input.id, ctx.user.id);
       return { success: true };
     }),
 

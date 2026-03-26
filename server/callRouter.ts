@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, adminProcedure, router } from "./_core/trpc";
 import {
   getCallLogsByShop,
@@ -6,6 +7,8 @@ import {
   getShopAnalytics,
   getShopById,
   getMissedCallAudits,
+  getMissedCallAuditById,
+  getMissedCallAuditsByOwner,
   createMissedCallAudit,
   updateMissedCallAudit,
 } from "./db";
@@ -62,8 +65,9 @@ export const callRouter = router({
       if (input.shopId) {
         const shop = await getShopById(input.shopId);
         if (!shop || shop.ownerId !== ctx.user.id) return [];
+        return getMissedCallAudits(input.shopId);
       }
-      return getMissedCallAudits(input.shopId);
+      return getMissedCallAuditsByOwner(ctx.user.id);
     }),
 
   createAudit: protectedProcedure
@@ -77,6 +81,12 @@ export const callRouter = router({
       })
     )
     .mutation(async ({ ctx, input }) => {
+      if (input.shopId) {
+        const shop = await getShopById(input.shopId);
+        if (!shop || shop.ownerId !== ctx.user.id) {
+          throw new TRPCError({ code: "NOT_FOUND", message: "Shop not found" });
+        }
+      }
       const id = await createMissedCallAudit({
         ...input,
         ownerId: ctx.user.id,
@@ -98,7 +108,11 @@ export const callRouter = router({
         }),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const audit = await getMissedCallAuditById(input.id);
+      if (!audit || audit.ownerId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
+      }
       await updateMissedCallAudit(input.id, input.data as any);
       return { success: true };
     }),
@@ -110,7 +124,11 @@ export const callRouter = router({
    */
   generateScorecard: protectedProcedure
     .input(z.object({ auditId: z.number() }))
-    .query(async ({ input }) => {
+    .query(async ({ ctx, input }) => {
+      const audit = await getMissedCallAuditById(input.auditId);
+      if (!audit || audit.ownerId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
+      }
       return generateScorecard(input.auditId);
     }),
 
@@ -120,7 +138,11 @@ export const callRouter = router({
    */
   completeAudit: protectedProcedure
     .input(z.object({ auditId: z.number() }))
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
+      const audit = await getMissedCallAuditById(input.auditId);
+      if (!audit || audit.ownerId !== ctx.user.id) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Audit not found" });
+      }
       const scorecard = await completeAudit(input.auditId);
       if (!scorecard) return { success: false, error: "Audit not found" };
       return { success: true, scorecard };

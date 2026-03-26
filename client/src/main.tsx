@@ -11,11 +11,15 @@ import posthog from "posthog-js";
 import { PostHogProvider } from "@posthog/react";
 
 const posthogKey = import.meta.env.VITE_POSTHOG_KEY;
-if (posthogKey) {
-  posthog.init(posthogKey, {
-    api_host: "https://us.i.posthog.com",
-    person_profiles: "identified_only",
-  });
+if (posthogKey && posthogKey.startsWith("phc_")) {
+  try {
+    posthog.init(posthogKey, {
+      api_host: "https://us.i.posthog.com",
+      person_profiles: "identified_only",
+    });
+  } catch (e) {
+    console.warn("[PostHog] Init failed:", e);
+  }
 }
 
 const queryClient = new QueryClient();

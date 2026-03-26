@@ -8,6 +8,7 @@
 
 import { z } from "zod";
 import Stripe from "stripe";
+import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getShopById, getSubscriptionByShop } from "../db";
 import { TIERS, SETUP_FEES, getTierConfig } from "./products";
@@ -48,40 +49,48 @@ export const stripeRouter = router({
 
       const origin = ctx.req.headers.origin || "https://baylio.io";
 
-      const session = await stripe.checkout.sessions.create({
-        mode: "subscription",
-        client_reference_id: ctx.user.id.toString(),
-        customer_email: ctx.user.email || undefined,
-        allow_promotion_codes: true,
-        metadata: {
-          user_id: ctx.user.id.toString(),
-          shop_id: input.shopId.toString(),
-          tier: input.tier,
-          billing_cycle: input.billingCycle,
-          customer_email: ctx.user.email || "",
-          customer_name: ctx.user.name || "",
-        },
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: tierConfig.name,
-                description: tierConfig.description,
-              },
-              unit_amount: priceInCents,
-              recurring: {
-                interval: input.billingCycle === "annual" ? "year" : "month",
-              },
-            },
-            quantity: 1,
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          client_reference_id: ctx.user.id.toString(),
+          customer_email: ctx.user.email || undefined,
+          allow_promotion_codes: true,
+          metadata: {
+            user_id: ctx.user.id.toString(),
+            shop_id: input.shopId.toString(),
+            tier: input.tier,
+            billing_cycle: input.billingCycle,
+            customer_email: ctx.user.email || "",
+            customer_name: ctx.user.name || "",
           },
-        ],
-        success_url: `${origin}/shops/${input.shopId}?payment=success`,
-        cancel_url: `${origin}/shops/${input.shopId}/subscriptions?payment=canceled`,
-      });
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: tierConfig.name,
+                  description: tierConfig.description,
+                },
+                unit_amount: priceInCents,
+                recurring: {
+                  interval: input.billingCycle === "annual" ? "year" : "month",
+                },
+              },
+              quantity: 1,
+            },
+          ],
+          success_url: `${origin}/shops/${input.shopId}?payment=success`,
+          cancel_url: `${origin}/shops/${input.shopId}/subscriptions?payment=canceled`,
+        });
 
-      return { checkoutUrl: session.url };
+        return { checkoutUrl: session.url };
+      } catch (err) {
+        console.error("[STRIPE] Subscription checkout failed:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create checkout session. Please try again.",
+        });
+      }
     }),
 
   /**
@@ -106,37 +115,45 @@ export const stripeRouter = router({
       const feeAmount = SETUP_FEES[input.locationCount];
       const origin = ctx.req.headers.origin || "https://baylio.io";
 
-      const session = await stripe.checkout.sessions.create({
-        mode: "payment",
-        client_reference_id: ctx.user.id.toString(),
-        customer_email: ctx.user.email || undefined,
-        allow_promotion_codes: true,
-        metadata: {
-          user_id: ctx.user.id.toString(),
-          shop_id: input.shopId.toString(),
-          type: "setup_fee",
-          location_count: input.locationCount,
-          customer_email: ctx.user.email || "",
-          customer_name: ctx.user.name || "",
-        },
-        line_items: [
-          {
-            price_data: {
-              currency: "usd",
-              product_data: {
-                name: "Baylio Setup & Onboarding",
-                description: `Professional onboarding for ${input.locationCount === "single" ? "1 location" : input.locationCount === "multi_3" ? "up to 3 locations" : "up to 5 locations"}`,
-              },
-              unit_amount: feeAmount,
-            },
-            quantity: 1,
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: "payment",
+          client_reference_id: ctx.user.id.toString(),
+          customer_email: ctx.user.email || undefined,
+          allow_promotion_codes: true,
+          metadata: {
+            user_id: ctx.user.id.toString(),
+            shop_id: input.shopId.toString(),
+            type: "setup_fee",
+            location_count: input.locationCount,
+            customer_email: ctx.user.email || "",
+            customer_name: ctx.user.name || "",
           },
-        ],
-        success_url: `${origin}/shops/${input.shopId}?setup=success`,
-        cancel_url: `${origin}/shops/${input.shopId}/subscriptions?setup=canceled`,
-      });
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: "Baylio Setup & Onboarding",
+                  description: `Professional onboarding for ${input.locationCount === "single" ? "1 location" : input.locationCount === "multi_3" ? "up to 3 locations" : "up to 5 locations"}`,
+                },
+                unit_amount: feeAmount,
+              },
+              quantity: 1,
+            },
+          ],
+          success_url: `${origin}/shops/${input.shopId}?setup=success`,
+          cancel_url: `${origin}/shops/${input.shopId}/subscriptions?setup=canceled`,
+        });
 
-      return { checkoutUrl: session.url };
+        return { checkoutUrl: session.url };
+      } catch (err) {
+        console.error("[STRIPE] Setup fee checkout failed:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create checkout session. Please try again.",
+        });
+      }
     }),
 
   /**
@@ -159,12 +176,20 @@ export const stripeRouter = router({
       const stripe = getStripe();
       const origin = ctx.req.headers.origin || "https://baylio.io";
 
-      const session = await stripe.billingPortal.sessions.create({
-        customer: sub.stripeCustomerId,
-        return_url: `${origin}/shops/${input.shopId}/subscriptions`,
-      });
+      try {
+        const session = await stripe.billingPortal.sessions.create({
+          customer: sub.stripeCustomerId,
+          return_url: `${origin}/shops/${input.shopId}/subscriptions`,
+        });
 
-      return { portalUrl: session.url };
+        return { portalUrl: session.url };
+      } catch (err) {
+        console.error("[STRIPE] Portal session failed:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to open billing portal. Please try again.",
+        });
+      }
     }),
 
   /**

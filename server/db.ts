@@ -273,6 +273,16 @@ export async function createMissedCallAudit(data: InsertMissedCallAudit) {
   return result[0].insertId;
 }
 
+export async function getMissedCallAuditById(id: number) {
+  const db = await getDb();
+  if (!db) return undefined;
+  const rows = await db
+    .select()
+    .from(missedCallAudits)
+    .where(eq(missedCallAudits.id, id));
+  return rows[0];
+}
+
 export async function getMissedCallAudits(shopId?: number) {
   const db = await getDb();
   if (!db) return [];
@@ -286,6 +296,16 @@ export async function getMissedCallAudits(shopId?: number) {
   return db
     .select()
     .from(missedCallAudits)
+    .orderBy(desc(missedCallAudits.createdAt));
+}
+
+export async function getMissedCallAuditsByOwner(ownerId: number) {
+  const db = await getDb();
+  if (!db) return [];
+  return db
+    .select()
+    .from(missedCallAudits)
+    .where(eq(missedCallAudits.ownerId, ownerId))
     .orderBy(desc(missedCallAudits.createdAt));
 }
 
@@ -378,6 +398,15 @@ export async function markNotificationRead(id: number) {
     .update(notifications)
     .set({ isRead: true })
     .where(eq(notifications.id, id));
+}
+
+export async function markNotificationReadForUser(id: number, userId: number) {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(notifications)
+    .set({ isRead: true })
+    .where(and(eq(notifications.id, id), eq(notifications.userId, userId)));
 }
 
 export async function markAllNotificationsRead(userId: number) {

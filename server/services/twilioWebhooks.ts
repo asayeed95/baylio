@@ -342,6 +342,9 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     }
 
     const { shopId, context, elevenLabsAgentId } = resolved;
+    console.log(
+      `[CALL] Step 2: Shop resolved — id=${shopId}, name="${context.shopName}", agentId=${elevenLabsAgentId || "(none)"}`
+    );
 
     // Step 2: Check if ElevenLabs agent is configured
     if (!elevenLabsAgentId) {
@@ -365,8 +368,9 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       callerRole
     );
 
+    const elapsed = Date.now() - startTime;
     console.log(
-      `[CALL] ElevenLabs registered OK for shop ${shopId} (${Date.now() - startTime}ms)`
+      `[CALL] Step 4: ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
     );
 
     res.type("text/xml");
@@ -571,6 +575,12 @@ twilioRouter.get("/health", (_req: Request, res: Response) => {
     status: "ok",
     service: "baylio-twilio-bridge",
     cache: cacheStats,
+    env: {
+      hasTwilioAccountSid: !!process.env.TWILIO_ACCOUNT_SID,
+      hasTwilioAuthToken: !!process.env.TWILIO_AUTH_TOKEN,
+      hasElevenLabsApiKey: !!ENV.elevenLabsApiKey,
+      webhookBaseUrl: process.env.WEBHOOK_BASE_URL || "(not set)",
+    },
     timestamp: new Date().toISOString(),
   });
 });
