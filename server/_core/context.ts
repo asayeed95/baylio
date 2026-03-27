@@ -1,6 +1,5 @@
 import type { CreateExpressContextOptions } from "@trpc/server/adapters/express";
 import type { User } from "../../drizzle/schema";
-import { sdk } from "./sdk";
 import { supabaseAdmin } from "../lib/supabase";
 import * as db from "../db";
 import { eq } from "drizzle-orm";
@@ -17,7 +16,7 @@ export async function createContext(
 ): Promise<TrpcContext> {
   let user: User | null = null;
 
-  // Strategy 1: Supabase Bearer token (new auth flow)
+  // Verify Supabase Bearer token from Authorization header
   const authHeader = opts.req.headers.authorization;
   const bearerToken = authHeader?.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
@@ -44,15 +43,6 @@ export async function createContext(
       }
     } catch (e) {
       console.error("[Auth] Supabase token verification failed:", e);
-    }
-  }
-
-  // Strategy 2: Manus OAuth cookie (legacy — still works during transition)
-  if (!user) {
-    try {
-      user = await sdk.authenticateRequest(opts.req);
-    } catch {
-      user = null;
     }
   }
 

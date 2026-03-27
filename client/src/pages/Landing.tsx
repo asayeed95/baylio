@@ -5,7 +5,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { getLoginUrl } from "@/const";
 import { Link } from "wouter";
 import {
   Phone,
@@ -470,7 +469,7 @@ function ROICalculator() {
             size="lg"
             onClick={() => {
               posthog?.capture("cta_clicked", { label: "Start Recovering Revenue", location: "roi_calculator" });
-              window.location.href = getLoginUrl();
+              window.location.href = "/login";
             }}
           >
             Start Recovering Revenue
@@ -600,7 +599,7 @@ export default function Landing() {
                     variant="outline"
                     className="w-full"
                     onClick={() => {
-                      window.location.href = getLoginUrl();
+                      window.location.href = "/login";
                     }}
                   >
                     Sign In
@@ -608,7 +607,7 @@ export default function Landing() {
                   <Button
                     className="w-full"
                     onClick={() => {
-                      window.location.href = getLoginUrl();
+                      window.location.href = "/login";
                     }}
                   >
                     Book a Demo
@@ -621,7 +620,7 @@ export default function Landing() {
               size="sm"
               className="hidden md:inline-flex"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Sign In
@@ -630,7 +629,7 @@ export default function Landing() {
               size="sm"
               className="hidden md:inline-flex"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Book a Demo
@@ -664,7 +663,7 @@ export default function Landing() {
               className="text-base px-8"
               onClick={() => {
                 posthog?.capture("cta_clicked", { label: "Book a Demo", location: "hero" });
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Book a Demo
@@ -837,7 +836,7 @@ export default function Landing() {
               size="lg"
               className="text-base px-8"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Book a Live Demo
@@ -1032,7 +1031,7 @@ export default function Landing() {
                     onClick={() => {
                       posthog?.capture("pricing_tier_selected", { tier: tier.name, price: tier.price, cta: tier.cta });
                       posthog?.capture("cta_clicked", { label: tier.cta, location: "pricing", tier: tier.name });
-                      window.location.href = getLoginUrl();
+                      window.location.href = "/login";
                     }}
                   >
                     {tier.cta}
@@ -1239,7 +1238,7 @@ export default function Landing() {
               className="text-base px-8"
               onClick={() => {
                 posthog?.capture("cta_clicked", { label: "Start Your Free Trial", location: "final_cta" });
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Start Your Free Trial
@@ -1251,7 +1250,7 @@ export default function Landing() {
               className="text-base px-8"
               onClick={() => {
                 posthog?.capture("cta_clicked", { label: "Book a Demo", location: "final_cta" });
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Book a Demo

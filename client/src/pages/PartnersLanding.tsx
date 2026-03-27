@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { getLoginUrl } from "@/const";
 import {
   DollarSign,
   Users,
@@ -131,7 +130,7 @@ const TESTIMONIALS = [
 ];
 
 export default function PartnersLanding() {
-  const loginUrl = getLoginUrl();
+  const loginUrl = "/login";
   const [shops, setShops] = useState(10);
   const [tier, setTier] = useState<"bronze" | "silver" | "gold" | "platinum">(
     "silver"

@@ -1,5 +1,5 @@
-import { getLoginUrl } from "@/const";
 import { trpc } from "@/lib/trpc";
+import { supabase } from "@/lib/supabase";
 import { TRPCClientError } from "@trpc/client";
 import { useCallback, useEffect, useMemo } from "react";
 import { usePostHog } from "@posthog/react";
@@ -10,7 +10,7 @@ type UseAuthOptions = {
 };
 
 export function useAuth(options?: UseAuthOptions) {
-  const { redirectOnUnauthenticated = false, redirectPath = getLoginUrl() } =
+  const { redirectOnUnauthenticated = false, redirectPath = "/login" } =
     options ?? {};
   const utils = trpc.useUtils();
   const posthog = usePostHog();
@@ -28,6 +28,10 @@ export function useAuth(options?: UseAuthOptions) {
 
   const logout = useCallback(async () => {
     try {
+      // Sign out of Supabase first
+      if (supabase) {
+        await supabase.auth.signOut();
+      }
       await logoutMutation.mutateAsync();
     } catch (error: unknown) {
       if (
@@ -60,13 +64,6 @@ export function useAuth(options?: UseAuthOptions) {
       logoutMutation.isPending,
     ]
   );
-
-  useEffect(() => {
-    localStorage.setItem(
-      "manus-runtime-user-info",
-      JSON.stringify(meQuery.data)
-    );
-  }, [meQuery.data]);
 
   useEffect(() => {
     if (!meQuery.data) return;

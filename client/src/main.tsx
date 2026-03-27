@@ -5,7 +5,6 @@ import { httpBatchLink, TRPCClientError } from "@trpc/client";
 import { createRoot } from "react-dom/client";
 import superjson from "superjson";
 import App from "./App";
-import { getLoginUrl } from "./const";
 import "./index.css";
 import posthog from "posthog-js";
 import { PostHogProvider } from "@posthog/react";
@@ -33,7 +32,7 @@ const redirectToLoginIfUnauthorized = (error: unknown) => {
 
   if (!isUnauthorized) return;
 
-  window.location.href = getLoginUrl();
+  window.location.href = "/login";
 };
 
 queryClient.getQueryCache().subscribe(event => {
@@ -66,12 +65,6 @@ const trpcClient = trpc.createClient({
           }
         }
         return {};
-      },
-      fetch(input, init) {
-        return globalThis.fetch(input, {
-          ...(init ?? {}),
-          credentials: "include", // Keep cookie support for Manus fallback
-        });
       },
     }),
   ],

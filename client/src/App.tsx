@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Route, Switch } from "wouter";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeProvider } from "./contexts/ThemeContext";
+import { AuthProvider } from "./contexts/AuthContext";
 import { useAuth } from "@/_core/hooks/useAuth";
 import { Loader2 } from "lucide-react";
 
@@ -33,6 +34,7 @@ const Integrations = lazy(() => import("./pages/Integrations"));
 const CallScorecard = lazy(() => import("./pages/CallScorecard"));
 const Help = lazy(() => import("./pages/Help"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
+const Login = lazy(() => import("./pages/Login"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // ─── Loading fallback ───────────────────────────────────────────────
@@ -105,6 +107,7 @@ function MainRouter() {
   return (
     <Switch>
       <Route path="/" component={Landing} />
+      <Route path="/login" component={Login} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/shops/:id" component={ShopDetail} />
@@ -144,14 +147,16 @@ function Router() {
 function App() {
   return (
     <ErrorBoundary>
-      <ThemeProvider defaultTheme="dark">
-        <TooltipProvider>
-          <Toaster />
-          <Suspense fallback={<PageLoader />}>
-            <Router />
-          </Suspense>
-        </TooltipProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="dark">
+          <TooltipProvider>
+            <Toaster />
+            <Suspense fallback={<PageLoader />}>
+              <Router />
+            </Suspense>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </ErrorBoundary>
   );
 }

@@ -5,7 +5,6 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { getLoginUrl } from "@/const";
 import { ArrowRight } from "lucide-react";
 import { Link } from "wouter";
 
@@ -70,7 +69,7 @@ export default function FAQ() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Sign In
@@ -78,7 +77,7 @@ export default function FAQ() {
             <Button
               size="sm"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Get Started
@@ -139,7 +138,7 @@ export default function FAQ() {
               size="lg"
               className="rounded-sm"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Get Started Free

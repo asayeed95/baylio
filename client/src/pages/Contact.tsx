@@ -4,7 +4,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getLoginUrl } from "@/const";
 import { Phone, Mail, ArrowRight, Send, CheckCircle2 } from "lucide-react";
 import { Link } from "wouter";
 import { trpc } from "@/lib/trpc";
@@ -66,7 +65,7 @@ export default function Contact() {
               variant="ghost"
               size="sm"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Sign In
@@ -74,7 +73,7 @@ export default function Contact() {
             <Button
               size="sm"
               onClick={() => {
-                window.location.href = getLoginUrl();
+                window.location.href = "/login";
               }}
             >
               Get Started
@@ -145,7 +144,7 @@ export default function Contact() {
                 <Button
                   className="w-full rounded-sm"
                   onClick={() => {
-                    window.location.href = getLoginUrl();
+                    window.location.href = "/login";
                   }}
                 >
                   Get Started Free

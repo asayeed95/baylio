@@ -1,5 +1,4 @@
 import { useAuth } from "@/_core/hooks/useAuth";
-import { getLoginUrl } from "@/const";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -224,7 +223,7 @@ export default function AdminPortal() {
           <Button
             className="bg-emerald-600 hover:bg-emerald-700 text-white"
             onClick={() => {
-              window.location.href = getLoginUrl();
+              window.location.href = "/login";
             }}
           >
             Sign In
