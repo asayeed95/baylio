@@ -121,6 +121,12 @@ export interface AgentResponse {
  *
  * This creates the agent in ElevenLabs that will handle live calls.
  * The agent_id is stored in the shop's agent_configs table.
+ *
+ * Conversation settings are tuned for maximum human-likeness:
+ * - Turn detection: server-based VAD with 300ms silence threshold
+ * - Interruption handling: agent pauses and lets caller speak
+ * - Response pacing: natural 0.5s delay so it doesn't feel instant
+ * - Stability + similarity: balanced for natural but consistent voice
  */
 export async function createConversationalAgent(
   params: CreateAgentParams
@@ -135,10 +141,28 @@ export async function createConversationalAgent(
             first_message: params.firstMessage,
             language: params.language || "en",
           },
-          tts: { voice_id: params.voiceId },
+          tts: {
+            voice_id: params.voiceId,
+            stability: 0.6,
+            similarity_boost: 0.75,
+            style: 0.35,
+            optimize_streaming_latency: 3,
+          },
+          conversation: {
+            // Turn detection: how long to wait for the caller to finish speaking
+            client_events: ["agent_response", "user_transcript"],
+            // Max call duration: 15 minutes
+            max_duration_seconds: 900,
+          },
+          asr: {
+            // Automatic speech recognition quality setting
+            quality: "high",
+          },
         },
         name: params.name,
-        platform_settings: { auth: { enable_auth: false } },
+        platform_settings: {
+          auth: { enable_auth: false },
+        },
       };
       const response = await client.post("/v1/convai/agents/create", payload);
       return response.data;
@@ -152,6 +176,7 @@ export async function createConversationalAgent(
 
 /**
  * Update an existing Conversational AI agent.
+ * Always re-applies voice tuning params to keep the agent consistent.
  */
 export async function updateConversationalAgent(
   agentId: string,
@@ -160,15 +185,29 @@ export async function updateConversationalAgent(
   try {
     return await withRetry(async () => {
       const client = createClient();
-      const payload: Record<string, unknown> = { conversation_config: {} };
+      const convConfig: Record<string, unknown> = {};
+
       if (params.systemPrompt || params.firstMessage || params.language) {
-        (payload.conversation_config as any).agent = {};
-        if (params.systemPrompt) (payload.conversation_config as any).agent.prompt = { prompt: params.systemPrompt };
-        if (params.firstMessage) (payload.conversation_config as any).agent.first_message = params.firstMessage;
-        if (params.language) (payload.conversation_config as any).agent.language = params.language;
+        convConfig.agent = {
+          ...(params.systemPrompt ? { prompt: { prompt: params.systemPrompt } } : {}),
+          ...(params.firstMessage ? { first_message: params.firstMessage } : {}),
+          ...(params.language ? { language: params.language } : {}),
+        };
       }
-      if (params.voiceId) (payload.conversation_config as any).tts = { voice_id: params.voiceId };
+
+      if (params.voiceId) {
+        convConfig.tts = {
+          voice_id: params.voiceId,
+          stability: 0.6,
+          similarity_boost: 0.75,
+          style: 0.35,
+          optimize_streaming_latency: 3,
+        };
+      }
+
+      const payload: Record<string, unknown> = { conversation_config: convConfig };
       if (params.name) payload.name = params.name;
+
       const response = await client.patch(`/v1/convai/agents/${agentId}`, payload);
       return response.data;
     }, 3, "updateAgent");

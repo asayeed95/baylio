@@ -120,9 +120,13 @@ async function registerElevenLabsCall(
         conversation_initiation_client_data: {
           dynamic_variables: {
             baylio_system_prompt: shopContext ? compileSystemPrompt(shopContext) : "You are a helpful assistant.",
-            baylio_greeting: shopContext ? compileGreeting(shopContext) : "Hello, how can I help you today?",
+            baylio_greeting: shopContext ? compileGreeting(shopContext) : "Hey, thanks for calling! How can I help you?",
             caller_number: fromNumber,
-            caller_name: callerName || "Unknown Caller"
+            caller_name: callerName || "Unknown Caller",
+            caller_role: callerRole || "unknown",
+            shop_name: shopContext?.shopName || "",
+            agent_name: shopContext?.agentName || "Baylio",
+            supported_languages: "English, Spanish, Hindi, Bangla, Arabic",
           },
         },
       }),
