@@ -1,16 +1,16 @@
 {
   "version": 2,
-  "buildCommand": "pnpm run build:client",
+  "buildCommand": "pnpm run build:vercel",
   "outputDirectory": "dist/public",
   "installCommand": "pnpm install",
   "functions": {
-    "api/index.ts": {
+    "api/index.js": {
       "maxDuration": 30
     }
   },
   "rewrites": [
-    { "source": "/api/trpc/:path*", "destination": "/api" },
-    { "source": "/api/:path*", "destination": "/api" },
+    { "source": "/api/trpc/:path*", "destination": "/api/index" },
+    { "source": "/api/:path*", "destination": "/api/index" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }

@@ -1,20 +1,20 @@
 /**
  * Vercel Serverless Function Entry Point
  *
- * This file is the Express app wrapper for Vercel's serverless runtime.
+ * This file is bundled by esbuild into api/index.js during `build:vercel`.
  * It mirrors the route setup from server/_core/index.ts but does NOT import
- * vite.ts (which pulls in devDependencies that aren't available in production).
+ * vite.ts (which pulls in devDependencies unavailable in production).
  * Vercel's CDN serves the SPA static files — Express only handles /api/* routes.
  */
 import "dotenv/config";
 import express from "express";
 import { createExpressMiddleware } from "@trpc/server/adapters/express";
-import { appRouter } from "../server/routers";
-import { createContext } from "../server/_core/context";
-import { twilioRouter } from "../server/services/twilioWebhooks";
-import { validateTwilioSignature } from "../server/middleware/twilioValidation";
-import { stripeWebhookRouter } from "../server/stripe/stripeRoutes";
-import { googleAuthRouter } from "../server/services/googleAuth";
+import { appRouter } from "./routers";
+import { createContext } from "./_core/context";
+import { twilioRouter } from "./services/twilioWebhooks";
+import { validateTwilioSignature } from "./middleware/twilioValidation";
+import { stripeWebhookRouter } from "./stripe/stripeRoutes";
+import { googleAuthRouter } from "./services/googleAuth";
 
 const app = express();
 
