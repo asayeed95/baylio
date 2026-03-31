@@ -73,17 +73,36 @@ const DEFAULT_HOURS: Record<string, { open: string; close: string; closed: boole
 };
 
 const COMMON_SERVICES = [
-  { name: "Oil Change", category: "Maintenance", price: 49 },
-  { name: "Brake Pad Replacement", category: "Brakes", price: 199 },
-  { name: "Tire Rotation", category: "Tires", price: 29 },
-  { name: "Engine Diagnostic", category: "Diagnostics", price: 99 },
-  { name: "AC Repair", category: "Climate", price: 149 },
-  { name: "Battery Replacement", category: "Electrical", price: 129 },
-  { name: "Wheel Alignment", category: "Tires", price: 89 },
+  // Popular (shown first)
+  { name: "Oil Change", category: "Popular", price: 49 },
+  { name: "Brake Pad Replacement", category: "Popular", price: 199 },
+  { name: "Tire Rotation", category: "Popular", price: 29 },
+  { name: "Engine Diagnostic", category: "Popular", price: 99 },
+  { name: "State Inspection", category: "Popular", price: 25 },
+  // Maintenance
   { name: "Transmission Flush", category: "Maintenance", price: 179 },
-  { name: "State Inspection", category: "Inspection", price: 25 },
   { name: "Coolant Flush", category: "Maintenance", price: 99 },
+  { name: "Spark Plug Replacement", category: "Maintenance", price: 149 },
+  { name: "Timing Belt Replacement", category: "Maintenance", price: 450 },
+  { name: "Fuel System Cleaning", category: "Maintenance", price: 129 },
+  // Brakes & Tires
+  { name: "Brake Rotor Replacement", category: "Brakes & Tires", price: 349 },
+  { name: "Wheel Alignment", category: "Brakes & Tires", price: 89 },
+  { name: "Tire Balance", category: "Brakes & Tires", price: 49 },
+  { name: "New Tires (set of 4)", category: "Brakes & Tires", price: 599 },
+  // Electrical & Climate
+  { name: "Battery Replacement", category: "Electrical & Climate", price: 129 },
+  { name: "AC Repair", category: "Electrical & Climate", price: 149 },
+  { name: "AC Recharge", category: "Electrical & Climate", price: 89 },
+  { name: "Alternator Replacement", category: "Electrical & Climate", price: 399 },
+  // Engine & Drivetrain
+  { name: "Head Gasket Repair", category: "Engine & Drivetrain", price: 1200 },
+  { name: "Clutch Replacement", category: "Engine & Drivetrain", price: 899 },
+  { name: "Exhaust Repair", category: "Engine & Drivetrain", price: 249 },
+  { name: "Catalytic Converter", category: "Engine & Drivetrain", price: 999 },
 ];
+
+const SERVICE_CATEGORIES = [...new Set(COMMON_SERVICES.map(s => s.category))];
 
 const VOICE_OPTIONS = [
   { id: "cjVigY5qzO86Huf0OWal", name: "Charlie", description: "Friendly, conversational male" },
@@ -105,8 +124,10 @@ export default function Onboarding() {
   const [zip, setZip] = useState("");
   const [timezone, setTimezone] = useState("America/New_York");
   const [businessHours, setBusinessHours] = useState(DEFAULT_HOURS);
-  const [selectedServices, setSelectedServices] = useState<typeof COMMON_SERVICES>([]);
+  const [selectedServices, setSelectedServices] = useState<{ name: string; category: string; price: number | undefined }[]>([]);
   const [customServiceText, setCustomServiceText] = useState("");
+  const [expandedCategory, setExpandedCategory] = useState<string | null>("Popular");
+  const [serviceSearch, setServiceSearch] = useState("");
 
   // Step 2: Phone Setup
   const [phoneOption, setPhoneOption] = useState<"forward" | "new" | null>(null);
@@ -172,9 +193,21 @@ export default function Onboarding() {
     setSelectedServices((prev) => {
       const exists = prev.find((s) => s.name === service.name);
       if (exists) return prev.filter((s) => s.name !== service.name);
-      return [...prev, service];
+      return [...prev, { ...service }];
     });
   };
+
+  const updateServicePrice = (name: string, price: number | undefined) => {
+    setSelectedServices((prev) =>
+      prev.map((s) => (s.name === name ? { ...s, price } : s))
+    );
+  };
+
+  const filteredServices = serviceSearch.trim()
+    ? COMMON_SERVICES.filter((s) =>
+        s.name.toLowerCase().includes(serviceSearch.toLowerCase())
+      )
+    : COMMON_SERVICES;
 
   const updateHours = (day: string, field: "open" | "close" | "closed", value: string | boolean) => {
     setBusinessHours((prev) => ({
@@ -423,39 +456,144 @@ export default function Onboarding() {
                   <Wrench className="h-4 w-4" /> Services You Offer
                 </CardTitle>
                 <CardDescription>
-                  Select common services or add your own. Your AI will only recommend services from this list.
+                  Pick from common auto repair services below, or add your own. You can adjust prices after selecting.
                 </CardDescription>
               </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-2">
-                  {COMMON_SERVICES.map((service) => {
-                    const isSelected = selectedServices.some((s) => s.name === service.name);
-                    return (
-                      <Badge
-                        key={service.name}
-                        variant={isSelected ? "default" : "outline"}
-                        className="cursor-pointer text-sm py-1.5 px-3 transition-colors"
-                        onClick={() => toggleService(service)}
-                      >
-                        {service.name}
-                        {service.price && <span className="ml-1 opacity-70">${service.price}</span>}
-                      </Badge>
-                    );
-                  })}
+              <CardContent className="space-y-5">
+                {/* Search */}
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search services..."
+                    value={serviceSearch}
+                    onChange={(e) => setServiceSearch(e.target.value)}
+                    className="pl-9"
+                  />
                 </div>
+
+                {/* Category sections */}
                 <div className="space-y-2">
-                  <Label>Additional Services (one per line, optional price: "Service - $99")</Label>
+                  {(serviceSearch.trim()
+                    ? [{ cat: "Results", services: filteredServices }]
+                    : SERVICE_CATEGORIES.map((cat) => ({
+                        cat,
+                        services: COMMON_SERVICES.filter((s) => s.category === cat),
+                      }))
+                  ).map(({ cat, services }) => (
+                    <div key={cat} className="border rounded-lg overflow-hidden">
+                      <button
+                        type="button"
+                        className="w-full flex items-center justify-between px-4 py-2.5 text-sm font-medium bg-secondary/50 hover:bg-secondary/80 transition-colors text-left"
+                        onClick={() => setExpandedCategory(expandedCategory === cat ? null : cat)}
+                      >
+                        <span className="flex items-center gap-2">
+                          {cat}
+                          <span className="text-xs text-muted-foreground font-normal">
+                            ({services.filter((s) => selectedServices.some((sel) => sel.name === s.name)).length}/{services.length})
+                          </span>
+                        </span>
+                        <svg
+                          className={`h-4 w-4 text-muted-foreground transition-transform ${expandedCategory === cat ? "rotate-180" : ""}`}
+                          fill="none" viewBox="0 0 24 24" stroke="currentColor"
+                        >
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                        </svg>
+                      </button>
+                      {expandedCategory === cat && (
+                        <div className="p-2 space-y-1">
+                          {services.map((service) => {
+                            const isSelected = selectedServices.some((s) => s.name === service.name);
+                            return (
+                              <div
+                                key={service.name}
+                                className={`flex items-center justify-between p-2.5 rounded-md cursor-pointer transition-colors ${
+                                  isSelected ? "bg-primary/5 border border-primary/20" : "hover:bg-muted/50"
+                                }`}
+                                onClick={() => toggleService(service)}
+                              >
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-5 h-5 rounded border-2 flex items-center justify-center transition-colors ${
+                                    isSelected ? "bg-primary border-primary" : "border-border"
+                                  }`}>
+                                    {isSelected && (
+                                      <svg className="h-3 w-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                      </svg>
+                                    )}
+                                  </div>
+                                  <span className="text-sm font-medium">{service.name}</span>
+                                </div>
+                                <span className="text-sm text-muted-foreground font-mono">
+                                  ${service.price}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Selected services with editable prices */}
+                {selectedServices.length > 0 && (
+                  <div className="space-y-3">
+                    <Label className="text-sm font-medium">Your Services — adjust prices to match your shop</Label>
+                    <div className="space-y-2">
+                      {selectedServices.map((service) => (
+                        <div
+                          key={service.name}
+                          className="flex items-center justify-between gap-3 p-3 rounded-lg border bg-card"
+                        >
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <span className="text-sm font-medium truncate">{service.name}</span>
+                            <Badge variant="secondary" className="text-[10px] shrink-0">{service.category}</Badge>
+                          </div>
+                          <div className="flex items-center gap-2 shrink-0">
+                            <span className="text-sm text-muted-foreground">$</span>
+                            <Input
+                              type="number"
+                              className="w-20 h-8 text-sm text-right font-mono"
+                              value={service.price ?? ""}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                const val = e.target.value ? parseFloat(e.target.value) : undefined;
+                                updateServicePrice(service.name, val);
+                              }}
+                            />
+                            <button
+                              type="button"
+                              className="text-muted-foreground hover:text-destructive transition-colors p-1"
+                              onClick={() => toggleService(service as (typeof COMMON_SERVICES)[0])}
+                            >
+                              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Custom services */}
+                <div className="space-y-2">
+                  <Label className="text-sm">Add custom services (one per line, optional: "Service - $99")</Label>
                   <Textarea
-                    placeholder={"Timing Belt Replacement - $450\nHead Gasket Repair - $1200\nCustom Exhaust Work"}
+                    placeholder={"Custom Exhaust Work - $350\nPaint Protection Film\nWindow Tinting - $199"}
                     value={customServiceText}
                     onChange={(e) => setCustomServiceText(e.target.value)}
                     rows={3}
                   />
                 </div>
+
                 {allServices.length > 0 && (
-                  <p className="text-xs text-muted-foreground">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
                     {allServices.length} service{allServices.length !== 1 ? "s" : ""} configured
-                  </p>
+                  </div>
                 )}
               </CardContent>
             </Card>
