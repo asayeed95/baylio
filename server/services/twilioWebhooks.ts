@@ -337,6 +337,36 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     const callerName = callerProfile?.name || "Unknown Caller";
     const callerRole = callerProfile?.callerRole || "unknown";
 
+    // ─── SALES LINE BYPASS ─────────────────────────────────────
+    // The Baylio sales number (844-875-2441) routes directly to Sam,
+    // bypassing shop resolution. Sam is NOT a shop agent — he sells Baylio.
+    const BAYLIO_SALES_NUMBER = process.env.TWILIO_PHONE_NUMBER || "+18448752441";
+    const SAM_AGENT_ID = "agent_8401kkzx0edafhbb0c56a04d1kmb";
+    const normalizedTo = To.replace(/[^\d+]/g, "");
+
+    if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
+      console.log(`[CALL] Sales line detected — routing to Sam (${SAM_AGENT_ID})`);
+      try {
+        const twiml = await registerElevenLabsCall(
+          SAM_AGENT_ID,
+          From,
+          To,
+          undefined,
+          callerName,
+          callerRole
+        );
+        const elapsed = Date.now() - startTime;
+        console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
+        res.type("text/xml");
+        return res.send(twiml);
+      } catch (salesErr) {
+        console.error("[CALL] Sam registration failed, falling back to voicemail:", salesErr);
+        res.type("text/xml");
+        return res.send(generateVoicemailTwiML("Baylio"));
+      }
+    }
+    // ─── END SALES LINE BYPASS ─────────────────────────────────
+
     // Step 1: Resolve shop context from the called number
     const resolved = await resolveShopContext(To);
 

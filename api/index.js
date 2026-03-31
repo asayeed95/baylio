@@ -4373,6 +4373,30 @@ twilioRouter.post("/voice", async (req, res) => {
     setImmediate(() => ensureCallerProfile(From));
     const callerName = callerProfile?.name || "Unknown Caller";
     const callerRole = callerProfile?.callerRole || "unknown";
+    const BAYLIO_SALES_NUMBER = process.env.TWILIO_PHONE_NUMBER || "+18448752441";
+    const SAM_AGENT_ID = "agent_8401kkzx0edafhbb0c56a04d1kmb";
+    const normalizedTo = To.replace(/[^\d+]/g, "");
+    if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
+      console.log(`[CALL] Sales line detected \u2014 routing to Sam (${SAM_AGENT_ID})`);
+      try {
+        const twiml2 = await registerElevenLabsCall(
+          SAM_AGENT_ID,
+          From,
+          To,
+          void 0,
+          callerName,
+          callerRole
+        );
+        const elapsed2 = Date.now() - startTime;
+        console.log(`[CALL] Sam registered OK (${elapsed2}ms). TwiML length=${twiml2.length}`);
+        res.type("text/xml");
+        return res.send(twiml2);
+      } catch (salesErr) {
+        console.error("[CALL] Sam registration failed, falling back to voicemail:", salesErr);
+        res.type("text/xml");
+        return res.send(generateVoicemailTwiML("Baylio"));
+      }
+    }
     const resolved = await resolveShopContext(To);
     if (!resolved) {
       console.warn(`[CALL] No shop found for number: ${To}`);
