@@ -148,7 +148,7 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <ThemeProvider defaultTheme="dark">
+        <ThemeProvider defaultTheme="light">
           <TooltipProvider>
             <Toaster />
             <Suspense fallback={<PageLoader />}>
