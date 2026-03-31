@@ -1,17 +1,18 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 
-export default function handler(_req: VercelRequest, res: VercelResponse) {
+export default async function handler(_req: VercelRequest, res: VercelResponse) {
+  const errors: string[] = [];
+
+  try { await import("../server/_core/context"); } catch (e: any) { errors.push(`context: ${e.message}`); }
+  try { await import("../server/_core/trpc"); } catch (e: any) { errors.push(`trpc: ${e.message}`); }
+  try { await import("../server/routers"); } catch (e: any) { errors.push(`routers: ${e.message}`); }
+  try { await import("../server/services/twilioWebhooks"); } catch (e: any) { errors.push(`twilioWebhooks: ${e.message}`); }
+  try { await import("../server/middleware/twilioValidation"); } catch (e: any) { errors.push(`twilioValidation: ${e.message}`); }
+  try { await import("../server/stripe/stripeRoutes"); } catch (e: any) { errors.push(`stripeRoutes: ${e.message}`); }
+  try { await import("../server/services/googleAuth"); } catch (e: any) { errors.push(`googleAuth: ${e.message}`); }
+
   res.json({
-    status: "ok",
-    node: process.version,
-    env: {
-      hasDbUrl: !!process.env.DATABASE_URL,
-      hasSupabaseUrl: !!process.env.SUPABASE_URL,
-      hasSupabaseAnon: !!process.env.SUPABASE_ANON_KEY,
-      hasSupabaseService: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-      hasStripeKey: !!process.env.STRIPE_SECRET_KEY,
-      hasTwilioSid: !!process.env.TWILIO_ACCOUNT_SID,
-      hasElevenLabs: !!process.env.ELEVENLABS_API_KEY,
-    },
+    status: errors.length === 0 ? "all_imports_ok" : "import_errors",
+    errors,
   });
 }
