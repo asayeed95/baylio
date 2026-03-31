@@ -44,7 +44,7 @@ app.use(
 // Vercel exports the app directly — no listener needed
 // For local dev, start the server with Vite middleware
 if (!process.env.VERCEL) {
-  function isPortAvailable(port: number): Promise<boolean> {
+  const isPortAvailable = (port: number): Promise<boolean> => {
     return new Promise(resolve => {
       const server = net.createServer();
       server.listen(port, () => {
@@ -52,18 +52,18 @@ if (!process.env.VERCEL) {
       });
       server.on("error", () => resolve(false));
     });
-  }
+  };
 
-  async function findAvailablePort(startPort: number = 3000): Promise<number> {
+  const findAvailablePort = async (startPort: number = 3000): Promise<number> => {
     for (let port = startPort; port < startPort + 20; port++) {
       if (await isPortAvailable(port)) {
         return port;
       }
     }
     throw new Error(`No available port found starting from ${startPort}`);
-  }
+  };
 
-  async function startServer() {
+  const startServer = async () => {
     const server = createServer(app);
 
     if (process.env.NODE_ENV === "development") {
@@ -82,7 +82,7 @@ if (!process.env.VERCEL) {
     server.listen(port, () => {
       console.log(`Server running on http://localhost:${port}/`);
     });
-  }
+  };
 
   startServer().catch(console.error);
 } else {

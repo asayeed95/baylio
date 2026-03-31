@@ -15,6 +15,7 @@ import {
   Lightbulb,
   Loader2,
   AlertCircle,
+  MessageSquare,
 } from "lucide-react";
 import { useParams, useLocation } from "wouter";
 import { usePostHog } from "@posthog/react";
@@ -241,91 +242,103 @@ function CallScorecardContent() {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Radar Chart */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-base">Performance Radar</CardTitle>
-            <CardDescription>
-              Visual breakdown of call handling quality
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="80%">
-                <PolarGrid />
-                <PolarAngleAxis dataKey="dimension" className="text-xs" />
-                <PolarRadiusAxis angle={90} domain={[0, 10]} tick={false} />
-                <Radar
-                  name="Score"
-                  dataKey="score"
-                  stroke="hsl(var(--primary))"
-                  fill="hsl(var(--primary))"
-                  fillOpacity={0.3}
-                  strokeWidth={2}
-                />
-              </RadarChart>
-            </ResponsiveContainer>
-          </CardContent>
-        </Card>
+      <div className="grid gap-6 lg:grid-cols-3 items-start">
+        {/* Left Column: Metrics & Insights */}
+        <div className="space-y-6 lg:col-span-1">
+          {/* Radar Chart */}
+          <Card className="border-border">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-base">Performance Radar</CardTitle>
+            </CardHeader>
+            <CardContent className="px-0">
+              <ResponsiveContainer width="100%" height={240}>
+                <RadarChart data={radarData} cx="50%" cy="50%" outerRadius="70%">
+                  <PolarGrid />
+                  <PolarAngleAxis dataKey="dimension" className="text-[10px]" />
+                  <PolarRadiusAxis angle={90} domain={[0, 10]} tick={false} />
+                  <Radar
+                    name="Score"
+                    dataKey="score"
+                    stroke="hsl(var(--primary))"
+                    fill="hsl(var(--primary))"
+                    fillOpacity={0.2}
+                    strokeWidth={2}
+                  />
+                </RadarChart>
+              </ResponsiveContainer>
+            </CardContent>
+          </Card>
 
-        {/* Score Breakdown */}
-        <Card className="border-border">
-          <CardHeader>
-            <CardTitle className="text-base">Score Breakdown</CardTitle>
-            <CardDescription>
-              Individual dimension scores (0-10)
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {dimensions.map(dim => (
-                <div
-                  key={dim.label}
-                  className="flex items-center justify-between"
-                >
-                  <div className="flex-1 min-w-0">
+          {/* Score Breakdown */}
+          <Card className="border-border">
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base">Dimension Scores</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {dimensions.map(dim => (
+                  <div key={dim.label} className="flex items-center justify-between">
                     <p className="text-sm font-medium">{dim.label}</p>
-                    <p className="text-xs text-muted-foreground">{dim.desc}</p>
+                    <Badge variant={getScoreBadgeVariant(dim.score)} className="font-mono">
+                      {dim.score}/10
+                    </Badge>
                   </div>
-                  <Badge
-                    variant={getScoreBadgeVariant(dim.score)}
-                    className="ml-3 font-mono tabular-nums"
-                  >
-                    {dim.score}/10
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
 
-      {/* Suggestions */}
-      {scorecard.suggestions && scorecard.suggestions.length > 0 && (
-        <Card className="border-border">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Lightbulb className="h-5 w-5 text-yellow-500" />
-              <CardTitle className="text-base">
-                AI Improvement Suggestions
-              </CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <ul className="space-y-3">
-              {scorecard.suggestions.map((suggestion, idx) => (
-                <li key={idx} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center text-xs font-medium text-primary">
-                    {idx + 1}
-                  </span>
-                  <p className="text-sm text-muted-foreground">{suggestion}</p>
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-      )}
+          {/* Suggestions */}
+          {scorecard.suggestions && scorecard.suggestions.length > 0 && (
+            <Card className="border-border bg-yellow-50/50">
+              <CardHeader className="pb-2">
+                <div className="flex items-center gap-2">
+                  <Lightbulb className="h-5 w-5 text-yellow-600" />
+                  <CardTitle className="text-base text-yellow-900">
+                    AI Suggestions
+                  </CardTitle>
+                </div>
+              </CardHeader>
+              <CardContent>
+                <ul className="space-y-3">
+                  {scorecard.suggestions.map((suggestion, idx) => (
+                    <li key={idx} className="flex items-start gap-3">
+                      <span className="flex-shrink-0 w-5 h-5 rounded-full bg-yellow-200 flex items-center justify-center text-[10px] font-bold text-yellow-800 mt-0.5">
+                        {idx + 1}
+                      </span>
+                      <p className="text-sm text-yellow-900 leading-snug">{suggestion}</p>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Column: Call Transcript */}
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="h-full border-border flex flex-col">
+            <CardHeader className="border-b bg-muted/30 pb-4">
+              <CardTitle className="text-base">Call Transcript</CardTitle>
+              <CardDescription>
+                Full transcription of the AI interaction
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="flex-1 p-0">
+              {call.transcription ? (
+                <div className="p-6 text-sm leading-relaxed whitespace-pre-wrap font-mono text-muted-foreground bg-slate-50 min-h-[500px]">
+                  {call.transcription}
+                </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-24 text-muted-foreground">
+                  <MessageSquare className="h-10 w-10 mb-3 opacity-20" />
+                  <p>No transcript available for this call.</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
 }

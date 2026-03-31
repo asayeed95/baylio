@@ -296,10 +296,12 @@ function MissedCallAuditContent() {
                   <TableCell className="font-mono">
                     {audit.totalMissedCalls ?? 0}
                   </TableCell>
-                  <TableCell className="font-mono text-primary">
-                    {audit.estimatedLostRevenue
-                      ? `$${parseFloat(audit.estimatedLostRevenue).toLocaleString()}`
-                      : "-"}
+                  <TableCell>
+                    <div className="inline-flex items-center px-3 py-1 rounded-md bg-primary/10 text-primary font-mono text-lg font-bold">
+                      {audit.estimatedLostRevenue
+                        ? `$${parseFloat(audit.estimatedLostRevenue).toLocaleString()}`
+                        : "-"}
+                    </div>
                   </TableCell>
                   <TableCell className="text-xs text-muted-foreground">
                     {new Date(audit.createdAt).toLocaleDateString()}

@@ -214,10 +214,10 @@ function AnalyticsContent() {
                   <metric.icon className={`h-4 w-4 ${metric.color}`} />
                 </div>
                 <div>
-                  <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  <p className="stat-label uppercase">
                     {metric.title}
                   </p>
-                  <p className="text-xl font-mono font-medium mt-0.5">
+                  <p className="stat-number mt-0.5">
                     {metric.value}
                   </p>
                   <p className="text-xs text-muted-foreground mt-1">
@@ -237,11 +237,11 @@ function AnalyticsContent() {
             <CardContent className="pt-4 pb-4">
               <div className="flex items-center gap-2">
                 <metric.icon className="h-4 w-4 text-muted-foreground" />
-                <p className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                <p className="stat-label uppercase tracking-widest">
                   {metric.title}
                 </p>
               </div>
-              <p className="text-lg font-mono font-medium mt-1">
+              <p className="stat-number mt-1 text-lg">
                 {metric.value}
               </p>
             </CardContent>
