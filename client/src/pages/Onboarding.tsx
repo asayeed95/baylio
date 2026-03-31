@@ -102,7 +102,7 @@ const COMMON_SERVICES = [
   { name: "Catalytic Converter", category: "Engine & Drivetrain", price: 999 },
 ];
 
-const SERVICE_CATEGORIES = [...new Set(COMMON_SERVICES.map(s => s.category))];
+const SERVICE_CATEGORIES = Array.from(new Set(COMMON_SERVICES.map(s => s.category)));
 
 const VOICE_OPTIONS = [
   { id: "cjVigY5qzO86Huf0OWal", name: "Charlie", description: "Friendly, conversational male" },

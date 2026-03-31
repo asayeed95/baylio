@@ -58,24 +58,24 @@ const MAX_WIDTH = 400;
 
 function PartnersSkeleton() {
   return (
-    <div className="flex min-h-screen bg-zinc-950">
-      <div className="w-[260px] border-r border-zinc-800 bg-zinc-950 p-4 space-y-6">
+    <div className="flex min-h-screen bg-background">
+      <div className="w-[260px] border-r border-border bg-background p-4 space-y-6">
         <div className="flex items-center gap-3 px-2">
-          <Skeleton className="h-8 w-8 rounded-md bg-zinc-800" />
-          <Skeleton className="h-4 w-28 bg-zinc-800" />
+          <Skeleton className="h-8 w-8 rounded-md bg-secondary" />
+          <Skeleton className="h-4 w-28 bg-secondary" />
         </div>
         <div className="space-y-2 px-2">
-          <Skeleton className="h-10 w-full rounded-lg bg-zinc-800" />
-          <Skeleton className="h-10 w-full rounded-lg bg-zinc-800" />
-          <Skeleton className="h-10 w-full rounded-lg bg-zinc-800" />
+          <Skeleton className="h-10 w-full rounded-lg bg-secondary" />
+          <Skeleton className="h-10 w-full rounded-lg bg-secondary" />
+          <Skeleton className="h-10 w-full rounded-lg bg-secondary" />
         </div>
       </div>
-      <div className="flex-1 p-6 space-y-4 bg-zinc-950">
-        <Skeleton className="h-12 w-48 rounded-lg bg-zinc-800" />
+      <div className="flex-1 p-6 space-y-4 bg-background">
+        <Skeleton className="h-12 w-48 rounded-lg bg-secondary" />
         <div className="grid gap-4 md:grid-cols-3">
-          <Skeleton className="h-32 rounded-xl bg-zinc-800" />
-          <Skeleton className="h-32 rounded-xl bg-zinc-800" />
-          <Skeleton className="h-32 rounded-xl bg-zinc-800" />
+          <Skeleton className="h-32 rounded-xl bg-secondary" />
+          <Skeleton className="h-32 rounded-xl bg-secondary" />
+          <Skeleton className="h-32 rounded-xl bg-secondary" />
         </div>
       </div>
     </div>
@@ -102,7 +102,7 @@ export default function PartnersPortalLayout({
   // instead of the public landing page for unauthenticated visitors.
 
   return (
-    <div className="partners-portal bg-zinc-950 text-zinc-100 min-h-screen">
+    <div className="partners-portal bg-background text-foreground min-h-screen">
       <SidebarProvider
         style={
           {
@@ -178,22 +178,22 @@ function PartnersLayoutContent({
       <div className="relative" ref={sidebarRef}>
         <Sidebar
           collapsible="icon"
-          className="border-r border-zinc-800 bg-zinc-950 [&_[data-sidebar=sidebar]]:bg-zinc-950"
+          className="border-r border-border bg-background [&_[data-sidebar=sidebar]]:bg-background"
           disableTransition={isResizing}
         >
           <SidebarHeader className="h-16 justify-center">
             <div className="flex items-center gap-3 px-2 transition-all w-full">
               <button
                 onClick={toggleSidebar}
-                className="h-8 w-8 flex items-center justify-center hover:bg-zinc-800 rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shrink-0"
+                className="h-8 w-8 flex items-center justify-center hover:bg-secondary rounded-lg transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 shrink-0"
                 aria-label="Toggle navigation"
               >
-                <PanelLeft className="h-4 w-4 text-zinc-400" />
+                <PanelLeft className="h-4 w-4 text-muted-foreground" />
               </button>
               {!isCollapsed ? (
                 <div className="flex items-center gap-2 min-w-0">
                   <Handshake className="h-5 w-5 text-emerald-400 shrink-0" />
-                  <span className="font-bold tracking-tight truncate text-white">
+                  <span className="font-bold tracking-tight truncate text-foreground">
                     Partners
                   </span>
                   <span className="text-xs font-medium px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-400 shrink-0">
@@ -217,7 +217,7 @@ function PartnersLayoutContent({
                       isActive={isActive}
                       onClick={() => setLocation(item.path)}
                       tooltip={item.label}
-                      className={`h-10 transition-all font-normal text-zinc-300 hover:text-white hover:bg-zinc-800 ${
+                      className={`h-10 transition-all font-normal text-foreground/80 hover:text-foreground hover:bg-secondary ${
                         isActive
                           ? "bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/15 hover:text-emerald-400"
                           : ""
@@ -225,7 +225,7 @@ function PartnersLayoutContent({
                     >
                       <item.icon
                         className={`h-4 w-4 ${
-                          isActive ? "text-emerald-400" : "text-zinc-400"
+                          isActive ? "text-emerald-400" : "text-muted-foreground"
                         }`}
                       />
                       <span>{item.label}</span>
@@ -241,9 +241,9 @@ function PartnersLayoutContent({
                   <SidebarMenuButton
                     onClick={() => setLocation("/dashboard")}
                     tooltip="Back to Baylio"
-                    className="h-10 font-normal text-zinc-500 hover:text-zinc-300 hover:bg-zinc-800"
+                    className="h-10 font-normal text-muted-foreground hover:text-foreground/80 hover:bg-secondary"
                   >
-                    <ArrowLeft className="h-4 w-4 text-zinc-500" />
+                    <ArrowLeft className="h-4 w-4 text-muted-foreground" />
                     <span>Back to Baylio</span>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -254,17 +254,17 @@ function PartnersLayoutContent({
           <SidebarFooter className="p-3">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-zinc-800 transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
-                  <Avatar className="h-9 w-9 border border-zinc-700 shrink-0">
-                    <AvatarFallback className="text-xs font-medium bg-zinc-800 text-zinc-300">
+                <button className="flex items-center gap-3 rounded-lg px-1 py-1 hover:bg-secondary transition-colors w-full text-left group-data-[collapsible=icon]:justify-center focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500">
+                  <Avatar className="h-9 w-9 border border-border/50 shrink-0">
+                    <AvatarFallback className="text-xs font-medium bg-secondary text-foreground/80">
                       {user?.name?.charAt(0).toUpperCase()}
                     </AvatarFallback>
                   </Avatar>
                   <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-                    <p className="text-sm font-medium truncate leading-none text-zinc-200">
+                    <p className="text-sm font-medium truncate leading-none text-foreground">
                       {user?.name || "-"}
                     </p>
-                    <p className="text-xs text-zinc-500 truncate mt-1.5">
+                    <p className="text-xs text-muted-foreground truncate mt-1.5">
                       Partner
                     </p>
                   </div>
@@ -272,18 +272,18 @@ function PartnersLayoutContent({
               </DropdownMenuTrigger>
               <DropdownMenuContent
                 align="end"
-                className="w-48 bg-zinc-900 border-zinc-700"
+                className="w-48 bg-card border-border/50"
               >
                 <DropdownMenuItem
                   onClick={() => setLocation("/dashboard")}
-                  className="cursor-pointer text-zinc-300 focus:text-white focus:bg-zinc-800"
+                  className="cursor-pointer text-foreground/80 focus:text-foreground focus:bg-secondary"
                 >
                   <ArrowLeft className="mr-2 h-4 w-4" />
                   <span>Back to Baylio</span>
                 </DropdownMenuItem>
                 <DropdownMenuItem
                   onClick={logout}
-                  className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-zinc-800"
+                  className="cursor-pointer text-red-400 focus:text-red-300 focus:bg-secondary"
                 >
                   <LogOut className="mr-2 h-4 w-4" />
                   <span>Sign out</span>
@@ -304,12 +304,12 @@ function PartnersLayoutContent({
         />
       </div>
 
-      <SidebarInset className="bg-zinc-950">
+      <SidebarInset className="bg-background">
         {isMobile && (
-          <div className="flex border-b border-zinc-800 h-14 items-center justify-between bg-zinc-950/95 px-2 backdrop-blur sticky top-0 z-40">
+          <div className="flex border-b border-border h-14 items-center justify-between bg-background/95 px-2 backdrop-blur sticky top-0 z-40">
             <div className="flex items-center gap-2">
-              <SidebarTrigger className="h-9 w-9 rounded-lg bg-zinc-900 text-zinc-300" />
-              <span className="tracking-tight text-zinc-100">
+              <SidebarTrigger className="h-9 w-9 rounded-lg bg-card text-foreground/80" />
+              <span className="tracking-tight text-foreground">
                 {activeMenuItem?.label ?? "Partners"}
               </span>
             </div>

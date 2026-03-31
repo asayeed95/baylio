@@ -230,73 +230,117 @@ function SubscriptionsContent() {
         </div>
       )}
 
-      {/* Pricing Reference */}
-      <Card className="bg-muted/30">
-        <CardHeader>
-          <CardTitle className="text-lg">Plan Comparison</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid md:grid-cols-3 gap-4">
-            {[
-              {
-                tier: "Starter",
-                price: 199,
-                minutes: 300,
-                features: [
-                  "AI receptionist",
-                  "Call logging",
-                  "Basic analytics",
-                ],
-              },
-              {
-                tier: "Pro",
-                price: 349,
-                minutes: 750,
-                features: [
-                  "Calendar integration",
-                  "Advanced analytics",
-                  "Custom AI voice",
-                ],
-              },
-              {
-                tier: "Elite",
-                price: 599,
-                minutes: 1500,
-                features: [
-                  "Upsell engine",
-                  "CRM integration",
-                  "Multi-location",
-                  "Priority support",
-                ],
-              },
-            ].map(plan => (
-              <div
-                key={plan.tier}
-                className="p-4 rounded-lg bg-background border"
-              >
-                <h3 className="font-semibold">{plan.tier}</h3>
-                <p className="text-2xl font-mono font-medium mt-1">
+      {/* Pricing Plans (Stripe Style) */}
+      <div className="mt-12">
+        <div className="mb-8">
+          <h2 className="text-2xl font-bold tracking-tight">Upgrade your plan</h2>
+          <p className="text-muted-foreground mt-1">
+            Choose the right capacity for your shop's call volume.
+          </p>
+        </div>
+
+        <div className="grid md:grid-cols-3 gap-6 lg:gap-8 items-start">
+          {[
+            {
+              tier: "Starter",
+              desc: "For single-location shops getting started",
+              price: 199,
+              minutes: 300,
+              popular: false,
+              features: [
+                "AI receptionist",
+                "Call logging & transcription",
+                "Basic analytics dashboard",
+                "Email notifications",
+              ],
+            },
+            {
+              tier: "Pro",
+              desc: "For busy shops that need more capacity",
+              price: 349,
+              minutes: 750,
+              popular: true,
+              features: [
+                "Everything in Starter",
+                "Calendar integration",
+                "Advanced analytics & trends",
+                "Custom AI voice & persona",
+                "SMS notifications to owner",
+              ],
+            },
+            {
+              tier: "Elite",
+              desc: "For high-volume & multi-location owners",
+              price: 599,
+              minutes: 1500,
+              popular: false,
+              features: [
+                "Everything in Pro",
+                "Intelligent upsell engine",
+                "CRM integration",
+                "Multi-location management",
+                "Priority support",
+              ],
+            },
+          ].map(plan => (
+            <Card
+              key={plan.tier}
+              className={`relative flex flex-col h-full bg-card ${
+                plan.popular
+                  ? "border-primary shadow-sm scale-100 md:scale-105 z-10"
+                  : "border-border/50 scale-100"
+              }`}
+            >
+              {plan.popular && (
+                <div className="absolute -top-3 left-0 right-0 max-w-fit mx-auto">
+                  <Badge className="bg-primary text-primary-foreground font-semibold px-3 py-0.5">
+                    Most Popular
+                  </Badge>
+                </div>
+              )}
+              <CardHeader className="p-8 pb-4">
+                <CardTitle className="text-xl font-bold">{plan.tier}</CardTitle>
+                <CardDescription className="text-sm mt-2 h-10">
+                  {plan.desc}
+                </CardDescription>
+                <div className="mt-4 flex items-baseline text-4xl font-bold font-mono tracking-tighter">
                   ${plan.price}
-                  <span className="text-sm text-muted-foreground font-normal font-sans">
-                    /mo
+                  <span className="text-sm font-sans font-medium text-muted-foreground ml-1 tracking-normal">
+                    /month
                   </span>
+                </div>
+                <p className="text-sm font-medium text-primary mt-3">
+                  {plan.minutes.toLocaleString()} min included
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  <span className="font-mono">{plan.minutes}</span> min included
-                </p>
-                <ul className="mt-3 space-y-1">
+              </CardHeader>
+              <CardContent className="flex flex-col flex-1 p-8 pt-4">
+                <ul className="space-y-3 flex-1">
                   {plan.features.map(f => (
-                    <li key={f} className="text-xs flex items-center gap-1">
-                      <CheckCircle2 className="h-3 w-3 text-primary" />
-                      {f}
+                    <li key={f} className="flex gap-3 text-sm">
+                      <CheckCircle2 className="h-5 w-5 text-primary shrink-0" />
+                      <span className="text-muted-foreground leading-tight">
+                        {f}
+                      </span>
                     </li>
                   ))}
                 </ul>
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+                <Button
+                  className={`w-full mt-8 ${
+                    plan.popular ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
+                  }`}
+                  variant={plan.popular ? "default" : "outline"}
+                  onClick={() => {
+                    posthog?.capture("cta_clicked", { label: `Upgrade to ${plan.tier}`, location: "subscriptions" });
+                    toast.info(`Stripe checkout for ${plan.tier} coming soon.`);
+                  }}
+                >
+                  Upgrade to {plan.tier}
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }
