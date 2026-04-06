@@ -79,6 +79,7 @@ Baylio is built by two AI agents working in parallel. **Do not step on each othe
 4. **If Antigravity needs a new API endpoint or data shape**, it goes through Claude Code.
 5. **If Claude Code needs a UI change**, describe it and let Antigravity handle the visual implementation.
 6. **Both agents build and push to `main`.** Vercel auto-deploys on push. Run `pnpm run build:vercel` before pushing to ensure no build errors.
+7. **Push after every change.** Commit and `git push` after every addition, fix, or removal — no batching. Vercel auto-deploys on push, so the user can test immediately.
 
 ---
 
