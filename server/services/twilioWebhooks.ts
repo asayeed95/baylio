@@ -332,7 +332,9 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     // Step 0: Look up caller profile + ensure one exists
     const callerProfile = await lookupCallerProfile(From);
     // Fire-and-forget: create or increment call count (don't block the response)
-    setImmediate(() => ensureCallerProfile(From));
+    setImmediate(() => ensureCallerProfile(From).catch(err =>
+      console.error("[CALL] Error ensuring caller profile:", err)
+    ));
 
     const callerName = callerProfile?.name || "Unknown Caller";
     const callerRole = callerProfile?.callerRole || "unknown";

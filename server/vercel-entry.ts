@@ -13,8 +13,12 @@ import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { twilioRouter } from "./services/twilioWebhooks";
 import { validateTwilioSignature } from "./middleware/twilioValidation";
+import { rateLimit } from "./middleware/rateLimiter";
 import { stripeWebhookRouter } from "./stripe/stripeRoutes";
 import { googleAuthRouter } from "./services/googleAuth";
+
+const contactLimiter = rateLimit({ name: "contact", windowSec: 60, max: 5 });
+const webhookLimiter = rateLimit({ name: "webhook", windowSec: 10, max: 50 });
 
 const app = express();
 
@@ -27,15 +31,19 @@ app.use("/api/stripe", stripeWebhookRouter);
 app.use(express.json({ limit: "50mb" }));
 app.use(express.urlencoded({ limit: "50mb", extended: true }));
 
-// Twilio webhook routes (with signature validation middleware)
+// Twilio webhook routes (with signature validation + rate limiting)
 app.use(
   "/api/twilio",
-  validateTwilioSignature({ logOnly: true }),
+  webhookLimiter,
+  validateTwilioSignature(),
   twilioRouter
 );
 
 // Google OAuth integration routes
 app.use("/api/integrations/google", googleAuthRouter);
+
+// Rate limit contact form submissions
+app.use("/api/trpc/contact.submit", contactLimiter);
 
 // tRPC API
 app.use(

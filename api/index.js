@@ -4202,17 +4202,39 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
 import { eq as eq14, sql as sql6 } from "drizzle-orm";
 
 // server/_core/env.ts
+var isProduction = process.env.NODE_ENV === "production";
+var isTest = process.env.NODE_ENV === "test" || !!process.env.VITEST;
+function required(name) {
+  const val = process.env[name] ?? "";
+  if (isProduction && !val) {
+    throw new Error(`[ENV] Missing required environment variable: ${name}`);
+  }
+  return val;
+}
 var ENV = {
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
-  isProduction: process.env.NODE_ENV === "production",
+  // Core
+  cookieSecret: required("JWT_SECRET"),
+  databaseUrl: required("DATABASE_URL"),
+  isProduction,
+  isTest,
+  // Supabase
+  supabaseUrl: required("SUPABASE_URL"),
+  supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   // Twilio
-  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
-  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioAccountSid: required("TWILIO_ACCOUNT_SID"),
+  twilioAuthToken: required("TWILIO_AUTH_TOKEN"),
+  twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
   twilioValidationEnabled: process.env.TWILIO_VALIDATION_ENABLED !== "false",
   // ElevenLabs
-  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
-  hubspotApiKey: process.env.HUBSPOT_API_KEY ?? ""
+  elevenLabsApiKey: required("ELEVENLABS_API_KEY"),
+  // Stripe
+  stripeSecretKey: required("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
+  // Integrations (optional — not all shops use them)
+  hubspotApiKey: process.env.HUBSPOT_API_KEY ?? "",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  // Anthropic
+  anthropicApiKey: required("ANTHROPIC_API_KEY")
 };
 
 // server/services/twilioWebhooks.ts
@@ -4370,7 +4392,9 @@ twilioRouter.post("/voice", async (req, res) => {
     const { To, From, CallSid, CallStatus } = req.body;
     console.log(`[CALL] Inbound call: ${From} \u2192 ${To} (SID: ${CallSid})`);
     const callerProfile = await lookupCallerProfile(From);
-    setImmediate(() => ensureCallerProfile(From));
+    setImmediate(() => ensureCallerProfile(From).catch(
+      (err) => console.error("[CALL] Error ensuring caller profile:", err)
+    ));
     const callerName = callerProfile?.name || "Unknown Caller";
     const callerRole = callerProfile?.callerRole || "unknown";
     const BAYLIO_SALES_NUMBER = process.env.TWILIO_PHONE_NUMBER || "+18448752441";
@@ -4677,6 +4701,30 @@ function validateTwilioSignature(options = {}) {
   };
 }
 
+// server/middleware/rateLimiter.ts
+var stores = /* @__PURE__ */ new Map();
+function rateLimit(opts) {
+  if (!stores.has(opts.name)) {
+    stores.set(opts.name, /* @__PURE__ */ new Map());
+  }
+  const store = stores.get(opts.name);
+  return (req, res, next) => {
+    const key = req.ip || req.socket.remoteAddress || "unknown";
+    const now = Date.now();
+    const entry = store.get(key);
+    if (!entry || now > entry.resetAt) {
+      store.set(key, { count: 1, resetAt: now + opts.windowSec * 1e3 });
+      return next();
+    }
+    entry.count++;
+    if (entry.count > opts.max) {
+      res.set("Retry-After", String(Math.ceil((entry.resetAt - now) / 1e3)));
+      return res.status(429).json({ error: "Too many requests. Please try again later." });
+    }
+    return next();
+  };
+}
+
 // server/stripe/stripeRoutes.ts
 import express from "express";
 import Stripe2 from "stripe";
@@ -4903,6 +4951,8 @@ async function handleSubscriptionDeleted(sub) {
 }
 
 // server/vercel-entry.ts
+var contactLimiter = rateLimit({ name: "contact", windowSec: 60, max: 5 });
+var webhookLimiter = rateLimit({ name: "webhook", windowSec: 10, max: 50 });
 var app = express2();
 app.set("trust proxy", 1);
 app.use("/api/stripe", router2);
@@ -4910,10 +4960,12 @@ app.use(express2.json({ limit: "50mb" }));
 app.use(express2.urlencoded({ limit: "50mb", extended: true }));
 app.use(
   "/api/twilio",
-  validateTwilioSignature({ logOnly: true }),
+  webhookLimiter,
+  validateTwilioSignature(),
   twilioRouter
 );
 app.use("/api/integrations/google", googleAuthRouter);
+app.use("/api/trpc/contact.submit", contactLimiter);
 app.use(
   "/api/trpc",
   createExpressMiddleware({

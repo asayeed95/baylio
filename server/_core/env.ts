@@ -1,12 +1,43 @@
+/**
+ * Environment variable validation + typed access.
+ * Fails fast at import time if required vars are missing in production.
+ * In development/test, missing vars get empty-string defaults (tests mock them).
+ */
+
+const isProduction = process.env.NODE_ENV === "production";
+const isTest = process.env.NODE_ENV === "test" || !!process.env.VITEST;
+
+/** Require a var in production, default to "" in dev/test */
+function required(name: string): string {
+  const val = process.env[name] ?? "";
+  if (isProduction && !val) {
+    throw new Error(`[ENV] Missing required environment variable: ${name}`);
+  }
+  return val;
+}
+
 export const ENV = {
-  cookieSecret: process.env.JWT_SECRET ?? "",
-  databaseUrl: process.env.DATABASE_URL ?? "",
-  isProduction: process.env.NODE_ENV === "production",
+  // Core
+  cookieSecret: required("JWT_SECRET"),
+  databaseUrl: required("DATABASE_URL"),
+  isProduction,
+  isTest,
+  // Supabase
+  supabaseUrl: required("SUPABASE_URL"),
+  supabaseServiceRoleKey: required("SUPABASE_SERVICE_ROLE_KEY"),
   // Twilio
-  twilioAccountSid: process.env.TWILIO_ACCOUNT_SID ?? "",
-  twilioAuthToken: process.env.TWILIO_AUTH_TOKEN ?? "",
+  twilioAccountSid: required("TWILIO_ACCOUNT_SID"),
+  twilioAuthToken: required("TWILIO_AUTH_TOKEN"),
+  twilioPhoneNumber: process.env.TWILIO_PHONE_NUMBER ?? "",
   twilioValidationEnabled: process.env.TWILIO_VALIDATION_ENABLED !== "false",
   // ElevenLabs
-  elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
+  elevenLabsApiKey: required("ELEVENLABS_API_KEY"),
+  // Stripe
+  stripeSecretKey: required("STRIPE_SECRET_KEY"),
+  stripeWebhookSecret: required("STRIPE_WEBHOOK_SECRET"),
+  // Integrations (optional — not all shops use them)
   hubspotApiKey: process.env.HUBSPOT_API_KEY ?? "",
+  resendApiKey: process.env.RESEND_API_KEY ?? "",
+  // Anthropic
+  anthropicApiKey: required("ANTHROPIC_API_KEY"),
 };
