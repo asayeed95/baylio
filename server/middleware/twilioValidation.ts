@@ -148,10 +148,15 @@ export function validateTwilioSignature(options: TwilioValidationOptions = {}) {
       });
     }
 
-    // Reconstruct the full URL as Twilio sees it
+    // Reconstruct the full URL as Twilio sees it.
+    // Vercel rewrites inject a ?path= query parameter (e.g. ?path=twilio%2Fvoice)
+    // that Twilio doesn't know about when computing its signature.
+    // We must strip it to match what Twilio signed against.
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.headers["x-forwarded-host"] || req.headers["host"];
-    const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+    const rawUrl = new URL(`${protocol}://${host}${req.originalUrl}`);
+    rawUrl.searchParams.delete("path");
+    const fullUrl = rawUrl.toString();
 
     // For POST requests, use the body params; for GET, use query params
     const params = req.method === "POST" ? req.body || {} : {};

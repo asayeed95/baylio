@@ -4668,7 +4668,9 @@ function validateTwilioSignature(options = {}) {
     }
     const protocol = req.headers["x-forwarded-proto"] || req.protocol;
     const host = req.headers["x-forwarded-host"] || req.headers["host"];
-    const fullUrl = `${protocol}://${host}${req.originalUrl}`;
+    const rawUrl = new URL(`${protocol}://${host}${req.originalUrl}`);
+    rawUrl.searchParams.delete("path");
+    const fullUrl = rawUrl.toString();
     const params = req.method === "POST" ? req.body || {} : {};
     const expectedSignature = computeExpectedSignature(
       authToken,
