@@ -9,15 +9,27 @@
 
 - **Date:** 2026-04-07
 - **Branch:** main
-- **Commit:** `eff9696` → (next push)
+- **Commit:** `89e5fbf`
 - **Pushed by:** Claude Code (asec-mac)
 
 ### What Changed
 
-1. **docs: phone provisioning architecture decision recorded**
+1. **feat: ring shop first then AI — Layer 1 phone routing IMPLEMENTED**
+   - Schema: added `shops.ringShopFirstEnabled` (bool, default true) and `shops.ringTimeoutSec` (int, default 12)
+   - Migration applied directly via `scripts/add-ring-columns.mjs` (drizzle-kit push is broken — see "Known Issues")
+   - `/api/twilio/voice` now branches: if `ringShopFirstEnabled && shop.phone`, returns `<Dial timeout=N>shop.phone</Dial>` with `action="/api/twilio/no-answer"`
+   - New `/api/twilio/no-answer` handler: returns empty TwiML if shop answered (`DialCallStatus=completed`/`answered`), otherwise falls back to ElevenLabs Register Call
+   - Sales line bypass (844-875-2441 → Sam) preserved unchanged
+   - `completeOnboarding` defaults new shops to ring-first ON, 12s timeout
+   - `shop.update` invalidates `contextCache` after save so call routing picks up new settings on next call
+   - ShopSettings UI: new "Call Routing" Card with toggle + slider (range 5-30s)
+   - Tests: new `server/twilioRingFirst.test.ts` (9 tests) — TwiML structure, escaping, timeout range
+   - Full suite: 18/18 files, 171 passing, 2 skipped (was 17/162)
+
+2. **Previous (commit `8c174b6`): docs: phone provisioning architecture decision recorded**
    - Decided on layered call routing model (see "Phone Provisioning Design" below)
-   - Primary path: Baylio owns the number, rings shop first via TwiML `<Dial>`, AI picks up on no-answer
-   - This eliminates carrier-side dependency (AT&T `*61*` codes, etc.)
+   - Layer 1 is now BUILT and DEPLOYED (this commit)
+   - Layers 2-4 still on roadmap
 
 ### Current Production State
 
@@ -31,15 +43,17 @@
 
 ### Known Issues
 
+- **drizzle-kit push is broken** — old MySQL migration files in `drizzle/0000_high_strong_guy.sql` and `drizzle/0001_cold_morlocks.sql` from the pre-Supabase era. Running `db:push` tries to apply them and fails on Postgres syntax. Workaround: write one-off `.mjs` migration scripts in `scripts/` and run via `node --env-file=.env.test scripts/<file>.mjs`. Long-term fix: delete the stale MySQL files and the `meta/` snapshots, regenerate from current schema.
 - Vite build fails locally on asec-mac (missing deps), but `esbuild` bundles serverless function fine — Vercel builds it cleanly on push
-- Contact form SMTP broken (needs Resend migration)
-- Call forwarding, number porting, SIP trunking — not yet built (designed, see below)
-- No "ring shop first then AI" routing yet — needs TwiML `<Dial>` step
+- Contact form Resend migration: `emailService.ts` already uses Resend; legacy SMTP code is gone
+- Number porting (Layer 2), SIP trunking (Layer 3), carrier forwarding fallback UI (Layer 4) — not yet built (designed, see below)
+- Live human transfer mid-conversation — not built (CLAUDE.md P2)
+- Programmatic graceful hangup — not built (CLAUDE.md P2)
 
 ### In Progress
 
-- Phone provisioning expansion: 4-method layered system (see design below)
-- User wants Autoblitz launched soon, needs end-to-end test of full pipeline
+- **Live walkthrough as a real shop owner** — Abdur to sign up, onboard a real shop, forward his cell number, call in. Validates the new ring-first routing end-to-end.
+- Layers 2-4 of the phone provisioning architecture (post-Autoblitz)
 
 ---
 

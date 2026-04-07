@@ -326,7 +326,8 @@ Full schema in `drizzle/schema.ts`. Key tables:
 - **Rate limiting** — in-memory sliding window (contact form 5/60s, webhooks 50/10s per IP)
 - **Env var validation** — `server/_core/env.ts` fails fast in production if required vars missing
 - **Error boundary** on fire-and-forget `ensureCallerProfile` setImmediate callback
-- **Tests** — 17/17 files passing, 162 tests, 2 skipped (live-API tests skip without creds), ~8s total
+- **Tests** — 18/18 files passing, 171 tests, 2 skipped (live-API tests skip without creds), ~8s total
+- **Ring-shop-first call routing (Layer 1)** — Twilio `<Dial>`s the shop's existing phone first, AI takes over on no-answer/busy/failed. Per-shop toggle + ring timeout (5-30s) in ShopSettings → Call Routing. Defaults: ON, 12s. Cache invalidated on save.
 
 ### YELLOW — Built but Not Verified With Real Traffic
 - **End-to-end onboarding flow** — wizard built, needs real shop to complete it
@@ -338,7 +339,6 @@ Full schema in `drizzle/schema.ts`. Key tables:
 - **Google Calendar / Sheets / HubSpot / Shopmonkey integrations** — all built with OAuth flows and service modules, none verified against real accounts
 
 ### RED — Known Broken / Incomplete
-- **"Ring shop first, then AI takes over" routing** — NOT BUILT. DEPLOY_LOG documents the design decision. Currently all calls go straight to the AI agent. Needed for the layered phone provisioning model (see Phone Provisioning Design below).
 - **Live call transfer to human** — agent prompts say "let me take your number" but there is no actual TwiML `<Dial>` transfer. If a caller insists on a human, the agent collects a callback number and ends the call.
 - **Explicit hang-up control** — ElevenLabs ends conversation naturally; there is no graceful programmatic hang-up TwiML.
 - **Number porting** — not built (Layer 2 of the phone provisioning design)
@@ -436,16 +436,11 @@ Carrier-side `*61*` forwarding codes are fragile (landlines, PBX, non-technical 
 
 **Priority 0 — Ship-blocker for Autoblitz launch:**
 
-1. **Build "ring shop first then AI" call routing** (the layered Phone Provisioning Design, Layer 1). Specifically:
-   - Add `shops.ringTimeoutSec` (default 12) and `shops.ringShopFirstEnabled` (default true) columns via drizzle migration.
-   - In `server/services/twilioWebhooks.ts` `/voice` handler: return `<Dial timeout={shop.ringTimeoutSec}>{shop.phone}</Dial>` with `action="/api/twilio/no-answer"`.
-   - Build `/api/twilio/no-answer` handler that inspects `DialCallStatus` (no-answer/busy/failed) and routes to ElevenLabs Register Call.
-   - Add ShopSettings UI: ring timeout slider + "AI answers immediately" toggle.
-   - E2E test with a real inbound call routed through this path.
+1. **Run the full user journey live** — Abdur signs up on baylio.io, completes onboarding with real shop data, sets his cell number as the shop phone, calls his Baylio number from a different phone. Verify ring-shop-first works: cell rings 12s → AI picks up. Verify call logs + transcript appear in dashboard. Fix whatever breaks.
 
-2. **Run the full user journey live** — Abdur signs up on baylio.io, completes onboarding with real shop data, forwards his phone, calls in, verifies call logs + transcript appear in dashboard. Fix whatever breaks.
+2. **Live Stripe payment test** — Use a real card on a test subscription, verify webhooks fire, verify `subscriptions.status = 'active'`, verify `setupFeePaid = true`.
 
-3. **Live Stripe payment test** — Use a real card on a test subscription, verify webhooks fire, verify `subscriptions.status = 'active'`, verify `setupFeePaid = true`.
+3. **(DONE 2026-04-07)** ~~Build "ring shop first then AI" call routing (Layer 1)~~ — Shipped in commit `89e5fbf`. Schema columns added, `/voice` branches on `ringShopFirstEnabled`, new `/no-answer` handler, ShopSettings UI, 9 new tests.
 
 **Priority 1 — Production reliability:**
 
@@ -505,6 +500,6 @@ If yes, we're ready. If no, fix whatever's blocking that.
 
 ---
 
-*Last updated: 2026-04-07*
+*Last updated: 2026-04-07 (ring-shop-first routing shipped, P0 cleared)*
 *Owner: Abdur (asayeed95 / One Asec LLC)*
 *Agents: Claude Code (backend/infra) + Antigravity (UI/UX)*
