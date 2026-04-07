@@ -79,6 +79,8 @@ export const shops = pgTable("shops", {
   serviceCatalog: jsonb("serviceCatalog").$type<Array<{ name: string; category: string; price?: number; description?: string }>>(),
   isActive: boolean("isActive").default(true).notNull(),
   smsFollowUpEnabled: boolean("smsFollowUpEnabled").default(true).notNull(),
+  ringShopFirstEnabled: boolean("ringShopFirstEnabled").default(true).notNull(),
+  ringTimeoutSec: integer("ringTimeoutSec").default(12).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
   twilioPhoneSid: varchar("twilioPhoneSid", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),

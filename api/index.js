@@ -244,6 +244,8 @@ var shops = pgTable("shops", {
   serviceCatalog: jsonb("serviceCatalog").$type(),
   isActive: boolean("isActive").default(true).notNull(),
   smsFollowUpEnabled: boolean("smsFollowUpEnabled").default(true).notNull(),
+  ringShopFirstEnabled: boolean("ringShopFirstEnabled").default(true).notNull(),
+  ringTimeoutSec: integer("ringTimeoutSec").default(12).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
   twilioPhoneSid: varchar("twilioPhoneSid", { length: 64 }),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
@@ -1239,6 +1241,177 @@ function compileGreeting(context) {
   return `Hey, thanks for calling ${context.shopName}! This is ${context.agentName}, how can I help you?`;
 }
 
+// server/services/contextCache.ts
+var DEFAULT_TTL_MS = 5 * 60 * 1e3;
+var MAX_CACHE_SIZE = 500;
+var ContextCache = class {
+  /** Shop ID → compiled context */
+  shopContexts = /* @__PURE__ */ new Map();
+  /** Twilio phone number → shop ID (for webhook routing) */
+  phoneToShopId = /* @__PURE__ */ new Map();
+  /** Compiled system prompts (expensive to regenerate) */
+  compiledPrompts = /* @__PURE__ */ new Map();
+  stats = { hits: 0, misses: 0, evictions: 0, size: 0 };
+  ttlMs;
+  constructor(ttlMs = DEFAULT_TTL_MS) {
+    this.ttlMs = ttlMs;
+  }
+  // ─── Shop Context Cache ─────────────────────────────────────────────
+  /**
+   * Get cached shop context by shop ID.
+   * Returns null if not cached or expired.
+   */
+  getShopContext(shopId) {
+    const entry = this.shopContexts.get(shopId);
+    if (!entry || Date.now() > entry.expiresAt) {
+      if (entry) {
+        this.shopContexts.delete(shopId);
+        this.stats.evictions++;
+      }
+      this.stats.misses++;
+      return null;
+    }
+    this.stats.hits++;
+    return entry.data;
+  }
+  /**
+   * Cache a shop context.
+   */
+  setShopContext(shopId, context, ttlMs) {
+    this.enforceMaxSize(this.shopContexts);
+    const now = Date.now();
+    this.shopContexts.set(shopId, {
+      data: context,
+      expiresAt: now + (ttlMs || this.ttlMs),
+      createdAt: now
+    });
+    this.updateSize();
+  }
+  // ─── Phone Number Routing Cache ─────────────────────────────────────
+  /**
+   * Get shop ID by Twilio phone number.
+   * This is the critical lookup for inbound call routing.
+   */
+  getShopIdByPhone(phoneNumber) {
+    const normalized = this.normalizePhone(phoneNumber);
+    const entry = this.phoneToShopId.get(normalized);
+    if (!entry || Date.now() > entry.expiresAt) {
+      if (entry) {
+        this.phoneToShopId.delete(normalized);
+        this.stats.evictions++;
+      }
+      this.stats.misses++;
+      return null;
+    }
+    this.stats.hits++;
+    return entry.data;
+  }
+  /**
+   * Cache a phone number → shop ID mapping.
+   */
+  setPhoneToShopId(phoneNumber, shopId, ttlMs) {
+    const normalized = this.normalizePhone(phoneNumber);
+    const now = Date.now();
+    this.phoneToShopId.set(normalized, {
+      data: shopId,
+      expiresAt: now + (ttlMs || this.ttlMs),
+      createdAt: now
+    });
+  }
+  // ─── Compiled Prompt Cache ──────────────────────────────────────────
+  /**
+   * Get a cached compiled prompt for a shop.
+   */
+  getCompiledPrompt(shopId) {
+    const entry = this.compiledPrompts.get(shopId);
+    if (!entry || Date.now() > entry.expiresAt) {
+      if (entry) {
+        this.compiledPrompts.delete(shopId);
+        this.stats.evictions++;
+      }
+      this.stats.misses++;
+      return null;
+    }
+    this.stats.hits++;
+    return entry.data;
+  }
+  /**
+   * Cache a compiled prompt.
+   */
+  setCompiledPrompt(shopId, prompt, ttlMs) {
+    this.enforceMaxSize(this.compiledPrompts);
+    const now = Date.now();
+    this.compiledPrompts.set(shopId, {
+      data: prompt,
+      expiresAt: now + (ttlMs || this.ttlMs),
+      createdAt: now
+    });
+  }
+  // ─── Invalidation ──────────────────────────────────────────────────
+  /**
+   * Invalidate all cached data for a shop.
+   * Call this when shop config, agent config, or service catalog changes.
+   */
+  invalidateShop(shopId) {
+    this.shopContexts.delete(shopId);
+    this.compiledPrompts.delete(shopId);
+    Array.from(this.phoneToShopId).forEach(([phone, entry]) => {
+      if (entry.data === shopId) {
+        this.phoneToShopId.delete(phone);
+      }
+    });
+    this.updateSize();
+  }
+  /**
+   * Invalidate a specific phone number mapping.
+   */
+  invalidatePhone(phoneNumber) {
+    this.phoneToShopId.delete(this.normalizePhone(phoneNumber));
+  }
+  /**
+   * Clear all caches.
+   */
+  clear() {
+    this.shopContexts.clear();
+    this.phoneToShopId.clear();
+    this.compiledPrompts.clear();
+    this.stats = { hits: 0, misses: 0, evictions: 0, size: 0 };
+  }
+  // ─── Stats & Monitoring ─────────────────────────────────────────────
+  /**
+   * Get cache statistics for monitoring.
+   */
+  getStats() {
+    const total = this.stats.hits + this.stats.misses;
+    const hitRate = total > 0 ? (this.stats.hits / total * 100).toFixed(1) + "%" : "N/A";
+    return { ...this.stats, hitRate };
+  }
+  // ─── Internal Helpers ───────────────────────────────────────────────
+  normalizePhone(phone) {
+    return phone.replace(/[^\d+]/g, "");
+  }
+  enforceMaxSize(cache) {
+    if (cache.size >= MAX_CACHE_SIZE) {
+      let oldestKey = null;
+      let oldestTime = Infinity;
+      Array.from(cache).forEach(([key, entry]) => {
+        if (entry.createdAt < oldestTime) {
+          oldestTime = entry.createdAt;
+          oldestKey = key;
+        }
+      });
+      if (oldestKey !== null) {
+        cache.delete(oldestKey);
+        this.stats.evictions++;
+      }
+    }
+  }
+  updateSize() {
+    this.stats.size = this.shopContexts.size + this.phoneToShopId.size + this.compiledPrompts.size;
+  }
+};
+var contextCache = new ContextCache();
+
 // server/shopRouter.ts
 var shopInput = z2.object({
   name: z2.string().min(1).max(255),
@@ -1249,6 +1422,8 @@ var shopInput = z2.object({
   zip: z2.string().optional(),
   timezone: z2.string().default("America/New_York"),
   organizationId: z2.number().optional(),
+  ringShopFirstEnabled: z2.boolean().optional(),
+  ringTimeoutSec: z2.number().int().min(5).max(30).optional(),
   businessHours: z2.any().optional(),
   serviceCatalog: z2.array(
     z2.object({
@@ -1303,6 +1478,7 @@ var shopRouter = router({
       });
     }
     await updateShop(input.id, input.data);
+    contextCache.invalidateShop(input.id);
     return { success: true };
   }),
   delete: protectedProcedure.input(z2.object({ id: z2.number() })).mutation(async ({ ctx, input }) => {
@@ -1550,6 +1726,8 @@ var shopRouter = router({
       timezone: input.timezone,
       businessHours: input.businessHours || void 0,
       serviceCatalog: input.serviceCatalog || void 0,
+      ringShopFirstEnabled: true,
+      ringTimeoutSec: 12,
       ownerId: ctx.user.id
     });
     if (!shopId) {
@@ -3041,177 +3219,6 @@ async function createContext(opts) {
 // server/services/twilioWebhooks.ts
 import { Router as Router2 } from "express";
 
-// server/services/contextCache.ts
-var DEFAULT_TTL_MS = 5 * 60 * 1e3;
-var MAX_CACHE_SIZE = 500;
-var ContextCache = class {
-  /** Shop ID → compiled context */
-  shopContexts = /* @__PURE__ */ new Map();
-  /** Twilio phone number → shop ID (for webhook routing) */
-  phoneToShopId = /* @__PURE__ */ new Map();
-  /** Compiled system prompts (expensive to regenerate) */
-  compiledPrompts = /* @__PURE__ */ new Map();
-  stats = { hits: 0, misses: 0, evictions: 0, size: 0 };
-  ttlMs;
-  constructor(ttlMs = DEFAULT_TTL_MS) {
-    this.ttlMs = ttlMs;
-  }
-  // ─── Shop Context Cache ─────────────────────────────────────────────
-  /**
-   * Get cached shop context by shop ID.
-   * Returns null if not cached or expired.
-   */
-  getShopContext(shopId) {
-    const entry = this.shopContexts.get(shopId);
-    if (!entry || Date.now() > entry.expiresAt) {
-      if (entry) {
-        this.shopContexts.delete(shopId);
-        this.stats.evictions++;
-      }
-      this.stats.misses++;
-      return null;
-    }
-    this.stats.hits++;
-    return entry.data;
-  }
-  /**
-   * Cache a shop context.
-   */
-  setShopContext(shopId, context, ttlMs) {
-    this.enforceMaxSize(this.shopContexts);
-    const now = Date.now();
-    this.shopContexts.set(shopId, {
-      data: context,
-      expiresAt: now + (ttlMs || this.ttlMs),
-      createdAt: now
-    });
-    this.updateSize();
-  }
-  // ─── Phone Number Routing Cache ─────────────────────────────────────
-  /**
-   * Get shop ID by Twilio phone number.
-   * This is the critical lookup for inbound call routing.
-   */
-  getShopIdByPhone(phoneNumber) {
-    const normalized = this.normalizePhone(phoneNumber);
-    const entry = this.phoneToShopId.get(normalized);
-    if (!entry || Date.now() > entry.expiresAt) {
-      if (entry) {
-        this.phoneToShopId.delete(normalized);
-        this.stats.evictions++;
-      }
-      this.stats.misses++;
-      return null;
-    }
-    this.stats.hits++;
-    return entry.data;
-  }
-  /**
-   * Cache a phone number → shop ID mapping.
-   */
-  setPhoneToShopId(phoneNumber, shopId, ttlMs) {
-    const normalized = this.normalizePhone(phoneNumber);
-    const now = Date.now();
-    this.phoneToShopId.set(normalized, {
-      data: shopId,
-      expiresAt: now + (ttlMs || this.ttlMs),
-      createdAt: now
-    });
-  }
-  // ─── Compiled Prompt Cache ──────────────────────────────────────────
-  /**
-   * Get a cached compiled prompt for a shop.
-   */
-  getCompiledPrompt(shopId) {
-    const entry = this.compiledPrompts.get(shopId);
-    if (!entry || Date.now() > entry.expiresAt) {
-      if (entry) {
-        this.compiledPrompts.delete(shopId);
-        this.stats.evictions++;
-      }
-      this.stats.misses++;
-      return null;
-    }
-    this.stats.hits++;
-    return entry.data;
-  }
-  /**
-   * Cache a compiled prompt.
-   */
-  setCompiledPrompt(shopId, prompt, ttlMs) {
-    this.enforceMaxSize(this.compiledPrompts);
-    const now = Date.now();
-    this.compiledPrompts.set(shopId, {
-      data: prompt,
-      expiresAt: now + (ttlMs || this.ttlMs),
-      createdAt: now
-    });
-  }
-  // ─── Invalidation ──────────────────────────────────────────────────
-  /**
-   * Invalidate all cached data for a shop.
-   * Call this when shop config, agent config, or service catalog changes.
-   */
-  invalidateShop(shopId) {
-    this.shopContexts.delete(shopId);
-    this.compiledPrompts.delete(shopId);
-    Array.from(this.phoneToShopId).forEach(([phone, entry]) => {
-      if (entry.data === shopId) {
-        this.phoneToShopId.delete(phone);
-      }
-    });
-    this.updateSize();
-  }
-  /**
-   * Invalidate a specific phone number mapping.
-   */
-  invalidatePhone(phoneNumber) {
-    this.phoneToShopId.delete(this.normalizePhone(phoneNumber));
-  }
-  /**
-   * Clear all caches.
-   */
-  clear() {
-    this.shopContexts.clear();
-    this.phoneToShopId.clear();
-    this.compiledPrompts.clear();
-    this.stats = { hits: 0, misses: 0, evictions: 0, size: 0 };
-  }
-  // ─── Stats & Monitoring ─────────────────────────────────────────────
-  /**
-   * Get cache statistics for monitoring.
-   */
-  getStats() {
-    const total = this.stats.hits + this.stats.misses;
-    const hitRate = total > 0 ? (this.stats.hits / total * 100).toFixed(1) + "%" : "N/A";
-    return { ...this.stats, hitRate };
-  }
-  // ─── Internal Helpers ───────────────────────────────────────────────
-  normalizePhone(phone) {
-    return phone.replace(/[^\d+]/g, "");
-  }
-  enforceMaxSize(cache) {
-    if (cache.size >= MAX_CACHE_SIZE) {
-      let oldestKey = null;
-      let oldestTime = Infinity;
-      Array.from(cache).forEach(([key, entry]) => {
-        if (entry.createdAt < oldestTime) {
-          oldestTime = entry.createdAt;
-          oldestKey = key;
-        }
-      });
-      if (oldestKey !== null) {
-        cache.delete(oldestKey);
-        this.stats.evictions++;
-      }
-    }
-  }
-  updateSize() {
-    this.stats.size = this.shopContexts.size + this.phoneToShopId.size + this.compiledPrompts.size;
-  }
-};
-var contextCache = new ContextCache();
-
 // server/services/postCallPipeline.ts
 import { eq as eq13, and as and11, sql as sql5 } from "drizzle-orm";
 
@@ -4386,6 +4393,49 @@ async function ensureCallerProfile(phone) {
     console.error("[CALLER-PROFILE] Error upserting caller profile:", err);
   }
 }
+async function getShopRingConfig(shopId) {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db.select({
+    ringShopFirstEnabled: shops.ringShopFirstEnabled,
+    ringTimeoutSec: shops.ringTimeoutSec
+  }).from(shops).where(eq14(shops.id, shopId)).limit(1);
+  return rows[0] ?? null;
+}
+function buildRingShopFirstTwiML(shopPhone, timeoutSec) {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial timeout="${timeoutSec}" action="/api/twilio/no-answer" method="POST" answerOnBridge="true">
+    <Number>${escapeXml(shopPhone)}</Number>
+  </Dial>
+</Response>`;
+}
+async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, callerName, callerRole, startTime) {
+  const { shopId, context, elevenLabsAgentId } = resolved;
+  if (!elevenLabsAgentId) {
+    console.warn(`[CALL] No ElevenLabs agent configured for shop ${shopId}`);
+    res.type("text/xml");
+    res.send(generateVoicemailTwiML(context.shopName));
+    return;
+  }
+  console.log(
+    `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
+  );
+  const twiml = await registerElevenLabsCall(
+    elevenLabsAgentId,
+    fromNumber,
+    toNumber,
+    context,
+    callerName,
+    callerRole
+  );
+  const elapsed = Date.now() - startTime;
+  console.log(
+    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
+  );
+  res.type("text/xml");
+  res.send(twiml);
+}
 twilioRouter.post("/voice", async (req, res) => {
   const startTime = Date.now();
   try {
@@ -4403,7 +4453,7 @@ twilioRouter.post("/voice", async (req, res) => {
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected \u2014 routing to Sam (${SAM_AGENT_ID})`);
       try {
-        const twiml2 = await registerElevenLabsCall(
+        const twiml = await registerElevenLabsCall(
           SAM_AGENT_ID,
           From,
           To,
@@ -4411,10 +4461,10 @@ twilioRouter.post("/voice", async (req, res) => {
           callerName,
           callerRole
         );
-        const elapsed2 = Date.now() - startTime;
-        console.log(`[CALL] Sam registered OK (${elapsed2}ms). TwiML length=${twiml2.length}`);
+        const elapsed = Date.now() - startTime;
+        console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
         res.type("text/xml");
-        return res.send(twiml2);
+        return res.send(twiml);
       } catch (salesErr) {
         console.error("[CALL] Sam registration failed, falling back to voicemail:", salesErr);
         res.type("text/xml");
@@ -4427,34 +4477,65 @@ twilioRouter.post("/voice", async (req, res) => {
       res.type("text/xml");
       return res.send(generateVoicemailTwiML("this business"));
     }
-    const { shopId, context, elevenLabsAgentId } = resolved;
+    const { shopId, context } = resolved;
     console.log(
-      `[CALL] Step 2: Shop resolved \u2014 id=${shopId}, name="${context.shopName}", agentId=${elevenLabsAgentId || "(none)"}`
+      `[CALL] Step 2: Shop resolved \u2014 id=${shopId}, name="${context.shopName}", agentId=${resolved.elevenLabsAgentId || "(none)"}`
     );
-    if (!elevenLabsAgentId) {
-      console.warn(`[CALL] No ElevenLabs agent configured for shop ${shopId}`);
+    const ringConfig = await getShopRingConfig(shopId);
+    if (ringConfig?.ringShopFirstEnabled && context.phone) {
+      const timeout = ringConfig.ringTimeoutSec ?? 12;
+      console.log(
+        `[CALL] Ring-shop-first enabled \u2014 dialing ${context.phone} (timeout=${timeout}s)`
+      );
       res.type("text/xml");
-      return res.send(generateVoicemailTwiML(context.shopName));
+      return res.send(buildRingShopFirstTwiML(context.phone, timeout));
     }
-    console.log(
-      `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
-    );
-    const twiml = await registerElevenLabsCall(
-      elevenLabsAgentId,
+    return await respondWithElevenLabsAgent(
+      res,
+      resolved,
       From,
       To,
-      context,
       callerName,
-      callerRole
+      callerRole,
+      startTime
     );
-    const elapsed = Date.now() - startTime;
-    console.log(
-      `[CALL] Step 4: ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
-    );
-    res.type("text/xml");
-    return res.send(twiml);
   } catch (error) {
     console.error("[CALL] Error handling inbound call:", error);
+    res.type("text/xml");
+    return res.send(generateVoicemailTwiML("this business"));
+  }
+});
+twilioRouter.post("/no-answer", async (req, res) => {
+  const startTime = Date.now();
+  try {
+    const { To, From, DialCallStatus, CallSid } = req.body;
+    console.log(
+      `[CALL] /no-answer: To=${To} From=${From} DialCallStatus=${DialCallStatus} SID=${CallSid}`
+    );
+    if (DialCallStatus === "completed" || DialCallStatus === "answered") {
+      res.type("text/xml");
+      return res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    }
+    const callerProfile = await lookupCallerProfile(From);
+    const callerName = callerProfile?.name || "Unknown Caller";
+    const callerRole = callerProfile?.callerRole || "unknown";
+    const resolved = await resolveShopContext(To);
+    if (!resolved) {
+      console.warn(`[CALL] /no-answer: no shop found for ${To}`);
+      res.type("text/xml");
+      return res.send(generateVoicemailTwiML("this business"));
+    }
+    return await respondWithElevenLabsAgent(
+      res,
+      resolved,
+      From,
+      To,
+      callerName,
+      callerRole,
+      startTime
+    );
+  } catch (error) {
+    console.error("[CALL] Error in /no-answer:", error);
     res.type("text/xml");
     return res.send(generateVoicemailTwiML("this business"));
   }

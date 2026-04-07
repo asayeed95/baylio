@@ -313,6 +313,86 @@ async function ensureCallerProfile(phone: string): Promise<void> {
   }
 }
 
+// ─── Ring-Shop-First Helpers ────────────────────────────────────────
+
+/**
+ * Look up just the ring routing config for a shop. Cheap query — only 2 columns.
+ */
+async function getShopRingConfig(
+  shopId: number
+): Promise<{ ringShopFirstEnabled: boolean; ringTimeoutSec: number } | null> {
+  const db = await getDb();
+  if (!db) return null;
+  const rows = await db
+    .select({
+      ringShopFirstEnabled: shops.ringShopFirstEnabled,
+      ringTimeoutSec: shops.ringTimeoutSec,
+    })
+    .from(shops)
+    .where(eq(shops.id, shopId))
+    .limit(1);
+  return rows[0] ?? null;
+}
+
+/**
+ * Build TwiML that rings the shop's existing phone first, then falls back
+ * to /api/twilio/no-answer (which routes to ElevenLabs) on no-answer/busy/failed.
+ *
+ * Exported for unit testing.
+ */
+export function buildRingShopFirstTwiML(shopPhone: string, timeoutSec: number): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Dial timeout="${timeoutSec}" action="/api/twilio/no-answer" method="POST" answerOnBridge="true">
+    <Number>${escapeXml(shopPhone)}</Number>
+  </Dial>
+</Response>`;
+}
+
+/**
+ * Register the call with ElevenLabs and respond with the resulting TwiML.
+ * Used by both /voice (when ring-first is OFF) and /no-answer (after fallback).
+ */
+async function respondWithElevenLabsAgent(
+  res: Response,
+  resolved: { shopId: number; context: ShopContext; elevenLabsAgentId: string },
+  fromNumber: string,
+  toNumber: string,
+  callerName: string,
+  callerRole: string,
+  startTime: number
+): Promise<void> {
+  const { shopId, context, elevenLabsAgentId } = resolved;
+
+  if (!elevenLabsAgentId) {
+    console.warn(`[CALL] No ElevenLabs agent configured for shop ${shopId}`);
+    res.type("text/xml");
+    res.send(generateVoicemailTwiML(context.shopName));
+    return;
+  }
+
+  console.log(
+    `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
+  );
+
+  const twiml = await registerElevenLabsCall(
+    elevenLabsAgentId,
+    fromNumber,
+    toNumber,
+    context,
+    callerName,
+    callerRole
+  );
+
+  const elapsed = Date.now() - startTime;
+  console.log(
+    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
+  );
+
+  res.type("text/xml");
+  res.send(twiml);
+}
+
 // ─── Webhook Endpoints ──────────────────────────────────────────────
 
 /**
@@ -378,43 +458,90 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       return res.send(generateVoicemailTwiML("this business"));
     }
 
-    const { shopId, context, elevenLabsAgentId } = resolved;
+    const { shopId, context } = resolved;
     console.log(
-      `[CALL] Step 2: Shop resolved — id=${shopId}, name="${context.shopName}", agentId=${elevenLabsAgentId || "(none)"}`
+      `[CALL] Step 2: Shop resolved — id=${shopId}, name="${context.shopName}", agentId=${resolved.elevenLabsAgentId || "(none)"}`
     );
 
-    // Step 2: Check if ElevenLabs agent is configured
-    if (!elevenLabsAgentId) {
-      console.warn(`[CALL] No ElevenLabs agent configured for shop ${shopId}`);
+    // Step 3: Check ring-shop-first config. If enabled and shop has a phone number,
+    // ring the shop's existing phone first; AI takes over only on no-answer/busy/failed.
+    const ringConfig = await getShopRingConfig(shopId);
+    if (ringConfig?.ringShopFirstEnabled && context.phone) {
+      const timeout = ringConfig.ringTimeoutSec ?? 12;
+      console.log(
+        `[CALL] Ring-shop-first enabled — dialing ${context.phone} (timeout=${timeout}s)`
+      );
       res.type("text/xml");
-      return res.send(generateVoicemailTwiML(context.shopName));
+      return res.send(buildRingShopFirstTwiML(context.phone, timeout));
     }
 
-    // Step 3: Register call with ElevenLabs (authenticated server-side)
-    // Pass caller_name and caller_role as dynamic_variables so Alex can greet known callers
-    console.log(
-      `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
-    );
-
-    const twiml = await registerElevenLabsCall(
-      elevenLabsAgentId,
+    // Step 4: Direct-to-AI path (ring-first disabled or no shop phone configured)
+    return await respondWithElevenLabsAgent(
+      res,
+      resolved,
       From,
       To,
-      context,
       callerName,
-      callerRole
+      callerRole,
+      startTime
     );
-
-    const elapsed = Date.now() - startTime;
-    console.log(
-      `[CALL] Step 4: ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
-    );
-
-    res.type("text/xml");
-    return res.send(twiml);
   } catch (error) {
     console.error("[CALL] Error handling inbound call:", error);
     // CRITICAL: Always return valid TwiML, never let the call drop
+    res.type("text/xml");
+    return res.send(generateVoicemailTwiML("this business"));
+  }
+});
+
+/**
+ * POST /api/twilio/no-answer
+ *
+ * Action callback for the ring-shop-first <Dial> step. Twilio hits this when
+ * the dial attempt completes — either because the shop answered, or because
+ * it didn't (no-answer / busy / failed / canceled).
+ *
+ *   - DialCallStatus = "completed" / "answered" → human picked up. Return
+ *     empty TwiML so Twilio ends the call cleanly (the bridge is already done).
+ *   - Anything else → fall back to ElevenLabs Register Call so the AI agent
+ *     picks up.
+ */
+twilioRouter.post("/no-answer", async (req: Request, res: Response) => {
+  const startTime = Date.now();
+  try {
+    const { To, From, DialCallStatus, CallSid } = req.body;
+    console.log(
+      `[CALL] /no-answer: To=${To} From=${From} DialCallStatus=${DialCallStatus} SID=${CallSid}`
+    );
+
+    // Shop's phone was answered — Twilio is already bridged, end the TwiML
+    if (DialCallStatus === "completed" || DialCallStatus === "answered") {
+      res.type("text/xml");
+      return res.send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+    }
+
+    // Fall back to AI agent
+    const callerProfile = await lookupCallerProfile(From);
+    const callerName = callerProfile?.name || "Unknown Caller";
+    const callerRole = callerProfile?.callerRole || "unknown";
+
+    const resolved = await resolveShopContext(To);
+    if (!resolved) {
+      console.warn(`[CALL] /no-answer: no shop found for ${To}`);
+      res.type("text/xml");
+      return res.send(generateVoicemailTwiML("this business"));
+    }
+
+    return await respondWithElevenLabsAgent(
+      res,
+      resolved,
+      From,
+      To,
+      callerName,
+      callerRole,
+      startTime
+    );
+  } catch (error) {
+    console.error("[CALL] Error in /no-answer:", error);
     res.type("text/xml");
     return res.send(generateVoicemailTwiML("this business"));
   }

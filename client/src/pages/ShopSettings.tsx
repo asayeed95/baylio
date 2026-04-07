@@ -13,6 +13,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import {
   ArrowLeft,
   Save,
@@ -24,6 +26,7 @@ import {
   CheckCircle2,
   XCircle,
   PhoneCall,
+  PhoneForwarded,
   Loader2,
   Trash2,
   Wifi,
@@ -66,6 +69,8 @@ function ShopSettingsContent() {
   const [state, setState] = useState("");
   const [zip, setZip] = useState("");
   const [services, setServices] = useState("");
+  const [ringShopFirstEnabled, setRingShopFirstEnabled] = useState(true);
+  const [ringTimeoutSec, setRingTimeoutSec] = useState(12);
 
   // Phone provisioning state
   const [areaCode, setAreaCode] = useState("");
@@ -87,6 +92,8 @@ function ShopSettingsContent() {
               .join("\n")
           : ""
       );
+      setRingShopFirstEnabled((shop as any).ringShopFirstEnabled ?? true);
+      setRingTimeoutSec((shop as any).ringTimeoutSec ?? 12);
     }
   }, [shop]);
 
@@ -126,6 +133,8 @@ function ShopSettingsContent() {
         state: state.trim() || undefined,
         zip: zip.trim() || undefined,
         serviceCatalog: parsedServices,
+        ringShopFirstEnabled,
+        ringTimeoutSec,
       },
     });
   };
@@ -283,6 +292,65 @@ function ShopSettingsContent() {
         setShowNumberSearch={setShowNumberSearch}
         shopCity={city}
       />
+
+      {/* Call Routing — Ring Shop First, Then AI */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <PhoneForwarded className="h-5 w-5 text-primary" />
+            <CardTitle>Call Routing</CardTitle>
+          </div>
+          <CardDescription>
+            Choose whether your existing phone rings first before the AI takes
+            over.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="flex items-start justify-between gap-4">
+            <div className="space-y-1">
+              <Label htmlFor="ring-first">Ring my phone first</Label>
+              <p className="text-sm text-muted-foreground">
+                When ON, calls ring your business phone for a few seconds before
+                the AI receptionist picks up. Turn OFF if you want the AI to
+                answer every call immediately.
+              </p>
+            </div>
+            <Switch
+              id="ring-first"
+              checked={ringShopFirstEnabled}
+              onCheckedChange={setRingShopFirstEnabled}
+            />
+          </div>
+          {ringShopFirstEnabled && (
+            <div className="space-y-3 pt-2 border-t">
+              <div className="flex items-baseline justify-between">
+                <Label>Ring duration</Label>
+                <span className="text-sm font-mono tabular-nums text-muted-foreground">
+                  {ringTimeoutSec} seconds
+                </span>
+              </div>
+              <Slider
+                min={5}
+                max={30}
+                step={1}
+                value={[ringTimeoutSec]}
+                onValueChange={([v]) => setRingTimeoutSec(v)}
+              />
+              <p className="text-xs text-muted-foreground">
+                About {Math.ceil(ringTimeoutSec / 4)} rings before the AI picks
+                up. Most shops use 10–15 seconds.
+              </p>
+            </div>
+          )}
+          {!phone && (
+            <div className="rounded-md border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <strong>Heads up:</strong> Set your business phone above to use
+              this feature. Without a phone number, calls will always go straight
+              to the AI.
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }

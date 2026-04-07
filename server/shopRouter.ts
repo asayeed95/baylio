@@ -28,6 +28,7 @@ import {
   compileGreeting,
   type ShopContext,
 } from "./services/promptCompiler";
+import { contextCache } from "./services/contextCache";
 
 const shopInput = z.object({
   name: z.string().min(1).max(255),
@@ -38,6 +39,8 @@ const shopInput = z.object({
   zip: z.string().optional(),
   timezone: z.string().default("America/New_York"),
   organizationId: z.number().optional(),
+  ringShopFirstEnabled: z.boolean().optional(),
+  ringTimeoutSec: z.number().int().min(5).max(30).optional(),
   businessHours: z.any().optional(),
   serviceCatalog: z
     .array(
@@ -107,6 +110,9 @@ export const shopRouter = router({
         });
       }
       await updateShop(input.id, input.data as any);
+      // Invalidate context cache so the next inbound call picks up new settings
+      // (ring config, phone, hours, services, etc. all live in the cached ShopContext)
+      contextCache.invalidateShop(input.id);
       return { success: true };
     }),
 
@@ -401,6 +407,8 @@ export const shopRouter = router({
       const steps: string[] = [];
 
       // Step 1: Create the shop
+      // Defaults: ring the shop's existing phone first for 12s, then AI takes over.
+      // Shop owner can change these in ShopSettings → Call Routing.
       const shopId = await createShop({
         name: input.shopName,
         phone: input.shopPhone || undefined,
@@ -411,6 +419,8 @@ export const shopRouter = router({
         timezone: input.timezone,
         businessHours: input.businessHours || undefined,
         serviceCatalog: input.serviceCatalog || undefined,
+        ringShopFirstEnabled: true,
+        ringTimeoutSec: 12,
         ownerId: ctx.user.id,
       });
 
