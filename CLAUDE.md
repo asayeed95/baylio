@@ -1,366 +1,510 @@
 # BAYLIO — Claude Code Project Brief
 
-> Claude Code reads this file automatically. Keep it updated as the single source of truth.
+> Claude Code reads this file automatically at session start. This is the single source of truth. Keep it updated.
+> **Also read `DEPLOY_LOG.md`** at session start for the most recent deployment state and in-progress work.
 
 ---
 
-## MISSION
+## Project Summary
 
-Baylio is an AI-powered phone receptionist for auto repair shops. It answers inbound calls, books appointments, upsells services, and handles customer inquiries — so shop owners never miss a call while they're under a car.
-
-**Current phase: UI/UX polish sprint + production hardening.**
-
-We are past the "make it work" phase. The core product is built, deployed, and functional. Now we're making it look and feel like a $10M SaaS product while hardening the remaining yellow-light systems.
-
-Every decision should answer: "Does this get us closer to a shop owner paying $199/month and thinking this is a premium product?"
+Baylio is an AI phone receptionist for independent auto repair shops — it answers inbound calls, books appointments, upsells services, and handles customer inquiries in 5 languages so shop owners never miss a call while they're under a car. Target customer: single-location auto repair shop owners at $199–$599/month. Current phase: production hardening + first paying customers (Autoblitz launch imminent).
 
 ---
 
-## CURRENT STATUS (as of March 31, 2026)
+## Tech Stack (Final — Do NOT Change)
 
-- **Repo:** github.com/asayeed95/baylio (private)
-- **Domain:** baylio.io (live, DNS via Cloudflare, hosted on Vercel)
-- **Database:** Supabase (PostgreSQL + Drizzle ORM) — fully migrated from TiDB/Manus
-- **Auth:** Supabase Auth — fully migrated from Manus OAuth
-- **Payments:** Stripe (59+ passing tests, 3 subscription tiers configured)
-- **Voice AI:** ElevenLabs Conversational AI + Twilio + Claude reasoning engine
-- **Frontend:** React 19 + Vite + Tailwind 4 + shadcn/ui — **LIGHT THEME** (recently switched from dark)
-- **Backend:** Express 4 + tRPC 11
-- **Deployment:** Vercel (SPA + serverless function at `/api/`)
-- **Tests:** 14 test files, 147+ test specs, all passing
-- **Codebase:** ~27,000+ lines across 64 server files, 27 client pages, 16 backend services
+### Runtime & Language
+- **Node.js 24 LTS** (default on Vercel)
+- **TypeScript 5.9.3** — strict mode, no `any` in new code
+- **pnpm 10.4.1** — package manager (`packageManager` field locks this)
 
-### What's GREEN (Working)
+### Frontend
+- **React 19.2** + **Vite 7.1** — SPA, client-side routing via **wouter 3.3** (patched, see `patches/wouter@3.7.1.patch`)
+- **Tailwind CSS 4.1** + **shadcn/ui** (Radix primitives) — light theme only
+- **TanStack Query 5.90** + **tRPC client 11.6** — data fetching
+- **react-hook-form 7.64** + **zod 4.1** — forms & validation
+- **recharts 2.15** — dashboards
+- **lucide-react** icons, **sonner** toasts, **framer-motion 12** animations
+- **next-themes** (for theme switching infra, but we default to light)
 
-- baylio.io loads and serves the SPA correctly
-- Supabase Auth (signup/login) works
-- Landing page with ROI calculator
-- Shop CRUD (create, read, update, delete)
-- Agent config (voice, persona, greeting, upsell rules)
-- Inbound call routing (Twilio to ElevenLabs) — fixed, agent has real compiled prompts
-- Sales number (844-875-2441) — Sam agent answers with full Baylio sales knowledge
-- Onboarding wizard UI (4 steps: Shop Details, Phone Setup, AI Agent, Go Live) — recently upgraded with category-based service picker, search, editable prices (22 services across 5 categories)
-- Stripe billing integration (checkout sessions, webhooks, customer portal)
-- Partner portal at partners.baylio.io
-- Post-call pipeline architecture (LLM analysis, integrations, notifications)
-- Admin portal
-- 161+ passing tests
+### Backend
+- **Express 4.21** — wrapped as a single Vercel serverless function at `api/index.js`
+- **tRPC server 11.6** — type-safe API layer at `/api/trpc/*`
+- **Drizzle ORM 0.44** + **postgres 3.4** — database access
+- **Supabase PostgreSQL** — 18 tables (`drizzle/schema.ts`)
+- **Supabase Auth** via `@supabase/ssr 0.9` + `@supabase/supabase-js 2.100` — cookie-based sessions
+- **zod 4.1** — every procedure input validated
+- **superjson 1.13** — tRPC serialization (Date, BigInt, Map)
 
-### What's YELLOW (Built but needs live verification)
+### External Services
+- **Twilio 5.13** — inbound call webhooks, phone number provisioning
+- **ElevenLabs 1.59** (Conversational AI) — the voice agent itself, via Register Call API + WebSocket
+- **Anthropic Claude API** — post-call LLM analysis (`server/_core/llm.ts`)
+- **Stripe 20.4** (API version `2025-03-31.basil`) — subscriptions, webhooks, customer portal
+- **Resend 6.9** — transactional email (contact form notifications)
+- **Google APIs 171.4** — Calendar + Sheets post-call integrations
+- **HubSpot API 13.5** — CRM sync
+- **PostHog** (`posthog-node 5.28` + `posthog-js 1.363`) — analytics & feature flags
 
-- End-to-end onboarding flow (wizard built, needs real-world testing)
-- Per-shop ElevenLabs agent provisioning (code exists, needs live test)
-- Post-call pipeline (needs a real call to verify data flows to dashboard)
-- Call logs + transcripts in dashboard (need real call data)
-- Stripe subscription flow (wired but needs live payment test)
-- SMS follow-up after calls
-- Google Calendar / Sheets / HubSpot integrations (built, not verified with real accounts)
-
-### What's RED (Known broken)
-
-- Contact form email notifications (SMTP fails — needs switch to Resend or similar)
+### Build & Deploy
+- **Vite 7.1** — client bundling
+- **esbuild 0.25** — bundles Express into `api/index.js` for Vercel
+- **Vercel** — hosting (SPA static + serverless API function), auto-deploys on push to `main`
+- **drizzle-kit 0.31** — migrations
+- **vitest 2.1** — test runner
 
 ---
 
-## DUAL-AGENT WORKFLOW
-
-Baylio is built by two AI agents working in parallel. **Do not step on each other's work.**
-
-| Agent | Tool | Scope | Brief File |
-|---|---|---|---|
-| **Claude Code** | Terminal CLI (primary builder) | Backend, deployment, architecture, core logic, database, API routes, testing, CLAUDE.md updates | `CLAUDE.md` (this file) |
-| **Antigravity** | IDE (Gemini-powered) | UI/UX polish, visual design, light theme fixes, component styling, mobile responsiveness, empty/loading states | `ANTIGRAVITY_UIUX_SPRINT.md` |
-
-### Coordination Rules
-
-1. **Claude Code owns:** `server/`, `api/`, `drizzle/`, `shared/`, `vercel.json`, `package.json`, build scripts, deployment config, environment variables, and any backend logic.
-2. **Antigravity owns:** `client/src/pages/`, `client/src/components/`, `client/src/index.css` (utility classes only, not theme vars), and visual presentation of all UI components.
-3. **Shared territory (coordinate):** `client/src/App.tsx` (routes), `client/src/hooks/`, `client/src/lib/`, anything that touches both data flow and presentation.
-4. **If Antigravity needs a new API endpoint or data shape**, it goes through Claude Code.
-5. **If Claude Code needs a UI change**, describe it and let Antigravity handle the visual implementation.
-6. **Both agents build and push to `main`.** Vercel auto-deploys on push. Run `pnpm run build:vercel` before pushing to ensure no build errors.
-7. **Push after every change.** Commit and `git push` after every addition, fix, or removal — no batching. Vercel auto-deploys on push, so the user can test immediately.
-8. **Read `DEPLOY_LOG.md` at session start.** Before exploring the codebase, read this file to understand what was last deployed, what's working, and what's in progress. Update it after every `git push` with what changed. This saves tokens and avoids redundant codebase scanning.
-
----
-
-## TECH STACK (Final — Do NOT Change)
-
-| Layer | Use This | NOT This |
-|---|---|---|
-| Database | Supabase PostgreSQL | TiDB, MySQL, Manus sandbox, SQLite |
-| ORM | Drizzle | Prisma, raw SQL |
-| Auth | Supabase Auth | Manus OAuth, custom auth, Firebase, Clerk |
-| Hosting | Vercel | Railway, AWS, Heroku, Manus |
-| Payments | Stripe | PayPal, custom billing |
-| Voice | ElevenLabs Conversational AI | OpenAI TTS, Google TTS |
-| Telephony | Twilio | Vonage, Plivo |
-| AI Brain | Claude API (Anthropic) | OpenAI, Gemini |
-| Frontend | React 19 + Vite + Tailwind 4 | Next.js (we're not migrating) |
-| UI Components | shadcn/ui | MUI, Ant Design, Chakra |
-| API | tRPC 11 + Express 4 | REST, GraphQL |
-| Fonts | Inter (body) + JetBrains Mono (data/numbers) | — |
-
-**Do NOT introduce new dependencies or frameworks without explicit approval.** Keep the stack tight.
-
----
-
-## DESIGN SYSTEM (Active — Light Theme)
-
-The app recently switched from dark to light theme. **All new code must use light theme.**
-
-- **Theme:** Light (`defaultTheme="light"` in ThemeContext)
-- **Primary color:** Teal/green (oklch 0.45 0.18 162) — use sparingly for CTAs, active states, key metrics
-- **Cards:** White background, light border (`border-border`), `shadow-sm` at most
-- **Typography:** Page titles = `text-2xl font-semibold tracking-tight`. Section labels = `text-sm font-medium`. Data = `font-mono tabular-nums`. Body = `text-sm`.
-- **Buttons:** Primary = filled teal. Secondary = `variant="outline"`. Destructive = red outline. Ghost for subtle actions.
-- **Icons:** Lucide icons. `h-4 w-4` inline, `h-5 w-5` standalone.
-- **Spacing:** Generous white space. Don't cram elements together.
-- **CSS vars:** Defined in `client/src/index.css`. Utility classes: `.stat-number`, `.stat-label`, `.panel`, `.badge-live`.
-
-If you see hardcoded dark colors (bg-gray-900, text-white on dark cards, etc.) in any component, fix them.
-
----
-
-## DEPLOYMENT ARCHITECTURE (Vercel)
-
-Two parts with different Vercel treatment:
-
-1. **Client SPA** — React app built by Vite to `dist/public/`. Served as static files.
-2. **Express + tRPC Server** — Wrapped as a Vercel serverless function at `api/index.js`. Entry point: `server/vercel-entry.ts`.
-
-### Build Commands
+## Commands
 
 ```bash
-pnpm run build:client    # Build SPA only
-pnpm run build:vercel    # Build SPA + bundle serverless function to api/index.js
-pnpm run dev             # Local dev server (port 3000)
-pnpm test                # Run all vitest tests
-pnpm run db:push         # Generate + run Drizzle migrations
+# Local development
+pnpm install                 # Install dependencies (lockfile is strict)
+pnpm run dev                 # Start Express + Vite middleware on port 3000 (auto-fallback +20)
+pnpm run check               # Type-check with tsc --noEmit
+pnpm test                    # Run vitest (17 files, 162 tests, ~8s)
+pnpm run format              # Prettier format everything
+
+# Building
+pnpm run build:client        # Build SPA only → dist/public/
+pnpm run build:vercel        # Build SPA + bundle Express → api/index.js (REQUIRED before pushing)
+pnpm run build               # Full build → dist/ (for non-Vercel targets, unused in prod)
+
+# Database
+pnpm run db:push             # drizzle-kit generate && migrate (requires DATABASE_URL)
+
+# Deploy (Vercel auto-deploys on push)
+git push origin main         # Triggers Vercel build + deploy
+vercel env ls                # List production env vars
+vercel env pull .env.local   # Pull prod env vars locally
+vercel logs <deployment-url> # Inspect deployment logs
 ```
 
-### vercel.json must:
-- Route `/api/*` to the serverless function wrapping Express
-- Serve everything else as the SPA (client-side routing)
-
-### Environment Variables (Vercel)
-
-- `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`
-- `DATABASE_URL` (Supabase PostgreSQL connection string)
-- `TWILIO_ACCOUNT_SID`, `TWILIO_AUTH_TOKEN`, `TWILIO_PHONE_NUMBER`
-- `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`
-- `ELEVENLABS_API_KEY`
-- `ANTHROPIC_API_KEY`
-- `SESSION_SECRET`
-- `WEBHOOK_BASE_URL` (base URL for Twilio webhook configuration)
+There is **no lint command** — Prettier is the only formatter. Type errors are caught by `pnpm run check` and the Vercel build.
 
 ---
 
-## PRICING TIERS
+## Architecture
 
-| Tier | Price | Included | What They Get |
-|---|---|---|---|
-| **Starter** | $199/mo | 500 calls/mo | AI receptionist, basic dashboard |
-| **Professional** | $349/mo | 2,000 calls/mo | Appointment booking, SMS follow-ups |
-| **Enterprise** | $599/mo | Unlimited calls | Multi-location, custom voice, priority support |
+### High-Level
 
-Free trial = 14 days, no credit card required. Overage = $0.15/min beyond included.
+Two pieces deployed as one project on Vercel:
 
----
+1. **Client SPA** — React app built by Vite to `dist/public/`, served as static files by Vercel CDN.
+2. **Serverless API** — Express + tRPC wrapped into a single serverless function at `api/index.js`, routed to `/api/*`. Entry point: `server/vercel-entry.ts` (NOT `server/_core/index.ts` — that's for local dev only, which imports Vite).
 
-## FILE STRUCTURE
+### Folder Structure
 
 ```
 baylio/
 ├── api/
-│   └── index.js                # Pre-bundled Vercel serverless function (generated)
+│   └── index.js                      # Pre-bundled serverless function (committed, regenerated by build:vercel)
 ├── client/
-│   ├── index.html              # HTML entry (Google Fonts loaded here)
+│   ├── index.html                    # HTML entry — loads Inter + JetBrains Mono from Google Fonts
 │   └── src/
-│       ├── main.tsx            # App bootstrap, tRPC client
-│       ├── App.tsx             # Route definitions, layout switching
-│       ├── index.css           # Global theme (CSS variables, Tailwind)
-│       ├── components/         # UI components (shadcn/ui + custom)
-│       │   ├── DashboardLayout.tsx
-│       │   ├── PartnersPortalLayout.tsx
-│       │   └── ui/             # shadcn/ui primitives
-│       ├── pages/              # 27 route pages
-│       │   ├── Landing.tsx     # Public marketing page
-│       │   ├── Login.tsx       # Supabase Auth login/signup
-│       │   ├── Onboarding.tsx  # 4-step setup wizard
-│       │   ├── Dashboard.tsx   # Main dashboard (post-login)
-│       │   ├── ShopDetail.tsx  # Individual shop view
-│       │   ├── CallLogs.tsx    # Call history with filters
-│       │   ├── Analytics.tsx   # Call analytics (Recharts)
-│       │   ├── Subscriptions.tsx # Billing & plans
-│       │   └── ...             # + 19 more pages
-│       ├── hooks/              # Custom React hooks
-│       ├── contexts/           # ThemeContext
-│       └── lib/                # tRPC client, utils
+│       ├── main.tsx                  # App bootstrap + tRPC client setup
+│       ├── App.tsx                   # Route table + layout switching (shared territory)
+│       ├── index.css                 # Global theme CSS variables + utility classes
+│       ├── components/               # Reusable components
+│       │   ├── ui/                   # shadcn/ui primitives (do NOT edit generated files)
+│       │   ├── DashboardLayout.tsx   # Shell for authed pages
+│       │   └── PartnersPortalLayout.tsx
+│       ├── pages/                    # 27 route pages — one file per route
+│       ├── hooks/                    # Custom React hooks (auth, tRPC wrappers)
+│       ├── contexts/                 # ThemeContext (light-theme default)
+│       └── lib/                      # tRPC client, utils, cn()
 ├── server/
-│   ├── _core/                  # Framework plumbing (avoid editing)
-│   ├── routers.ts              # Root tRPC router
-│   ├── shopRouter.ts           # Shop CRUD + onboarding (586 lines)
-│   ├── callRouter.ts           # Call log queries
-│   ├── services/
-│   │   ├── twilioWebhooks.ts   # THE CORE — inbound call handling (579 lines)
-│   │   ├── elevenLabsService.ts # ElevenLabs agent CRUD
-│   │   ├── promptCompiler.ts   # Shop context to AI prompt
-│   │   ├── postCallPipeline.ts # Post-call LLM analysis
-│   │   └── ...                 # + 11 more services
+│   ├── _core/                        # Framework plumbing — edit with care
+│   │   ├── index.ts                  # Local dev Express entry (imports Vite dev server)
+│   │   ├── trpc.ts                   # tRPC init + procedure types (publicProcedure, protectedProcedure, adminProcedure)
+│   │   ├── context.ts                # tRPC context builder (pulls Supabase user from cookie)
+│   │   ├── cookies.ts                # Session cookie options
+│   │   ├── env.ts                    # ENV export — validates required vars in production (fail-fast)
+│   │   ├── llm.ts                    # Claude API client for post-call analysis
+│   │   ├── systemRouter.ts           # Health check router
+│   │   ├── notification.ts           # Owner notification helper
+│   │   ├── voiceTranscription.ts     # Transcription helpers
+│   │   └── vite.ts                   # Vite dev-middleware wiring (local dev only)
+│   ├── vercel-entry.ts               # Production entry — imported by esbuild, bundled to api/index.js
+│   ├── routers.ts                    # Root tRPC router — composes all feature routers
+│   ├── db.ts                         # Drizzle client + all DB helper functions
+│   ├── storage.ts                    # AWS S3 client for recordings (if used)
+│   ├── shopRouter.ts                 # Shop CRUD + completeOnboarding (586 lines — the core onboarding endpoint)
+│   ├── callRouter.ts                 # Call log queries, analytics aggregations
+│   ├── notificationRouter.ts         # In-app alerts
+│   ├── subscriptionRouter.ts         # Subscription management, usage tracking
+│   ├── organizationRouter.ts         # Multi-location grouping
+│   ├── partnerRouter.ts              # Partner/referral program
+│   ├── analyticsRouter.ts            # Dashboard aggregations
+│   ├── contactRouter.ts              # Public contact form (publicProcedure, rate-limited)
+│   ├── integrationRouter.ts          # Google Calendar/Sheets/HubSpot CRUD
 │   ├── middleware/
-│   │   ├── twilioValidation.ts # Webhook signature validation
-│   │   └── tenantScope.ts      # Multi-tenant data isolation
-│   ├── stripe/                 # Stripe billing (products, router, webhooks)
-│   └── *.test.ts               # 14 test files (147+ specs)
+│   │   ├── twilioValidation.ts       # Webhook HMAC-SHA1 signature check (strips Vercel ?path= query)
+│   │   ├── tenantScope.ts            # Multi-tenant row-level isolation helper
+│   │   └── rateLimiter.ts            # In-memory sliding-window rate limiter (per-instance)
+│   ├── stripe/
+│   │   ├── products.ts               # Tier configs (starter/pro/elite + setup fees)
+│   │   ├── stripeRouter.ts           # tRPC procedures for checkout & portal
+│   │   └── stripeRoutes.ts           # Express raw-body /api/stripe/webhook handler
+│   ├── services/
+│   │   ├── twilioWebhooks.ts         # /api/twilio/* — inbound call handling, the money path
+│   │   ├── twilioProvisioning.ts     # Twilio number search/buy/release
+│   │   ├── elevenLabsService.ts      # ElevenLabs agent CRUD + retry wrapper
+│   │   ├── promptCompiler.ts         # Shop context → system prompt (THE service advisor persona)
+│   │   ├── contextCache.ts           # In-memory phone→shop and shop→context cache (hot path)
+│   │   ├── postCallPipeline.ts       # Transcription analysis, usage metering, notifications, integrations
+│   │   ├── calendarService.ts        # Google Calendar appointment creation
+│   │   ├── sheetsService.ts          # Google Sheets call sync
+│   │   ├── hubspotService.ts         # HubSpot contact sync
+│   │   ├── shopmonkeyService.ts      # Shopmonkey work order creation
+│   │   ├── smsService.ts             # Twilio SMS (follow-ups, reminders)
+│   │   ├── emailService.ts           # Resend — contact form + notifications
+│   │   ├── auditService.ts           # Missed-call audit computation
+│   │   ├── scorecardGenerator.ts     # Call scorecard PDF/data generator
+│   │   ├── demoService.ts            # Seeds demo shop data for sales demos
+│   │   └── googleAuth.ts             # Google OAuth router + token refresh
+│   ├── lib/                          # Shared backend utilities
+│   ├── scripts/                      # One-off maintenance scripts
+│   └── *.test.ts                     # 17 vitest files — colocated with source
 ├── drizzle/
-│   ├── schema.ts               # Database schema (17 tables)
-│   └── relations.ts            # Drizzle relations
-├── shared/                     # Shared types and constants
-├── vercel.json                 # Vercel deployment config
-├── package.json
-├── CLAUDE.md                   # THIS FILE
-├── ANTIGRAVITY_UIUX_SPRINT.md  # Antigravity's UI/UX brief
-└── CLAUDE_HANDOFF.md           # Full architecture deep dive
+│   ├── schema.ts                     # 18 pgTable definitions + enums
+│   └── relations.ts                  # Drizzle relations
+├── shared/
+│   ├── const.ts                      # COOKIE_NAME + other cross-boundary constants
+│   └── types.ts                      # Shared TS types (do not import from server into client directly)
+├── patches/
+│   └── wouter@3.7.1.patch            # pnpm patch-package fix for wouter route matching
+├── docs/
+│   └── superpowers/                  # Spec + plan markdown files (from brainstorming/writing-plans skills)
+├── skills/                           # User-defined Claude Code skills (do not edit)
+├── api/index.js                      # Bundled serverless function (committed, built by build:vercel)
+├── dist/                             # Build output — committed for Vercel (gitignored except api/)
+├── vercel.json                       # Vercel routing: /api/* → serverless, everything else → SPA
+├── vite.config.ts                    # Vite config with aliases: @/ → client/src, @shared/ → shared
+├── vitest.config.ts                  # vitest config with same aliases + tests.setup.ts
+├── drizzle.config.ts                 # Drizzle migrations config
+├── tsconfig.json                     # TS config with path aliases matching vite.config
+├── tests.setup.ts                    # Loads dotenv/config for tests
+├── CLAUDE.md                         # THIS FILE
+├── DEPLOY_LOG.md                     # Session-to-session deploy log (read at session start)
+├── ANTIGRAVITY_UIUX_SPRINT.md        # UI/UX agent's scope of work
+├── CLAUDE_HANDOFF.md                 # Deep architecture reference
+└── package.json
 ```
-
----
-
-## CORE ARCHITECTURE
 
 ### Live Call Flow (The Money Path)
 
 ```
-Customer calls shop number
-  → Twilio receives call, POSTs to /api/twilio/voice
-  → twilioWebhooks.ts resolves shop context (contextCache → DB fallback)
-  → promptCompiler.ts compiles shop-specific system prompt
-  → ElevenLabs Register Call API returns TwiML with WebSocket URL
-  → Twilio connects call audio to ElevenLabs WebSocket
-  → AI agent converses with caller in real-time
-  → Post-call: LLM analysis, usage metering, integrations, notifications
+Customer calls shop's Baylio number
+  → Twilio → POST https://baylio.io/api/twilio/voice
+  → twilioValidation middleware verifies HMAC-SHA1 signature
+     (strips Vercel-injected ?path= query param before verification)
+  → twilioWebhooks.ts /voice handler:
+      1. Look up caller profile (fire-and-forget profile upsert)
+      2. Sales line bypass: if To === TWILIO_PHONE_NUMBER, route to Sam agent
+      3. Resolve shop context from contextCache (phone → shopId → ShopContext)
+      4. Cache miss → DB fallback (shops + agentConfigs join)
+      5. After-hours check → return after-hours TwiML if closed
+      6. Compile system prompt via promptCompiler.compileSystemPrompt()
+      7. Register call with ElevenLabs → get TwiML with authenticated WSS URL
+      8. Return TwiML to Twilio (<2s response target)
+  → Twilio bridges audio to ElevenLabs WebSocket
+  → AI agent converses live in caller's language
+  → Call ends → Twilio POST /api/twilio/call-status
+  → setImmediate async pipeline:
+      1. Insert call_log row
+      2. If transcription arrives via /api/twilio/transcription-complete:
+         - postCallPipeline.processCompletedCall()
+         - LLM analysis (intent, sentiment, QA flags, estimated revenue)
+         - Usage metering against active subscription
+         - Notify owner of high-value leads
+         - Run integrations (Google Calendar appointment, Sheets sync, HubSpot contact, SMS follow-up)
 ```
 
-### Database (17 tables in Supabase PostgreSQL)
+### Database — 18 Tables
 
-Key tables: `users`, `shops`, `agent_configs`, `call_logs`, `subscriptions`, `usage_records`, `missed_call_audits`, `caller_profiles`, `partners`, `referrals`, `shop_integrations`, `contact_submissions`, `notifications`, `organizations`.
+Full schema in `drizzle/schema.ts`. Key tables:
 
-Full schema in `drizzle/schema.ts`. Relations in `drizzle/relations.ts`.
-
-### Authentication
-
-Supabase Auth with cookie-based sessions. `protectedProcedure` in tRPC requires authenticated user. Role-based access: `admin` | `user`.
-
----
-
-## SCALABILITY PRINCIPLES
-
-Build for 1 shop today, don't paint yourself into a corner for 1,000.
-
-1. **Multi-tenancy from day one** — Every query scoped to `shop_id` or `owner_id`. No global queries without tenant isolation.
-2. **Stateless API** — No in-memory state on the server. Everything in Supabase. Vercel serverless functions are ephemeral.
-3. **Twilio per-shop** — Each shop gets their own phone number. Voice agent context loaded per-call.
-4. **Stripe per-shop** — Each shop has a Stripe customer ID. Subscription status gates feature access.
-5. **Voice agent config is data, not code** — Shop name, services, hours, greeting = database rows. Zero code changes to add a new shop.
-6. **Cost tracking** — Track per-call costs (Twilio + ElevenLabs + Claude) per shop for margin analysis.
+- `users` — Supabase-backed users (one per auth account)
+- `organizations` — Multi-location shop grouping
+- `shops` — The central tenant entity (ownerId, twilioPhoneNumber, twilioPhoneSid, businessHours, serviceCatalog, smsFollowUpEnabled, etc.)
+- `agent_configs` — Per-shop voice/persona/greeting + `elevenLabsAgentId`
+- `call_logs` — Every call with transcription, analysis, revenue estimate
+- `caller_profiles` — Deduplication by phone number (callCount, callerRole: prospect/shop_owner/founder/tester/vendor/unknown)
+- `subscriptions` — Stripe subscription state (tier, status, includedMinutes, usedMinutes, setupFeePaid)
+- `usage_records` — Per-call minute tracking for overage billing
+- `missed_call_audits` + `audit_call_entries` — Missed-call campaigns (audit mode for prospects)
+- `notifications` — In-app alerts
+- `partners` + `referrals` + `payouts` — Partner program
+- `shop_integrations` — OAuth tokens + settings for Google/HubSpot/Shopmonkey
+- `integration_sync_logs` — Integration run history
+- `contact_submissions` — Public contact form data
+- `organization_members` — Multi-user shop access (future)
 
 ---
 
-## CODE QUALITY RULES
+## Conventions
 
-1. **No `any` types in TypeScript.** Use proper types or `unknown` with type guards.
-2. **No `console.log` in production code.** Use a proper logger or remove before commit.
-3. **Error handling on every external API call.** Twilio, ElevenLabs, Claude, Stripe — all need try/catch with meaningful error messages.
-4. **No hardcoded secrets.** Everything via environment variables.
-5. **Database migrations via Drizzle.** No manual SQL in production.
-6. **Test before deploy.** Run `pnpm test` and fix failures before pushing.
-7. **Light theme only.** No hardcoded dark colors in new components. Use CSS variables and shadcn/ui tokens.
+### TypeScript
+- **No `any`** in new code — use `unknown` + type guards, or proper types. Existing `any` casts (e.g., `shop.serviceCatalog as any`) are tech debt to be removed incrementally.
+- **Strict null checks** — always handle `undefined` returns from DB queries.
+- **Shared types** live in `shared/types.ts`. Never import from `server/` into `client/` directly.
+- **Path aliases**: `@/*` → `client/src/*`, `@shared/*` → `shared/*`. Use absolute imports.
 
----
+### tRPC
+- Every procedure uses **zod input validation**. No unvalidated inputs.
+- Use **`protectedProcedure`** by default. Only use `publicProcedure` for landing page data, contact form, and auth endpoints.
+- **Ownership check on every resource access**: after fetching by ID, verify `resource.ownerId === ctx.user.id`. Pattern:
+  ```typescript
+  const shop = await getShopById(input.shopId);
+  if (!shop || shop.ownerId !== ctx.user.id) {
+    throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or unauthorized" });
+  }
+  ```
+- Feature routers live in `server/<feature>Router.ts` and register in `server/routers.ts`.
 
-## WHAT CLAUDE CODE SHOULD FOCUS ON NOW
+### Database
+- **All Drizzle queries scoped to `shopId` or `ownerId`**. No global scans without explicit tenant isolation.
+- **No raw SQL** except for aggregations via `sql` tagged template from `drizzle-orm`.
+- **Migrations via drizzle-kit** — never hand-edit `drizzle/` generated files.
+- Column naming: camelCase in schema (Drizzle maps to snake_case for Postgres via its default).
 
-### Priority 1: Production Hardening
+### Frontend
+- **Light theme only**. No hardcoded dark colors in new components. Use CSS variables in `client/src/index.css`: `bg-background`, `text-foreground`, `border-border`, `text-muted-foreground`, etc.
+- **shadcn/ui** primitives only — no MUI, Chakra, Ant Design, or other component libraries.
+- **Typography**:
+  - Page titles: `text-2xl font-semibold tracking-tight`
+  - Section labels: `text-sm font-medium`
+  - Data/numbers: `font-mono tabular-nums` (Inter for body, JetBrains Mono for numbers)
+  - Body: `text-sm`
+- **Buttons**: Primary = filled teal (default), Secondary = `variant="outline"`, Destructive = red outline, Ghost for subtle actions.
+- **Icons**: lucide-react, `h-4 w-4` inline, `h-5 w-5` standalone.
+- **Spacing**: Generous white space. Cards use `shadow-sm` at most.
+- **Forms**: react-hook-form + zod + `@hookform/resolvers`. Never manual `useState` for form state.
+- **Toasts**: `toast()` from sonner, not custom.
+- **Routing**: wouter `useLocation()` + `<Link>`. Not react-router.
 
-- Verify end-to-end onboarding flow works with real data
-- Test a real inbound call through the full pipeline (call → log → transcript → dashboard)
-- Verify Stripe subscription flow with a live test payment
-- Fix contact form email (switch from SMTP to Resend API)
+### Testing
+- **vitest** with path aliases from `vitest.config.ts`.
+- **Mocks at service boundary**: mock `./db`, mock external service modules. Don't hit real APIs in unit tests.
+- **Use `vi.hoisted()`** for mock factories that need to exist before `vi.mock()` calls (see `server/signupFlow.test.ts` for the canonical pattern).
+- **Tests skip gracefully when live credentials are absent** (see `server/twilio.test.ts`, `server/supabase.test.ts`). Use `it.skipIf(!hasCreds)` or early-return guards.
+- Test files colocated: `server/foo.test.ts` next to `server/foo.ts`.
+- Run all tests: `pnpm test`. Target: all 17 files passing, 0 failing.
 
-### Priority 2: Backend Reliability
+### Git
+- **Push after every change.** No batching. Vercel auto-deploys on push.
+- **Always run `pnpm run build:vercel` before pushing** — commit the updated `api/index.js`.
+- **Conventional-ish commits**: `feat:`, `fix:`, `security:`, `chore:`, `docs:`, `style:`, `UI/UX:` prefixes.
+- **Update `DEPLOY_LOG.md` after every push** with what changed, what's working, what's in progress.
+- **Never commit secrets**. `.env.test` was leaked once in `fd7f82b` (keys rotated) — it's now in `.gitignore`.
 
-- Add proper error boundaries around async `setImmediate` callbacks in `twilioWebhooks.ts`
-- Enable Twilio webhook signature validation (currently `logOnly: true`)
-- Add authorization checks to all tRPC procedures (verify user owns the resource)
-- Add rate limiting to public endpoints
-
-### Priority 3: Support Antigravity's UI/UX Sprint
-
-- If Antigravity needs new API endpoints or data shapes, build them
-- If backend changes affect what the frontend renders, coordinate
-- Keep `api/index.js` up to date — run `pnpm run build:vercel` and commit after backend changes
-
-### What NOT to Do
-
-- **Do NOT refactor the entire codebase.** Fix what's broken, ship what's needed.
-- **Do NOT add new features beyond what's listed above.**
-- **Do NOT switch frameworks, ORMs, or hosting providers.**
-- **Do NOT spend time on CI/CD, Docker, or DevOps tooling.**
-- **Do NOT touch UI components unless it's a backend-related fix.** That's Antigravity's territory.
-- **Do NOT remove functionality.** If something works, keep it working.
-
----
-
-## VOICE AGENT BEHAVIOR
-
-When a customer calls a Baylio-powered shop:
-
-1. **Greeting:** "Hi, thanks for calling [Shop Name]! How can I help you today?"
-2. **Intent Detection:** Appointment booking, service inquiry, pricing question, emergency/tow, general question
-3. **Information Gathering:** Collect name, phone, vehicle info, service needed, preferred time
-4. **Booking:** Check available slots, confirm appointment
-5. **Upsell (subtle):** "While we're doing your oil change, would you also like us to check your brakes? A lot of customers bundle those together."
-6. **Closing:** Confirm details, thank them, end call
-
-The agent uses a 3-Stage Reasoning Architecture: Symptom Extraction → Catalog Mapping → Natural Offer. Confidence thresholds: HIGH = offer upsell, MEDIUM = clarify first, LOW = just book.
-
----
-
-## DECISION FRAMEWORK
-
-When unsure about an approach:
-
-1. **Does it work?** Ship working code over perfect code.
-2. **Is it simple?** Fewer moving parts = fewer things to break.
-3. **Is it scoped to a shop?** Multi-tenancy is non-negotiable.
-4. **Can it scale without rewriting?** Good patterns now save rewrites later.
-5. **Does the user see it?** User-facing bugs > internal code quality issues.
+### Code Style
+- Prettier handles formatting — run `pnpm run format` before committing if unsure.
+- No trailing commas in function args (Prettier default).
+- Import order: node builtins → external → internal (relative last).
+- Console logs allowed in backend services for operational debugging, prefixed with `[SERVICE]` tags (e.g., `[CALL]`, `[STRIPE]`, `[POST-CALL]`, `[ELEVENLABS]`). No `console.log` in frontend production code.
 
 ---
 
-## KEY REFERENCE FILES
+## Current State
+
+### GREEN — Fully Working
+- **baylio.io** SPA loads, Supabase Auth signup/login works
+- **Landing page** with ROI calculator, contact form (rate-limited to 5/min per IP)
+- **Onboarding wizard** — 4 steps (Shop Details, Phone Setup, AI Agent, Go Live), 22 prebuilt services across 5 categories, search, editable prices, category-based picker
+- **Shop CRUD** + agent config CRUD with ownership checks
+- **Twilio phone provisioning** — search/buy/release numbers, area-code matching, toll-free fallback (`server/services/twilioProvisioning.ts`)
+- **Twilio signature validation** — enforced in production (was `logOnly: true`, fixed in `bc2ddf0`). Includes Vercel `?path=` query param stripping (`8d3c54d`).
+- **Inbound call routing** — Twilio → ElevenLabs with real compiled shop-specific prompts
+- **Sales line bypass** — `844-875-2441` routes directly to Sam sales agent (agent ID `agent_8401kkzx0edafhbb0c56a04d1kmb`) bypassing shop resolution
+- **Prompt compiler** — Full service-advisor persona with multilingual support (EN/ES/HI/BN/AR), objection handling (angry callers, emergencies, spam, wrong numbers, after-hours), never-diagnose rules, subtle upselling with 3-stage confidence
+- **Post-call pipeline architecture** — LLM analysis, usage metering, notifications, integrations (Google Calendar/Sheets/HubSpot/Shopmonkey, SMS follow-up) all wired
+- **Stripe integration** — 3 tiers (Starter $199, Pro $349, Elite $599), setup fees, checkout sessions, customer portal, webhook handlers for `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`
+- **Admin portal** at `/admin` (admin role required)
+- **Partner portal** at `partners.baylio.io` — referral tracking, earnings, payouts
+- **Rate limiting** — in-memory sliding window (contact form 5/60s, webhooks 50/10s per IP)
+- **Env var validation** — `server/_core/env.ts` fails fast in production if required vars missing
+- **Error boundary** on fire-and-forget `ensureCallerProfile` setImmediate callback
+- **Tests** — 17/17 files passing, 162 tests, 2 skipped (live-API tests skip without creds), ~8s total
+
+### YELLOW — Built but Not Verified With Real Traffic
+- **End-to-end onboarding flow** — wizard built, needs real shop to complete it
+- **Per-shop ElevenLabs agent provisioning** — code works in tests, needs live test
+- **Post-call pipeline → dashboard** — pipeline runs, dashboard renders, but no real call has flowed through start to finish and landed in the dashboard
+- **Call logs + transcripts** — schema + queries work, need real call data to verify rendering
+- **Stripe subscription flow** — wired, webhook secret configured, needs a live test payment
+- **SMS follow-up** — `smsService.ts` works, `smsFollowUpEnabled` shop flag respected, opt-out via `caller_profiles.smsOptOut` — untested end-to-end
+- **Google Calendar / Sheets / HubSpot / Shopmonkey integrations** — all built with OAuth flows and service modules, none verified against real accounts
+
+### RED — Known Broken / Incomplete
+- **"Ring shop first, then AI takes over" routing** — NOT BUILT. DEPLOY_LOG documents the design decision. Currently all calls go straight to the AI agent. Needed for the layered phone provisioning model (see Phone Provisioning Design below).
+- **Live call transfer to human** — agent prompts say "let me take your number" but there is no actual TwiML `<Dial>` transfer. If a caller insists on a human, the agent collects a callback number and ends the call.
+- **Explicit hang-up control** — ElevenLabs ends conversation naturally; there is no graceful programmatic hang-up TwiML.
+- **Number porting** — not built (Layer 2 of the phone provisioning design)
+- **SIP trunking** — not built (Layer 3)
+- **Carrier-side forwarding instructions UI** — not built (Layer 4 fallback)
+- **QuickBooks integration** — zero code, requested by user
+- **WhatsApp group reminders** — zero code, requested by user
+- **Vite build fails locally on asec-mac (missing deps)** — workaround: use `build:vercel` or let Vercel build on push. Vercel build is clean.
+- **Hardcoded "tomorrow" for appointment dateTime** in `postCallPipeline.runPostCallIntegrations` — `dateTime: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()`. Should be extracted from transcription.
+- **`(shop?.serviceCatalog as any)` cast** in postCallPipeline — tech debt, needs proper typing.
+
+### Tech Debt / Known Hacks
+- **`api/index.js` is committed** — Vercel detects the pre-bundled file instead of running the build. This is a workaround for Vercel ESM compatibility issues (`c094db9`, `75a4a54`). Always `pnpm run build:vercel` before pushing.
+- **wouter patched** — `patches/wouter@3.7.1.patch` fixes a route-matching bug. pnpm applies it automatically via `pnpm.patchedDependencies`.
+- **Session cookie in dev vs prod** — `server/_core/cookies.ts` has trust-proxy-aware logic. Don't touch without testing both local + Vercel.
+- **Two Express entry points** — `server/_core/index.ts` (local dev, imports Vite) and `server/vercel-entry.ts` (prod, bundled by esbuild). Keep them in sync for middleware/router registration. Rate limiters, Twilio validation, Stripe webhook route, tRPC — all must exist in both.
+- **`setImmediate` for async post-call work** — not a real queue. Works on Vercel serverless because function stays warm briefly, but not durable. A job queue (Upstash + BullMQ, or Vercel Queues) is a future upgrade.
+- **In-memory rate limiter is per-instance** — Vercel serverless = ephemeral, so it only limits within a single function lifetime. OK for smoke protection, not DDoS-grade. Upstash Redis upgrade path documented in `server/middleware/rateLimiter.ts`.
+- **In-memory `contextCache`** — same caveat. First call after cold start always hits DB.
+
+---
+
+## Decisions & Rationale
+
+### Why Vite SPA + Express serverless, not Next.js
+Decision: Keep as Vite SPA. **Do not migrate to Next.js.** Rationale: the product is a dashboard for authenticated users, not a content site. SEO isn't the bottleneck, conversion is. Migration cost is high (27 pages, tRPC wiring, data-loading patterns) for near-zero benefit. Next.js App Router + Server Components would add complexity we don't need.
+
+### Why tRPC, not REST or GraphQL
+Zero client-side type maintenance — backend types flow through to the frontend automatically. Zod validation is built into every procedure. Superjson handles Date/BigInt/Map serialization. Scales fine for ~100 procedures. REST would require OpenAPI + codegen; GraphQL would require schema + codegen + resolvers. tRPC is simpler and faster to iterate.
+
+### Why Drizzle, not Prisma
+Migration speed + smaller bundle + closer-to-SQL query builder. Prisma's schema.prisma and engine binary adds friction on Vercel serverless (cold start). Drizzle's output is a normal TypeScript function, bundles cleanly with esbuild.
+
+### Why Supabase, not custom Postgres + auth
+Free tier is generous. Auth UI + SSR helpers save weeks. Realtime (if we ever need it) is built in. Migrated off TiDB + custom Manus Auth in commits `1ce173f` through `2b23106` — documented in `MIGRATION.md`.
+
+### Why ElevenLabs Conversational AI instead of OpenAI Realtime / Google Gemini Live
+ElevenLabs voices are the most human-sounding available. Register Call API authenticates server-side so the API key is never exposed. Twilio bridge is officially supported and well-documented. Competitors sound robotic and have worse interruption handling.
+
+### Why Claude API for post-call analysis, not GPT-4o / Gemini
+Better structured output reliability with strict JSON schema. Better at nuanced analysis (sentiment, intent extraction). Consistent with our company-wide Claude-first policy.
+
+### Why in-memory caching instead of Redis
+Cold-start cost of Redis connection > cache hit savings for our current traffic. When we hit 100+ QPS we'll add Upstash Redis. Documented as future work in the rate limiter and context cache.
+
+### Why `setImmediate` for async post-call work
+Vercel serverless functions stay warm briefly after returning response, so `setImmediate` tasks complete ~95% of the time. A real queue (BullMQ, Vercel Queues) is the proper answer and is in the roadmap, but for MVP this is good enough and adds zero infrastructure.
+
+### Why commit `api/index.js`
+Vercel's ESM bundler with auto-detected Express had compatibility issues when we tried full Vercel-native builds (commits `c094db9`, `75a4a54`). Pre-bundling with esbuild locally gives us a reliable, reproducible output and bypasses Vercel's heuristics. Cost: you must remember to run `build:vercel` before pushing. Benefit: no more mystery deploy failures.
+
+### Why light theme after dark theme
+User research (Abdur's conversations with target shop owners) showed the dark theme felt "like a gaming app" — our users are 45+ auto shop owners who associate dark themes with questionable software. Light = "business software I trust." Migration in commits `919f473`, `397a6f0`, `b7d2f8c`.
+
+### Why two Express entry points
+`server/_core/index.ts` must import `vite.ts` for local dev middleware — but `vite` is a devDependency not available in production. Vercel would fail to bundle it. So `server/vercel-entry.ts` mirrors the setup without the Vite import. Both must stay in sync for route registration.
+
+### Why phone provisioning is layered (4 methods)
+Carrier-side `*61*` forwarding codes are fragile (landlines, PBX, non-technical users). Instead Baylio owns the number, `<Dial>`s the shop first, AI picks up on no-answer. See `DEPLOY_LOG.md` "Phone Provisioning Design" for the full layered architecture.
+
+---
+
+## Do NOT
+
+1. **Do NOT migrate to Next.js.** Decided. Not happening.
+2. **Do NOT introduce new UI libraries** — shadcn/ui + Radix only. No MUI, Chakra, Ant Design, Mantine.
+3. **Do NOT introduce new state libraries** — TanStack Query + tRPC only. No Redux, Zustand, Jotai, MobX.
+4. **Do NOT use REST or GraphQL** for new endpoints — tRPC only.
+5. **Do NOT bypass tenant isolation** — every DB query touching shop data must filter by `shopId` or `ownerId`.
+6. **Do NOT use `publicProcedure`** for anything that touches user-owned data. Default to `protectedProcedure`.
+7. **Do NOT add `console.log` to frontend production code.** Use PostHog events or remove before committing.
+8. **Do NOT commit secrets.** `.env*` files (except committed `.env.test` which must never happen again) are gitignored.
+9. **Do NOT hand-edit `drizzle/` migrations** — regenerate with `drizzle-kit`.
+10. **Do NOT hardcode dark theme colors** — use CSS variables.
+11. **Do NOT edit `api/index.js` directly** — it's generated. Edit `server/vercel-entry.ts` and run `build:vercel`.
+12. **Do NOT skip `pnpm run build:vercel`** before pushing. Type errors or bundle failures should be caught before Vercel sees them.
+13. **Do NOT use raw SQL** except for aggregations via Drizzle's `sql` template.
+14. **Do NOT use `any` in new TypeScript code.** Use `unknown` + type guards.
+15. **Do NOT mock Twilio/ElevenLabs/Stripe in production code** — only in tests. Those services are real infrastructure.
+16. **Do NOT turn off Twilio signature validation** (`logOnly: true`) — it was fixed in `bc2ddf0` and must stay enforced.
+17. **Do NOT remove the Vercel `?path=` stripping** in `server/middleware/twilioValidation.ts` — it's load-bearing (`8d3c54d`).
+18. **Do NOT batch commits.** Push after every change so the user can test immediately.
+19. **Do NOT refactor working code for style reasons.** Ship features, fix bugs, leave the rest alone.
+20. **Do NOT add DevOps tooling** (Docker, k8s, CI/CD pipelines beyond Vercel's auto-deploy). Vercel handles it.
+21. **Do NOT create demo/example files** unless explicitly asked.
+22. **Do NOT create `README.md` or `*.md` documentation files** unless explicitly asked. `DEPLOY_LOG.md` and this file are exceptions.
+23. **Do NOT use OpenAI, Gemini, or other LLMs** for post-call analysis — Claude API only.
+24. **Do NOT use OpenAI TTS, Google TTS, or other voices** — ElevenLabs only.
+25. **Do NOT use Vonage, Plivo, or other telephony providers** — Twilio only.
+26. **Do NOT touch `patches/wouter@3.7.1.patch`** — it's a load-bearing fix for route matching.
+
+---
+
+## Next Priorities
+
+**Priority 0 — Ship-blocker for Autoblitz launch:**
+
+1. **Build "ring shop first then AI" call routing** (the layered Phone Provisioning Design, Layer 1). Specifically:
+   - Add `shops.ringTimeoutSec` (default 12) and `shops.ringShopFirstEnabled` (default true) columns via drizzle migration.
+   - In `server/services/twilioWebhooks.ts` `/voice` handler: return `<Dial timeout={shop.ringTimeoutSec}>{shop.phone}</Dial>` with `action="/api/twilio/no-answer"`.
+   - Build `/api/twilio/no-answer` handler that inspects `DialCallStatus` (no-answer/busy/failed) and routes to ElevenLabs Register Call.
+   - Add ShopSettings UI: ring timeout slider + "AI answers immediately" toggle.
+   - E2E test with a real inbound call routed through this path.
+
+2. **Run the full user journey live** — Abdur signs up on baylio.io, completes onboarding with real shop data, forwards his phone, calls in, verifies call logs + transcript appear in dashboard. Fix whatever breaks.
+
+3. **Live Stripe payment test** — Use a real card on a test subscription, verify webhooks fire, verify `subscriptions.status = 'active'`, verify `setupFeePaid = true`.
+
+**Priority 1 — Production reliability:**
+
+4. **Authorization audit** — Grep every tRPC procedure for missing ownership checks. Canonical pattern: `if (shop.ownerId !== ctx.user.id) throw FORBIDDEN`. Apply to every procedure that takes a `shopId` input.
+5. **Add proper error boundaries** around remaining `setImmediate(async …)` callbacks in `twilioWebhooks.ts` (lines 438, 540, 580 — all have try/catch, verify they log unhandled rejections).
+6. **Fix `postCallPipeline.runPostCallIntegrations` hardcoded "tomorrow" date** — extract appointment dateTime from transcription analysis instead of defaulting to 24h later.
+7. **Remove `(shop?.serviceCatalog as any)` casts** in `postCallPipeline.ts` — add proper `ServiceCatalog[]` typing to the schema or use `z.infer`.
+
+**Priority 2 — Customer-requested features (from Abdur's shop-owner walkthrough):**
+
+8. **Live call transfer to human** — TwiML `<Dial>` step triggered by ElevenLabs tool call. Needs agent tool definition + webhook.
+9. **Graceful hang-up control** — ElevenLabs tool call → TwiML `<Hangup />`.
+10. **QuickBooks integration** — OAuth + invoice creation on appointment booking.
+11. **WhatsApp group reminders** — Twilio WhatsApp Business API for shop group notifications.
+
+**Priority 3 — Layered phone provisioning (post-Autoblitz):**
+
+12. **Layer 2: Number porting** — Twilio Porting API + LOA upload + status tracking UI.
+13. **Layer 3: SIP trunking** — Twilio SIP Trunks API for enterprise shops with existing PBX.
+14. **Layer 4: Carrier forwarding fallback** — per-carrier instruction cards in ShopSettings.
+
+**Priority 4 — Scale / infrastructure:**
+
+15. **Replace in-memory `contextCache` with Upstash Redis** — once we hit 100+ concurrent calls.
+16. **Replace `setImmediate` post-call work with Vercel Queues** — once we see dropped jobs on cold terminations.
+17. **Replace in-memory rate limiter with Upstash Redis** — once we need distributed rate limiting.
+
+---
+
+## Key Reference Files
 
 | File | Why It Matters |
-|---|---|
+|------|---------------|
 | `server/services/twilioWebhooks.ts` | The money-making machine. Every bug here costs revenue. |
-| `server/shopRouter.ts` | Shop CRUD + `completeOnboarding` — the core onboarding endpoint. |
-| `server/services/promptCompiler.ts` | Compiles shop context into AI system prompts. |
-| `server/services/elevenLabsService.ts` | ElevenLabs agent CRUD + voice catalog. |
-| `server/stripe/products.ts` | Tier definitions and pricing. |
-| `drizzle/schema.ts` | Full database schema (17 tables). |
-| `CLAUDE_HANDOFF.md` | Deep architecture reference with file-by-file breakdown. |
-| `ANTIGRAVITY_UIUX_SPRINT.md` | Antigravity's UI/UX brief — read to understand what they're working on. |
+| `server/services/promptCompiler.ts` | The service-advisor persona — read this to understand agent behavior. |
+| `server/shopRouter.ts` (`completeOnboarding`) | The critical path from signup to first call. |
+| `server/services/elevenLabsService.ts` | Agent CRUD + retry wrapper + voice catalog. |
+| `server/services/postCallPipeline.ts` | Transcription analysis → usage → notifications → integrations. |
+| `server/middleware/twilioValidation.ts` | Webhook signature verification (load-bearing, do not disable). |
+| `server/stripe/stripeRoutes.ts` | Stripe webhook handlers — must stay registered BEFORE `express.json()`. |
+| `server/_core/env.ts` | Startup validation for required env vars — fail-fast in production. |
+| `server/routers.ts` | tRPC router composition — add new feature routers here. |
+| `server/_core/trpc.ts` | `publicProcedure` / `protectedProcedure` / `adminProcedure` definitions. |
+| `drizzle/schema.ts` | 18 tables — the source of truth for data shape. |
+| `client/src/App.tsx` | Route table + layout switching. |
+| `client/src/pages/Onboarding.tsx` | The 4-step wizard — the thing every shop sees first. |
+| `vercel.json` | Routing rules: `/api/*` → serverless, everything else → SPA. |
+| `DEPLOY_LOG.md` | Latest deploy state + in-progress work. Read at every session start. |
 
 ---
 
-## THE METRIC THAT MATTERS
+## The Metric That Matters
 
-**Can a shop owner sign up on baylio.io, complete onboarding, and receive their first AI-answered call within 10 minutes — and think "this is worth $199/month"?**
+> **Can a shop owner sign up on baylio.io, complete onboarding, and receive their first AI-answered call within 10 minutes — and think "this is worth $199/month"?**
 
 If yes, we're ready. If no, fix whatever's blocking that.
 
 ---
 
-*Last updated: March 31, 2026*
+*Last updated: 2026-04-07*
 *Owner: Abdur (asayeed95 / One Asec LLC)*
 *Agents: Claude Code (backend/infra) + Antigravity (UI/UX)*
