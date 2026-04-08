@@ -412,7 +412,11 @@ function TwilioPhoneCard({
       onProvisioned();
     },
     onError: err => {
-      toast.error(`Failed to provision number: ${err.message}`);
+      toast.error(err.message);
+      // If number is gone, clear selection so user can search for a fresh one
+      if (err.message.includes("no longer available")) {
+        setSelectedNumber(null);
+      }
     },
   });
 

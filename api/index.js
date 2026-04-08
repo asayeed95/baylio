@@ -1555,12 +1555,21 @@ var shopRouter = router({
         message: "Shop not found or unauthorized"
       });
     }
-    const provisioned = await purchasePhoneNumber(
-      input.phoneNumber,
-      input.shopId,
-      input.webhookBaseUrl,
-      `Baylio \u2014 ${shop.name}`
-    );
+    let provisioned;
+    try {
+      provisioned = await purchasePhoneNumber(
+        input.phoneNumber,
+        input.shopId,
+        input.webhookBaseUrl,
+        `Baylio \u2014 ${shop.name}`
+      );
+    } catch (err) {
+      const isUnavailable = err?.code === 21422 || err?.status === 400;
+      throw new TRPCError3({
+        code: "BAD_REQUEST",
+        message: isUnavailable ? `${input.phoneNumber} is no longer available \u2014 please search for a new number.` : `Failed to purchase number: ${err?.message ?? err}`
+      });
+    }
     await updateShop(input.shopId, {
       twilioPhoneNumber: provisioned.phoneNumber,
       twilioPhoneSid: provisioned.sid

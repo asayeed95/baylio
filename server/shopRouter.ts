@@ -211,12 +211,24 @@ export const shopRouter = router({
         });
       }
 
-      const provisioned = await purchasePhoneNumber(
-        input.phoneNumber,
-        input.shopId,
-        input.webhookBaseUrl,
-        `Baylio — ${shop.name}`
-      );
+      let provisioned;
+      try {
+        provisioned = await purchasePhoneNumber(
+          input.phoneNumber,
+          input.shopId,
+          input.webhookBaseUrl,
+          `Baylio — ${shop.name}`
+        );
+      } catch (err: any) {
+        // Twilio 21422 = number no longer available (race condition in inventory)
+        const isUnavailable = err?.code === 21422 || err?.status === 400;
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: isUnavailable
+            ? `${input.phoneNumber} is no longer available — please search for a new number.`
+            : `Failed to purchase number: ${err?.message ?? err}`,
+        });
+      }
 
       // Save the Twilio phone number and SID to the shop record
       await updateShop(input.shopId, {
