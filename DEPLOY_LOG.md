@@ -7,12 +7,20 @@
 
 ## Latest Deploy
 
-- **Date:** 2026-04-07
+- **Date:** 2026-04-08
 - **Branch:** main
-- **Commit:** `89e5fbf`
+- **Commit:** `cbc5279`
 - **Pushed by:** Claude Code (asec-mac)
 
 ### What Changed
+
+1. **fix: surface Twilio 21422 error on number purchase**
+   - Root cause: Twilio phone number inventory race condition — number appeared in search results but was purchased by someone else before our buy attempt
+   - Previously: unhandled exception → opaque 500 with no user-readable message
+   - Now: `purchasePhoneNumber` mutation wraps Twilio call in try/catch; error code 21422 (or any 400) maps to `BAD_REQUEST` with message "no longer available — please search for a new number"
+   - UI: clears selected number on this error so user can search again immediately
+
+### Previous Deploy (2026-04-07)
 
 1. **feat: ring shop first then AI — Layer 1 phone routing IMPLEMENTED**
    - Schema: added `shops.ringShopFirstEnabled` (bool, default true) and `shops.ringTimeoutSec` (int, default 12)
