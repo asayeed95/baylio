@@ -937,17 +937,19 @@ async function createConversationalAgent(params) {
             stability: 0.6,
             similarity_boost: 0.75,
             style: 0.35,
-            optimize_streaming_latency: 3
+            optimize_streaming_latency: 3,
+            // ulaw_8000 = G.711 µ-law 8kHz — required for Twilio phone calls.
+            // pcm_16000 (the default) is for browser/WebRTC and produces silence on PSTN.
+            agent_output_audio_format: "ulaw_8000"
           },
           conversation: {
-            // Turn detection: how long to wait for the caller to finish speaking
             client_events: ["agent_response", "user_transcript"],
-            // Max call duration: 15 minutes
             max_duration_seconds: 900
           },
           asr: {
-            // Automatic speech recognition quality setting
-            quality: "high"
+            quality: "high",
+            // Match Twilio's PSTN audio format
+            user_input_audio_format: "ulaw_8000"
           }
         },
         name: params.name,
@@ -982,7 +984,8 @@ async function updateConversationalAgent(agentId, params) {
           stability: 0.6,
           similarity_boost: 0.75,
           style: 0.35,
-          optimize_streaming_latency: 3
+          optimize_streaming_latency: 3,
+          agent_output_audio_format: "ulaw_8000"
         };
       }
       const payload = { conversation_config: convConfig };
