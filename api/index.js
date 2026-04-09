@@ -4277,14 +4277,35 @@ function generateVoicemailTwiML(shopName) {
   <Say voice="Polly.Joanna">We didn't receive a recording. Goodbye.</Say>
 </Response>`;
 }
-function buildElevenLabsTwiML(elevenLabsAgentId) {
-  const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${elevenLabsAgentId}`;
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="${wsUrl}" />
-  </Connect>
-</Response>`;
+async function registerElevenLabsCall(elevenLabsAgentId, fromNumber, toNumber) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 3e3);
+  const response = await fetch(
+    "https://api.elevenlabs.io/v1/convai/twilio/register-call",
+    {
+      method: "POST",
+      signal: controller.signal,
+      headers: {
+        "xi-api-key": ENV.elevenLabsApiKey,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        agent_id: elevenLabsAgentId,
+        from_number: fromNumber,
+        to_number: toNumber,
+        direction: "inbound"
+        // No conversation_initiation_client_data — agent has full prompt baked in
+      })
+    }
+  );
+  clearTimeout(timeout);
+  if (!response.ok) {
+    const errorText = await response.text();
+    throw new Error(
+      `ElevenLabs Register Call failed (${response.status}): ${errorText}`
+    );
+  }
+  return await response.text();
 }
 function escapeXml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&apos;");
@@ -4399,12 +4420,16 @@ async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, c
     return;
   }
   console.log(
-    `[CALL] Connecting to ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
+    `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
   );
-  const twiml = buildElevenLabsTwiML(elevenLabsAgentId);
+  const twiml = await registerElevenLabsCall(
+    elevenLabsAgentId,
+    fromNumber,
+    toNumber
+  );
   const elapsed = Date.now() - startTime;
   console.log(
-    `[CALL] ElevenLabs TwiML built for shop ${shopId} (${elapsed}ms). Agent=${elevenLabsAgentId}`
+    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
   );
   res.type("text/xml");
   res.send(twiml);
@@ -4425,11 +4450,17 @@ twilioRouter.post("/voice", async (req, res) => {
     const normalizedTo = To.replace(/[^\d+]/g, "");
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected \u2014 routing to Sam (${SAM_AGENT_ID})`);
-      const twiml = buildElevenLabsTwiML(SAM_AGENT_ID);
-      const elapsed = Date.now() - startTime;
-      console.log(`[CALL] Sam TwiML built (${elapsed}ms)`);
-      res.type("text/xml");
-      return res.send(twiml);
+      try {
+        const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To);
+        const elapsed = Date.now() - startTime;
+        console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
+        res.type("text/xml");
+        return res.send(twiml);
+      } catch (salesErr) {
+        console.error("[CALL] Sam registration failed, falling back to voicemail:", salesErr);
+        res.type("text/xml");
+        return res.send(generateVoicemailTwiML("Baylio"));
+      }
     }
     const resolved = await resolveShopContext(To);
     if (!resolved) {

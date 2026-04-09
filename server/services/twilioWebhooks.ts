@@ -18,11 +18,7 @@
  */
 import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
-import {
-  compileSystemPrompt,
-  compileGreeting,
-  type ShopContext,
-} from "./promptCompiler";
+import { type ShopContext } from "./promptCompiler";
 import { processCompletedCall } from "./postCallPipeline";
 import { getDb } from "../db";
 import { eq, sql } from "drizzle-orm";
@@ -82,37 +78,27 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
 }
 
 /**
- * Build TwiML that connects the call directly to an ElevenLabs agent via WebSocket.
+ * Register a call with ElevenLabs and get authenticated TwiML.
  *
- * Uses the direct WSS URL with agent_id rather than the Register Call API.
- * The Register Call API (pre-registration) was creating broken sessions when
- * conversation_initiation_client_data was passed with undeclared dynamic variables,
- * causing the agent to connect but never speak (0 agent turns, LLM never called).
+ * Uses the Register Call API (/v1/convai/twilio/register-call) which:
+ * 1. Creates a pre-registered conversation session
+ * 2. Returns TwiML with a conversation_id the Twilio Media Streams WebSocket
+ *    uses to identify the session
  *
- * The direct approach works because our agents have auth disabled and full
- * prompts baked in at creation time.
- */
-function buildElevenLabsTwiML(elevenLabsAgentId: string): string {
-  const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${elevenLabsAgentId}`;
-  return `<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Connect>
-    <Stream url="${wsUrl}" />
-  </Connect>
-</Response>`;
-}
-
-/**
- * @deprecated Use buildElevenLabsTwiML instead. Left here in case we need to
- * re-enable the Register Call API path (e.g. for dynamic variable support).
+ * IMPORTANT: Do NOT pass conversation_initiation_client_data with dynamic
+ * variables that aren't declared in the agent config. Undeclared variables
+ * cause the session to silently break (WebSocket connects, LLM never called,
+ * 0 agent turns — the agent never speaks).
+ *
+ * The direct ?agent_id= WebSocket URL approach does NOT work for Twilio because
+ * ElevenLabs' endpoint requires the Twilio Media Streams protocol handshake
+ * (start/media messages), which is only supported via the pre-registered
+ * conversation_id path.
  */
 async function registerElevenLabsCall(
   elevenLabsAgentId: string,
   fromNumber: string,
   toNumber: string,
-  shopContext?: ShopContext,
-  callerName?: string,
-  callerRole?: string
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3000);
@@ -131,6 +117,7 @@ async function registerElevenLabsCall(
         from_number: fromNumber,
         to_number: toNumber,
         direction: "inbound",
+        // No conversation_initiation_client_data — agent has full prompt baked in
       }),
     }
   );
@@ -374,14 +361,18 @@ async function respondWithElevenLabsAgent(
   }
 
   console.log(
-    `[CALL] Connecting to ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
+    `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
   );
 
-  const twiml = buildElevenLabsTwiML(elevenLabsAgentId);
+  const twiml = await registerElevenLabsCall(
+    elevenLabsAgentId,
+    fromNumber,
+    toNumber,
+  );
 
   const elapsed = Date.now() - startTime;
   console.log(
-    `[CALL] ElevenLabs TwiML built for shop ${shopId} (${elapsed}ms). Agent=${elevenLabsAgentId}`
+    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
   );
 
   res.type("text/xml");
@@ -423,11 +414,17 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
 
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected — routing to Sam (${SAM_AGENT_ID})`);
-      const twiml = buildElevenLabsTwiML(SAM_AGENT_ID);
-      const elapsed = Date.now() - startTime;
-      console.log(`[CALL] Sam TwiML built (${elapsed}ms)`);
-      res.type("text/xml");
-      return res.send(twiml);
+      try {
+        const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To);
+        const elapsed = Date.now() - startTime;
+        console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
+        res.type("text/xml");
+        return res.send(twiml);
+      } catch (salesErr) {
+        console.error("[CALL] Sam registration failed, falling back to voicemail:", salesErr);
+        res.type("text/xml");
+        return res.send(generateVoicemailTwiML("Baylio"));
+      }
     }
     // ─── END SALES LINE BYPASS ─────────────────────────────────
 
