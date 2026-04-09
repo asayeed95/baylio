@@ -50,7 +50,7 @@ router.post(
   async (req, res) => {
     const stripe = getStripe();
     const sig = req.headers["stripe-signature"] as string;
-    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET;
+    const webhookSecret = process.env.STRIPE_WEBHOOK_SECRET?.trim();
 
     if (!webhookSecret) {
       console.error("[Stripe Webhook] STRIPE_WEBHOOK_SECRET not configured");
