@@ -82,15 +82,29 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
 }
 
 /**
- * Register a call with ElevenLabs and get authenticated TwiML.
+ * Build TwiML that connects the call directly to an ElevenLabs agent via WebSocket.
  *
- * This calls the ElevenLabs Register Call API which:
- * 1. Authenticates using our API key (server-side, never exposed)
- * 2. Creates a conversation session
- * 3. Returns TwiML with an authenticated WebSocket URL
+ * Uses the direct WSS URL with agent_id rather than the Register Call API.
+ * The Register Call API (pre-registration) was creating broken sessions when
+ * conversation_initiation_client_data was passed with undeclared dynamic variables,
+ * causing the agent to connect but never speak (0 agent turns, LLM never called).
  *
- * This is the correct approach per ElevenLabs docs:
- * https://elevenlabs.io/docs/eleven-agents/phone-numbers/twilio-integration/register-call
+ * The direct approach works because our agents have auth disabled and full
+ * prompts baked in at creation time.
+ */
+function buildElevenLabsTwiML(elevenLabsAgentId: string): string {
+  const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${elevenLabsAgentId}`;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Connect>
+    <Stream url="${wsUrl}" />
+  </Connect>
+</Response>`;
+}
+
+/**
+ * @deprecated Use buildElevenLabsTwiML instead. Left here in case we need to
+ * re-enable the Register Call API path (e.g. for dynamic variable support).
  */
 async function registerElevenLabsCall(
   elevenLabsAgentId: string,
@@ -117,18 +131,6 @@ async function registerElevenLabsCall(
         from_number: fromNumber,
         to_number: toNumber,
         direction: "inbound",
-        conversation_initiation_client_data: {
-          dynamic_variables: {
-            baylio_system_prompt: shopContext ? compileSystemPrompt(shopContext) : "You are a helpful assistant.",
-            baylio_greeting: shopContext ? compileGreeting(shopContext) : "Hey, thanks for calling! How can I help you?",
-            caller_number: fromNumber,
-            caller_name: callerName || "Unknown Caller",
-            caller_role: callerRole || "unknown",
-            shop_name: shopContext?.shopName || "",
-            agent_name: shopContext?.agentName || "Baylio",
-            supported_languages: "English, Spanish, Hindi, Bangla, Arabic",
-          },
-        },
       }),
     }
   );
@@ -372,21 +374,14 @@ async function respondWithElevenLabsAgent(
   }
 
   console.log(
-    `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
+    `[CALL] Connecting to ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
   );
 
-  const twiml = await registerElevenLabsCall(
-    elevenLabsAgentId,
-    fromNumber,
-    toNumber,
-    context,
-    callerName,
-    callerRole
-  );
+  const twiml = buildElevenLabsTwiML(elevenLabsAgentId);
 
   const elapsed = Date.now() - startTime;
   console.log(
-    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
+    `[CALL] ElevenLabs TwiML built for shop ${shopId} (${elapsed}ms). Agent=${elevenLabsAgentId}`
   );
 
   res.type("text/xml");
@@ -428,24 +423,11 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
 
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected — routing to Sam (${SAM_AGENT_ID})`);
-      try {
-        const twiml = await registerElevenLabsCall(
-          SAM_AGENT_ID,
-          From,
-          To,
-          undefined,
-          callerName,
-          callerRole
-        );
-        const elapsed = Date.now() - startTime;
-        console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
-        res.type("text/xml");
-        return res.send(twiml);
-      } catch (salesErr) {
-        console.error("[CALL] Sam registration failed, falling back to voicemail:", salesErr);
-        res.type("text/xml");
-        return res.send(generateVoicemailTwiML("Baylio"));
-      }
+      const twiml = buildElevenLabsTwiML(SAM_AGENT_ID);
+      const elapsed = Date.now() - startTime;
+      console.log(`[CALL] Sam TwiML built (${elapsed}ms)`);
+      res.type("text/xml");
+      return res.send(twiml);
     }
     // ─── END SALES LINE BYPASS ─────────────────────────────────
 
