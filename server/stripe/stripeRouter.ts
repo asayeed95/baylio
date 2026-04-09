@@ -11,7 +11,7 @@ import Stripe from "stripe";
 import { TRPCError } from "@trpc/server";
 import { protectedProcedure, router } from "../_core/trpc";
 import { getShopById, getSubscriptionByShop } from "../db";
-import { TIERS, SETUP_FEES, getTierConfig } from "./products";
+import { TIERS, SETUP_FEES, getTierConfig, ADDITIONAL_SHOP_PRICE, ADDITIONAL_SHOP_MINUTES } from "./products";
 
 function getStripe(): Stripe {
   const key = process.env.STRIPE_SECRET_KEY;
@@ -188,6 +188,62 @@ export const stripeRouter = router({
         throw new TRPCError({
           code: "INTERNAL_SERVER_ERROR",
           message: "Failed to open billing portal. Please try again.",
+        });
+      }
+    }),
+
+  /**
+   * Create a checkout session for an additional shop location add-on ($99/mo).
+   * Used when a user already has an active subscription and wants to add another shop.
+   */
+  createAdditionalShopCheckout: protectedProcedure
+    .input(z.object({ shopId: z.number() }))
+    .mutation(async ({ ctx, input }) => {
+      const shop = await getShopById(input.shopId);
+      if (!shop || shop.ownerId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "Shop not found or unauthorized" });
+      }
+
+      const stripe = getStripe();
+      const origin = ctx.req.headers.origin || "https://baylio.io";
+
+      try {
+        const session = await stripe.checkout.sessions.create({
+          mode: "subscription",
+          client_reference_id: ctx.user.id.toString(),
+          customer_email: ctx.user.email || undefined,
+          allow_promotion_codes: true,
+          metadata: {
+            type: "additional_shop",
+            user_id: ctx.user.id.toString(),
+            shop_id: input.shopId.toString(),
+            customer_email: ctx.user.email || "",
+            customer_name: ctx.user.name || "",
+          },
+          line_items: [
+            {
+              price_data: {
+                currency: "usd",
+                product_data: {
+                  name: `Baylio — ${shop.name}`,
+                  description: "Additional location add-on: 300 min/mo AI receptionist",
+                },
+                unit_amount: ADDITIONAL_SHOP_PRICE,
+                recurring: { interval: "month" },
+              },
+              quantity: 1,
+            },
+          ],
+          success_url: `${origin}/shops/${input.shopId}?addon=success`,
+          cancel_url: `${origin}/shops/${input.shopId}?addon=canceled`,
+        });
+
+        return { checkoutUrl: session.url };
+      } catch (err) {
+        console.error("[STRIPE] Additional shop checkout failed:", err);
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: "Failed to create checkout session. Please try again.",
         });
       }
     }),

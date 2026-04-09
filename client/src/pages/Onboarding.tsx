@@ -150,10 +150,15 @@ export default function Onboarding() {
     phoneOption: string;
     steps: string[];
     isLive: boolean;
+    requiresAddon: boolean;
   } | null>(null);
 
   // tRPC
   const completeOnboarding = trpc.shop.completeOnboarding.useMutation();
+  const addonCheckout = trpc.stripe.createAdditionalShopCheckout.useMutation({
+    onSuccess: ({ checkoutUrl }) => { if (checkoutUrl) window.location.href = checkoutUrl; },
+    onError: (err) => toast.error(err.message || "Failed to start checkout"),
+  });
   const searchNumbers = trpc.shop.searchPhoneNumbers.useQuery(
     { areaCode },
     { enabled: areaCode.length === 3 && phoneOption === "new" }
@@ -967,22 +972,59 @@ export default function Onboarding() {
 
             {/* Success */}
             {provisioningStatus === "done" && result && (
-              <Card className="border-primary/30 bg-primary/5">
+              <Card className={result.requiresAddon ? "border-amber-300 bg-amber-50" : "border-primary/30 bg-primary/5"}>
                 <CardContent className="py-8 space-y-6">
                   <div className="flex flex-col items-center gap-4">
-                    <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                      <CheckCircle2 className="h-8 w-8 text-primary" />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${result.requiresAddon ? "bg-amber-100" : "bg-primary/10"}`}>
+                      <CheckCircle2 className={`h-8 w-8 ${result.requiresAddon ? "text-amber-600" : "text-primary"}`} />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-xl font-semibold">You're Live!</h3>
+                      <h3 className="text-xl font-semibold">{result.requiresAddon ? "Shop Ready — Activate AI" : "You're Live!"}</h3>
                       <p className="text-sm text-muted-foreground mt-2 max-w-md">
-                        Your AI receptionist <strong>{agentName}</strong> is now ready to handle calls for <strong>{shopName}</strong>.
+                        {result.requiresAddon
+                          ? <>Your shop <strong>{shopName}</strong> is set up. Activate your AI receptionist for an additional <strong>$99/mo</strong> — includes 300 min/mo, same AI quality.</>
+                          : <>Your AI receptionist <strong>{agentName}</strong> is now ready to handle calls for <strong>{shopName}</strong>.</>
+                        }
                       </p>
                     </div>
                   </div>
 
-                  {/* Call Forwarding Instructions */}
-                  {result.phoneOption === "forward" && result.twilioNumber && (
+                  {/* Additional shop payment prompt */}
+                  {result.requiresAddon && (
+                    <div className="space-y-3">
+                      <div className="bg-white rounded-lg border border-amber-200 p-4 space-y-2">
+                        <p className="text-sm font-medium">Additional Location Add-on</p>
+                        <div className="flex items-baseline gap-1">
+                          <span className="text-2xl font-bold font-mono">$99</span>
+                          <span className="text-sm text-muted-foreground">/month</span>
+                        </div>
+                        <ul className="text-sm text-muted-foreground space-y-1">
+                          <li>• 300 min/mo included</li>
+                          <li>• Full AI receptionist — same as your primary shop</li>
+                          <li>• Cancel anytime</li>
+                        </ul>
+                      </div>
+                      <Button
+                        size="lg"
+                        className="w-full"
+                        disabled={addonCheckout.isPending}
+                        onClick={() => addonCheckout.mutate({ shopId: result.shopId })}
+                      >
+                        {addonCheckout.isPending ? "Loading..." : "Activate for $99/mo"}
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="w-full text-muted-foreground"
+                        onClick={() => setLocation(`/shops/${result.shopId}`)}
+                      >
+                        Set up later
+                      </Button>
+                    </div>
+                  )}
+
+                  {/* Call Forwarding Instructions — only shown when live (no addon required) */}
+                  {!result.requiresAddon && result.phoneOption === "forward" && result.twilioNumber && (
                     <Card className="bg-blue-50 border-blue-200">
                       <CardContent className="pt-5 pb-5 space-y-3">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
@@ -1012,8 +1054,8 @@ export default function Onboarding() {
                     </Card>
                   )}
 
-                  {/* New Number Info */}
-                  {result.phoneOption === "new" && result.twilioNumber && (
+                  {/* New Number Info — only shown when live */}
+                  {!result.requiresAddon && result.phoneOption === "new" && result.twilioNumber && (
                     <Card className="bg-emerald-50 border-emerald-200">
                       <CardContent className="pt-5 pb-5 space-y-3">
                         <h4 className="font-semibold text-sm flex items-center gap-2">
@@ -1032,14 +1074,16 @@ export default function Onboarding() {
                     </Card>
                   )}
 
-                  <Button
-                    size="lg"
-                    className="w-full"
-                    onClick={() => setLocation(result.shopId ? `/shops/${result.shopId}` : "/dashboard")}
-                  >
-                    Go to Dashboard
-                    <ArrowRight className="h-4 w-4 ml-2" />
-                  </Button>
+                  {!result.requiresAddon && (
+                    <Button
+                      size="lg"
+                      className="w-full"
+                      onClick={() => setLocation(result.shopId ? `/shops/${result.shopId}` : "/dashboard")}
+                    >
+                      Go to Dashboard
+                      <ArrowRight className="h-4 w-4 ml-2" />
+                    </Button>
+                  )}
                 </CardContent>
               </Card>
             )}

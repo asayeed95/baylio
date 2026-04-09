@@ -11,7 +11,10 @@ import {
   getAgentConfigByShop,
   upsertAgentConfig,
   getSubscriptionByShop,
+  getDb,
 } from "./db";
+import { eq, and } from "drizzle-orm";
+import { subscriptions } from "../drizzle/schema";
 import {
   validateTwilioCredentials,
   searchAvailableNumbers,
@@ -584,13 +587,32 @@ export const shopRouter = router({
         }
       }
 
+      // Check if this user already has active subscriptions on other shops.
+      // If yes, this additional shop requires the $99/mo add-on before going live.
+      const db = await getDb();
+      let requiresAddon = false;
+      if (db) {
+        const activeSubs = await db
+          .select({ id: subscriptions.id })
+          .from(subscriptions)
+          .where(
+            and(
+              eq(subscriptions.ownerId, ctx.user.id),
+              eq(subscriptions.status, "active")
+            )
+          )
+          .limit(1);
+        requiresAddon = activeSubs.length > 0;
+      }
+
       return {
         shopId,
         agentId,
         twilioNumber,
         phoneOption: input.phoneOption,
         steps,
-        isLive: !!agentId && !!twilioNumber,
+        isLive: !!agentId && !!twilioNumber && !requiresAddon,
+        requiresAddon,
       };
     }),
 

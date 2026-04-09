@@ -109,6 +109,10 @@ export const SETUP_FEES = {
   enterprise: 0, // Custom pricing for 5+ locations
 };
 
+/** Additional location add-on: $99/mo, 300 min included (same pool as Starter) */
+export const ADDITIONAL_SHOP_PRICE = 9900; // cents
+export const ADDITIONAL_SHOP_MINUTES = 300;
+
 export function getTierConfig(tierId: string): BaylioTier | undefined {
   return TIERS[tierId];
 }

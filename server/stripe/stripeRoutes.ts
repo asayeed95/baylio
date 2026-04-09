@@ -16,7 +16,7 @@ import { eq } from "drizzle-orm";
 import { drizzle } from "drizzle-orm/postgres-js";
 import postgres from "postgres";
 import { subscriptions, shops, users } from "../../drizzle/schema";
-import { TIERS, SETUP_FEES, getTierConfig } from "./products";
+import { TIERS, SETUP_FEES, getTierConfig, ADDITIONAL_SHOP_MINUTES } from "./products";
 import { PostHog } from "posthog-node";
 
 function getPostHog(): PostHog {
@@ -140,6 +140,39 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
       .set({ setupFeePaid: true })
       .where(eq(subscriptions.shopId, parseInt(shopId)));
     console.log(`[Stripe] Setup fee paid for shop ${shopId}`);
+    return;
+  }
+
+  const isAdditionalShop = session.metadata?.type === "additional_shop";
+  if (isAdditionalShop && shopId && userId) {
+    const existingSubs = await db
+      .select()
+      .from(subscriptions)
+      .where(eq(subscriptions.shopId, parseInt(shopId)))
+      .limit(1);
+
+    if (existingSubs.length > 0) {
+      await db
+        .update(subscriptions)
+        .set({
+          status: "active",
+          stripeCustomerId: session.customer as string,
+          stripeSubscriptionId: session.subscription as string,
+        })
+        .where(eq(subscriptions.shopId, parseInt(shopId)));
+    } else {
+      await db.insert(subscriptions).values({
+        shopId: parseInt(shopId),
+        ownerId: parseInt(userId),
+        tier: "starter",
+        status: "active",
+        stripeCustomerId: session.customer as string,
+        stripeSubscriptionId: session.subscription as string,
+        includedMinutes: ADDITIONAL_SHOP_MINUTES,
+        usedMinutes: 0,
+      });
+    }
+    console.log(`[Stripe] Additional shop activated: shop=${shopId}`);
     return;
   }
 

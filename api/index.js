@@ -800,6 +800,9 @@ async function seedDemoShop(ownerId) {
   return shopId;
 }
 
+// server/shopRouter.ts
+import { eq as eq3, and as and2 } from "drizzle-orm";
+
 // server/services/twilioProvisioning.ts
 import twilio from "twilio";
 var _client = null;
@@ -1870,13 +1873,25 @@ var shopRouter = router({
         steps.push("forwarding_number_failed");
       }
     }
+    const db = await getDb();
+    let requiresAddon = false;
+    if (db) {
+      const activeSubs = await db.select({ id: subscriptions.id }).from(subscriptions).where(
+        and2(
+          eq3(subscriptions.ownerId, ctx.user.id),
+          eq3(subscriptions.status, "active")
+        )
+      ).limit(1);
+      requiresAddon = activeSubs.length > 0;
+    }
     return {
       shopId,
       agentId,
       twilioNumber,
       phoneOption: input.phoneOption,
       steps,
-      isLive: !!agentId && !!twilioNumber
+      isLive: !!agentId && !!twilioNumber && !requiresAddon,
+      requiresAddon
     };
   }),
   /** Create a demo shop with sample data for product demos */
@@ -1897,17 +1912,17 @@ import { z as z3 } from "zod";
 import { TRPCError as TRPCError4 } from "@trpc/server";
 
 // server/services/auditService.ts
-import { eq as eq3 } from "drizzle-orm";
+import { eq as eq4 } from "drizzle-orm";
 async function generateScorecard(auditId) {
   const db = await getDb();
   if (!db) return null;
-  const auditResults = await db.select().from(missedCallAudits).where(eq3(missedCallAudits.id, auditId)).limit(1);
+  const auditResults = await db.select().from(missedCallAudits).where(eq4(missedCallAudits.id, auditId)).limit(1);
   if (auditResults.length === 0) return null;
   const audit = auditResults[0];
   if (!audit.shopId) return null;
-  const shopResults = await db.select().from(shops).where(eq3(shops.id, audit.shopId)).limit(1);
+  const shopResults = await db.select().from(shops).where(eq4(shops.id, audit.shopId)).limit(1);
   const shop = shopResults[0];
-  const entries = await db.select().from(auditCallEntries).where(eq3(auditCallEntries.auditId, auditId));
+  const entries = await db.select().from(auditCallEntries).where(eq4(auditCallEntries.auditId, auditId));
   const dayPartCounts = {};
   const urgencyCounts = {};
   const dailyCounts = {};
@@ -2020,7 +2035,7 @@ async function completeAudit(auditId) {
         high: scorecard.revenueEstimate.high
       }
     }
-  }).where(eq3(missedCallAudits.id, auditId));
+  }).where(eq4(missedCallAudits.id, auditId));
   return scorecard;
 }
 
@@ -2446,6 +2461,8 @@ var SETUP_FEES = {
   enterprise: 0
   // Custom pricing for 5+ locations
 };
+var ADDITIONAL_SHOP_PRICE = 9900;
+var ADDITIONAL_SHOP_MINUTES = 300;
 function getTierConfig(tierId) {
   return TIERS[tierId];
 }
@@ -2604,6 +2621,56 @@ var stripeRouter = router({
     }
   }),
   /**
+   * Create a checkout session for an additional shop location add-on ($99/mo).
+   * Used when a user already has an active subscription and wants to add another shop.
+   */
+  createAdditionalShopCheckout: protectedProcedure.input(z7.object({ shopId: z7.number() })).mutation(async ({ ctx, input }) => {
+    const shop = await getShopById(input.shopId);
+    if (!shop || shop.ownerId !== ctx.user.id) {
+      throw new TRPCError6({ code: "FORBIDDEN", message: "Shop not found or unauthorized" });
+    }
+    const stripe = getStripe();
+    const origin = ctx.req.headers.origin || "https://baylio.io";
+    try {
+      const session = await stripe.checkout.sessions.create({
+        mode: "subscription",
+        client_reference_id: ctx.user.id.toString(),
+        customer_email: ctx.user.email || void 0,
+        allow_promotion_codes: true,
+        metadata: {
+          type: "additional_shop",
+          user_id: ctx.user.id.toString(),
+          shop_id: input.shopId.toString(),
+          customer_email: ctx.user.email || "",
+          customer_name: ctx.user.name || ""
+        },
+        line_items: [
+          {
+            price_data: {
+              currency: "usd",
+              product_data: {
+                name: `Baylio \u2014 ${shop.name}`,
+                description: "Additional location add-on: 300 min/mo AI receptionist"
+              },
+              unit_amount: ADDITIONAL_SHOP_PRICE,
+              recurring: { interval: "month" }
+            },
+            quantity: 1
+          }
+        ],
+        success_url: `${origin}/shops/${input.shopId}?addon=success`,
+        cancel_url: `${origin}/shops/${input.shopId}?addon=canceled`
+      });
+      return { checkoutUrl: session.url };
+    } catch (err) {
+      console.error("[STRIPE] Additional shop checkout failed:", err);
+      throw new TRPCError6({
+        code: "INTERNAL_SERVER_ERROR",
+        message: "Failed to create checkout session. Please try again."
+      });
+    }
+  }),
+  /**
    * Get available tiers and pricing for display.
    */
   getTiers: protectedProcedure.query(() => {
@@ -2613,7 +2680,7 @@ var stripeRouter = router({
 
 // server/partnerRouter.ts
 import { z as z8 } from "zod";
-import { eq as eq4, and as and3, desc as desc2, sql as sql3 } from "drizzle-orm";
+import { eq as eq5, and as and4, desc as desc2, sql as sql3 } from "drizzle-orm";
 import { TRPCError as TRPCError7 } from "@trpc/server";
 import { nanoid } from "nanoid";
 var partnerRouter = router({
@@ -2627,7 +2694,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const result = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const result = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     return result[0] || null;
   }),
   /**
@@ -2646,7 +2713,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const existing = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const existing = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (existing.length > 0) {
       return { id: existing[0].id, referralCode: existing[0].referralCode };
     }
@@ -2671,7 +2738,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return null;
     const p = partner[0];
     const referralStats = await db.select({
@@ -2682,7 +2749,7 @@ var partnerRouter = router({
       churned: sql3`SUM(CASE WHEN ${referrals.status} = 'churned' THEN 1 ELSE 0 END)`,
       totalCommission: sql3`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
       totalMonthlyValue: sql3`COALESCE(SUM(CASE WHEN ${referrals.status} = 'subscribed' THEN ${referrals.monthlyValue} ELSE 0 END), 0)`
-    }).from(referrals).where(eq4(referrals.partnerId, p.id));
+    }).from(referrals).where(eq5(referrals.partnerId, p.id));
     const stats = referralStats[0];
     return {
       partner: p,
@@ -2711,15 +2778,15 @@ var partnerRouter = router({
   ).query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) return { referrals: [], total: 0 };
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return { referrals: [], total: 0 };
-    const conditions = [eq4(referrals.partnerId, partner[0].id)];
+    const conditions = [eq5(referrals.partnerId, partner[0].id)];
     const statusFilter = input?.status || "all";
     if (statusFilter !== "all") {
-      conditions.push(eq4(referrals.status, statusFilter));
+      conditions.push(eq5(referrals.status, statusFilter));
     }
-    const results = await db.select().from(referrals).where(and3(...conditions)).orderBy(desc2(referrals.createdAt)).limit(input?.limit || 50).offset(input?.offset || 0);
-    const countResult = await db.select({ count: sql3`COUNT(*)` }).from(referrals).where(and3(...conditions));
+    const results = await db.select().from(referrals).where(and4(...conditions)).orderBy(desc2(referrals.createdAt)).limit(input?.limit || 50).offset(input?.offset || 0);
+    const countResult = await db.select({ count: sql3`COUNT(*)` }).from(referrals).where(and4(...conditions));
     return {
       referrals: results,
       total: countResult[0]?.count || 0
@@ -2731,20 +2798,20 @@ var partnerRouter = router({
   getEarnings: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return null;
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return null;
     const p = partner[0];
     const monthlyEarnings = await db.select({
       month: sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`,
       earned: sql3`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
       count: sql3`COUNT(*)`
-    }).from(referrals).where(eq4(referrals.partnerId, p.id)).groupBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`).orderBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`);
+    }).from(referrals).where(eq5(referrals.partnerId, p.id)).groupBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`).orderBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`);
     const byTier = await db.select({
       tier: referrals.subscriptionTier,
       earned: sql3`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
       count: sql3`COUNT(*)`
     }).from(referrals).where(
-      and3(eq4(referrals.partnerId, p.id), eq4(referrals.status, "subscribed"))
+      and4(eq5(referrals.partnerId, p.id), eq5(referrals.status, "subscribed"))
     ).groupBy(referrals.subscriptionTier);
     return {
       totalEarnings: parseFloat(p.totalEarnings?.toString() || "0"),
@@ -2760,7 +2827,7 @@ var partnerRouter = router({
   getMyNetwork: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return { network: [], totalMRR: 0 };
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return { network: [], totalMRR: 0 };
     const network = await db.select({
       referralId: referrals.id,
@@ -2772,7 +2839,7 @@ var partnerRouter = router({
       commissionEarned: referrals.commissionEarned,
       convertedAt: referrals.convertedAt,
       createdAt: referrals.createdAt
-    }).from(referrals).where(eq4(referrals.partnerId, partner[0].id)).orderBy(desc2(referrals.createdAt));
+    }).from(referrals).where(eq5(referrals.partnerId, partner[0].id)).orderBy(desc2(referrals.createdAt));
     const totalMRR = network.filter((n) => n.status === "subscribed").reduce(
       (sum, n) => sum + parseFloat(n.monthlyValue?.toString() || "0"),
       0
@@ -2793,7 +2860,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) {
       throw new TRPCError7({
         code: "NOT_FOUND",
@@ -2817,7 +2884,7 @@ var partnerRouter = router({
     }).returning({ id: partnerPayouts.id });
     await db.update(partners).set({
       pendingEarnings: sql3`${partners.pendingEarnings} - ${input.amount.toFixed(2)}`
-    }).where(eq4(partners.id, p.id));
+    }).where(eq5(partners.id, p.id));
     return { payoutId: result[0].id, amount: input.amount };
   }),
   /**
@@ -2826,9 +2893,9 @@ var partnerRouter = router({
   getMyPayouts: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return [];
-    return db.select().from(partnerPayouts).where(eq4(partnerPayouts.partnerId, partner[0].id)).orderBy(desc2(partnerPayouts.requestedAt));
+    return db.select().from(partnerPayouts).where(eq5(partnerPayouts.partnerId, partner[0].id)).orderBy(desc2(partnerPayouts.requestedAt));
   }),
   /**
    * Update partner settings (payout method, notifications, profile).
@@ -2850,7 +2917,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const partner = await db.select().from(partners).where(eq4(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) {
       throw new TRPCError7({
         code: "NOT_FOUND",
@@ -2872,7 +2939,7 @@ var partnerRouter = router({
     if (input.notifyNewsletter !== void 0)
       updateData.notifyNewsletter = input.notifyNewsletter;
     if (Object.keys(updateData).length > 0) {
-      await db.update(partners).set(updateData).where(eq4(partners.id, partner[0].id));
+      await db.update(partners).set(updateData).where(eq5(partners.id, partner[0].id));
     }
     return { success: true };
   })
@@ -2880,7 +2947,7 @@ var partnerRouter = router({
 
 // server/analyticsRouter.ts
 import { z as z9 } from "zod";
-import { eq as eq5, and as and4, gte as gte3, sql as sql4, count as count2, desc as desc3 } from "drizzle-orm";
+import { eq as eq6, and as and5, gte as gte3, sql as sql4, count as count2, desc as desc3 } from "drizzle-orm";
 var TWILIO_RATE_PER_MIN = 0.014;
 var ELEVENLABS_RATE_PER_CHAR = 11e-5;
 var AVG_CHARS_PER_MINUTE = 600;
@@ -2900,7 +2967,7 @@ var analyticsRouter = router({
     const now = /* @__PURE__ */ new Date();
     const monthStart = input?.startDate ? new Date(input.startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = input?.endDate ? new Date(input.endDate) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    const userShops = await db.select({ id: shops.id }).from(shops).where(eq5(shops.ownerId, ctx.user.id));
+    const userShops = await db.select({ id: shops.id }).from(shops).where(eq6(shops.ownerId, ctx.user.id));
     const shopIds = userShops.map((s) => s.id);
     if (shopIds.length === 0) {
       return {
@@ -2921,7 +2988,7 @@ var analyticsRouter = router({
       callCount: count2(),
       totalSeconds: sql4`COALESCE(SUM(${callLogs.duration}), 0)`
     }).from(callLogs).where(
-      and4(
+      and5(
         sql4`${callLogs.shopId} IN (${sql4.raw(shopIdList)})`,
         gte3(callLogs.createdAt, monthStart)
       )
@@ -2940,9 +3007,9 @@ var analyticsRouter = router({
       elite: 599
     };
     const activeSubs = await db.select({ tier: subscriptions.tier }).from(subscriptions).where(
-      and4(
+      and5(
         sql4`${subscriptions.shopId} IN (${sql4.raw(shopIdList)})`,
-        eq5(subscriptions.status, "active")
+        eq6(subscriptions.status, "active")
       )
     );
     const revenue = activeSubs.reduce(
@@ -2956,7 +3023,7 @@ var analyticsRouter = router({
       date: sql4`DATE(${callLogs.createdAt})`,
       count: count2()
     }).from(callLogs).where(
-      and4(
+      and5(
         sql4`${callLogs.shopId} IN (${sql4.raw(shopIdList)})`,
         gte3(callLogs.createdAt, thirtyDaysAgo)
       )
@@ -3070,7 +3137,7 @@ ${input.message}`
 // server/integrationRouter.ts
 import { z as z11 } from "zod";
 import { TRPCError as TRPCError8 } from "@trpc/server";
-import { eq as eq6, and as and5, desc as desc4 } from "drizzle-orm";
+import { eq as eq7, and as and6, desc as desc4 } from "drizzle-orm";
 var integrationRouter = router({
   /** List all active integrations for a shop */
   listConnected: protectedProcedure.input(z11.object({ shopId: z11.number() })).query(async ({ ctx, input }) => {
@@ -3079,9 +3146,9 @@ var integrationRouter = router({
     const db = await getDb();
     if (!db) return [];
     return db.select().from(shopIntegrations).where(
-      and5(
-        eq6(shopIntegrations.shopId, input.shopId),
-        eq6(shopIntegrations.isActive, true)
+      and6(
+        eq7(shopIntegrations.shopId, input.shopId),
+        eq7(shopIntegrations.isActive, true)
       )
     );
   }),
@@ -3097,7 +3164,7 @@ var integrationRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    await db.update(shopIntegrations).set({ isActive: false }).where(eq6(shopIntegrations.id, input.integrationId));
+    await db.update(shopIntegrations).set({ isActive: false }).where(eq7(shopIntegrations.id, input.integrationId));
     return { success: true };
   }),
   /** Save integration settings (API keys, calendar ID, sheet ID, etc.) */
@@ -3126,9 +3193,9 @@ var integrationRouter = router({
         message: "Database unavailable"
       });
     const existing = await db.select({ id: shopIntegrations.id }).from(shopIntegrations).where(
-      and5(
-        eq6(shopIntegrations.shopId, input.shopId),
-        eq6(shopIntegrations.provider, input.provider)
+      and6(
+        eq7(shopIntegrations.shopId, input.shopId),
+        eq7(shopIntegrations.provider, input.provider)
       )
     ).limit(1);
     if (existing.length > 0) {
@@ -3136,7 +3203,7 @@ var integrationRouter = router({
         settings: input.settings || {},
         ...input.accessToken ? { accessToken: input.accessToken } : {},
         isActive: true
-      }).where(eq6(shopIntegrations.id, existing[0].id));
+      }).where(eq7(shopIntegrations.id, existing[0].id));
     } else {
       await db.insert(shopIntegrations).values({
         shopId: input.shopId,
@@ -3159,7 +3226,7 @@ var integrationRouter = router({
     if (!shop || shop.ownerId !== ctx.user.id) return [];
     const db = await getDb();
     if (!db) return [];
-    return db.select().from(integrationSyncLogs).where(eq6(integrationSyncLogs.shopId, input.shopId)).orderBy(desc4(integrationSyncLogs.createdAt)).limit(input.limit);
+    return db.select().from(integrationSyncLogs).where(eq7(integrationSyncLogs.shopId, input.shopId)).orderBy(desc4(integrationSyncLogs.createdAt)).limit(input.limit);
   })
 });
 
@@ -3194,7 +3261,7 @@ var anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KE
 var supabaseAdmin = supabaseUrl && serviceRoleKey ? createClient2(supabaseUrl, serviceRoleKey) : null;
 
 // server/_core/context.ts
-import { eq as eq7 } from "drizzle-orm";
+import { eq as eq8 } from "drizzle-orm";
 async function createContext(opts) {
   let user = null;
   const authHeader = opts.req.headers.authorization;
@@ -3205,7 +3272,7 @@ async function createContext(opts) {
       if (supaUser && !error) {
         const dbConn = await getDb();
         if (dbConn) {
-          const result = await dbConn.select().from(users).where(eq7(users.supabaseId, supaUser.id)).limit(1);
+          const result = await dbConn.select().from(users).where(eq8(users.supabaseId, supaUser.id)).limit(1);
           if (result[0]) {
             user = result[0];
           } else {
@@ -3234,7 +3301,7 @@ async function createContext(opts) {
 import { Router as Router2 } from "express";
 
 // server/services/postCallPipeline.ts
-import { eq as eq13, and as and11, sql as sql5 } from "drizzle-orm";
+import { eq as eq14, and as and12, sql as sql5 } from "drizzle-orm";
 
 // server/_core/llm.ts
 var ensureArray = (value) => Array.isArray(value) ? value : [value];
@@ -3415,7 +3482,7 @@ import { google as google2 } from "googleapis";
 // server/services/googleAuth.ts
 import { Router } from "express";
 import { google } from "googleapis";
-import { eq as eq8, and as and6 } from "drizzle-orm";
+import { eq as eq9, and as and7 } from "drizzle-orm";
 var SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/spreadsheets"
@@ -3465,9 +3532,9 @@ googleAuthRouter.get("/callback", async (req, res) => {
     }
     for (const provider of ["google_calendar", "google_sheets"]) {
       const existing = await db.select({ id: shopIntegrations.id }).from(shopIntegrations).where(
-        and6(
-          eq8(shopIntegrations.shopId, parseInt(shopId)),
-          eq8(shopIntegrations.provider, provider)
+        and7(
+          eq9(shopIntegrations.shopId, parseInt(shopId)),
+          eq9(shopIntegrations.provider, provider)
         )
       ).limit(1);
       const tokenData = {
@@ -3478,7 +3545,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
         isActive: true
       };
       if (existing.length > 0) {
-        await db.update(shopIntegrations).set(tokenData).where(eq8(shopIntegrations.id, existing[0].id));
+        await db.update(shopIntegrations).set(tokenData).where(eq9(shopIntegrations.id, existing[0].id));
       } else {
         await db.insert(shopIntegrations).values({
           shopId: parseInt(shopId),
@@ -3497,10 +3564,10 @@ async function getGoogleClient(shopId, provider) {
   const db = await getDb();
   if (!db) return null;
   const results = await db.select().from(shopIntegrations).where(
-    and6(
-      eq8(shopIntegrations.shopId, shopId),
-      eq8(shopIntegrations.provider, provider),
-      eq8(shopIntegrations.isActive, true)
+    and7(
+      eq9(shopIntegrations.shopId, shopId),
+      eq9(shopIntegrations.provider, provider),
+      eq9(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (results.length === 0) return null;
@@ -3518,7 +3585,7 @@ async function getGoogleClient(shopId, provider) {
       await db.update(shopIntegrations).set({
         accessToken: credentials.access_token || integration.accessToken,
         tokenExpiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null
-      }).where(eq8(shopIntegrations.id, integration.id));
+      }).where(eq9(shopIntegrations.id, integration.id));
       oauth2Client.setCredentials(credentials);
     } catch (err) {
       console.error("[GOOGLE-AUTH] Token refresh failed:", err);
@@ -3529,7 +3596,7 @@ async function getGoogleClient(shopId, provider) {
 }
 
 // server/services/calendarService.ts
-import { eq as eq9, and as and7 } from "drizzle-orm";
+import { eq as eq10, and as and8 } from "drizzle-orm";
 async function createAppointment(shopId, params) {
   try {
     const auth = await getGoogleClient(shopId, "google_calendar");
@@ -3540,9 +3607,9 @@ async function createAppointment(shopId, params) {
     const db = await getDb();
     if (!db) return { success: false, error: "Database unavailable" };
     const integration = await db.select().from(shopIntegrations).where(
-      and7(
-        eq9(shopIntegrations.shopId, shopId),
-        eq9(shopIntegrations.provider, "google_calendar")
+      and8(
+        eq10(shopIntegrations.shopId, shopId),
+        eq10(shopIntegrations.provider, "google_calendar")
       )
     ).limit(1);
     const calendarId = integration[0]?.settings?.calendarId || "primary";
@@ -3596,7 +3663,7 @@ async function createAppointment(shopId, params) {
 
 // server/services/sheetsService.ts
 import { google as google3 } from "googleapis";
-import { eq as eq10, and as and8 } from "drizzle-orm";
+import { eq as eq11, and as and9 } from "drizzle-orm";
 var HEADER_ROW = [
   "Date",
   "Time",
@@ -3618,9 +3685,9 @@ async function syncCallToSheet(shopId, callLog) {
     const db = await getDb();
     if (!db) return { success: false, error: "Database unavailable" };
     const integration = await db.select().from(shopIntegrations).where(
-      and8(
-        eq10(shopIntegrations.shopId, shopId),
-        eq10(shopIntegrations.provider, "google_sheets")
+      and9(
+        eq11(shopIntegrations.shopId, shopId),
+        eq11(shopIntegrations.provider, "google_sheets")
       )
     ).limit(1);
     const sheetId = integration[0]?.settings?.sheetId;
@@ -3687,7 +3754,7 @@ async function syncCallToSheet(shopId, callLog) {
 
 // server/services/hubspotService.ts
 import { Client } from "@hubspot/api-client";
-import { eq as eq11, and as and9 } from "drizzle-orm";
+import { eq as eq12, and as and10 } from "drizzle-orm";
 function getHubspotClient(apiKey) {
   return new Client({ accessToken: apiKey });
 }
@@ -3695,10 +3762,10 @@ async function getShopHubspotKey(shopId) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(shopIntegrations).where(
-    and9(
-      eq11(shopIntegrations.shopId, shopId),
-      eq11(shopIntegrations.provider, "hubspot"),
-      eq11(shopIntegrations.isActive, true)
+    and10(
+      eq12(shopIntegrations.shopId, shopId),
+      eq12(shopIntegrations.provider, "hubspot"),
+      eq12(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (result.length > 0 && result[0].accessToken) {
@@ -3820,15 +3887,15 @@ Duration: ${caller.duration || 0}s`,
 }
 
 // server/services/shopmonkeyService.ts
-import { eq as eq12, and as and10 } from "drizzle-orm";
+import { eq as eq13, and as and11 } from "drizzle-orm";
 async function getShopmonkeyKeys(shopId) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(shopIntegrations).where(
-    and10(
-      eq12(shopIntegrations.shopId, shopId),
-      eq12(shopIntegrations.provider, "shopmonkey"),
-      eq12(shopIntegrations.isActive, true)
+    and11(
+      eq13(shopIntegrations.shopId, shopId),
+      eq13(shopIntegrations.provider, "shopmonkey"),
+      eq13(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (result.length === 0) return null;
@@ -4073,11 +4140,11 @@ async function processCompletedCall(callLogId) {
   try {
     const db = await getDb();
     if (!db) return;
-    const callResults = await db.select().from(callLogs).where(eq13(callLogs.id, callLogId)).limit(1);
+    const callResults = await db.select().from(callLogs).where(eq14(callLogs.id, callLogId)).limit(1);
     if (callResults.length === 0) return;
     const call = callResults[0];
     if (call.transcription) {
-      const shopResults = await db.select().from(shops).where(eq13(shops.id, call.shopId)).limit(1);
+      const shopResults = await db.select().from(shops).where(eq14(shops.id, call.shopId)).limit(1);
       const shop = shopResults[0];
       const catalog = (shop?.serviceCatalog || []).map(
         (s) => s.name
@@ -4098,7 +4165,7 @@ async function processCompletedCall(callLogId) {
         upsellAttempted: analysis.upsellAttempted,
         upsellAccepted: analysis.upsellAccepted,
         estimatedRevenue: analysis.estimatedRevenue.toFixed(2)
-      }).where(eq13(callLogs.id, callLogId));
+      }).where(eq14(callLogs.id, callLogId));
       try {
         await runPostCallIntegrations(call.shopId, call, analysis);
       } catch (err) {
@@ -4112,9 +4179,9 @@ async function processCompletedCall(callLogId) {
     const minutesUsed = Math.ceil(duration / 60);
     if (minutesUsed > 0) {
       const subResults = await db.select().from(subscriptions).where(
-        and11(
-          eq13(subscriptions.shopId, call.shopId),
-          eq13(subscriptions.status, "active")
+        and12(
+          eq14(subscriptions.shopId, call.shopId),
+          eq14(subscriptions.status, "active")
         )
       ).limit(1);
       if (subResults.length > 0) {
@@ -4133,7 +4200,7 @@ async function processCompletedCall(callLogId) {
         });
         await db.update(subscriptions).set({
           usedMinutes: sql5`${subscriptions.usedMinutes} + ${minutesUsed}`
-        }).where(eq13(subscriptions.id, sub.id));
+        }).where(eq14(subscriptions.id, sub.id));
       }
     }
     if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
@@ -4201,13 +4268,13 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
       const profile = await db.select({
         smsOptOut: callerProfiles.smsOptOut,
         doNotSell: callerProfiles.doNotSell
-      }).from(callerProfiles).where(eq13(callerProfiles.phone, callLog.callerPhone)).limit(1);
+      }).from(callerProfiles).where(eq14(callerProfiles.phone, callLog.callerPhone)).limit(1);
       const optedOut = profile[0]?.smsOptOut || profile[0]?.doNotSell;
       const shopResult = await db.select({
         smsFollowUpEnabled: shops.smsFollowUpEnabled,
         name: shops.name,
         phone: shops.phone
-      }).from(shops).where(eq13(shops.id, shopId)).limit(1);
+      }).from(shops).where(eq14(shops.id, shopId)).limit(1);
       const shop = shopResult[0];
       if (!optedOut && shop?.smsFollowUpEnabled) {
         const smsBody = analysis.appointmentBooked ? `Hi! Your appointment for ${analysis.serviceRequested} at ${shop.name} has been noted. We'll confirm the details shortly. Reply STOP to opt out.` : `Thanks for calling ${shop.name}! If you need anything, call us at ${shop.phone || "our shop"}. Reply STOP to opt out.`;
@@ -4220,7 +4287,7 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
 }
 
 // server/services/twilioWebhooks.ts
-import { eq as eq14, sql as sql6 } from "drizzle-orm";
+import { eq as eq15, sql as sql6 } from "drizzle-orm";
 
 // server/_core/env.ts
 var isProduction = process.env.NODE_ENV === "production";
@@ -4317,7 +4384,7 @@ async function resolveShopContext(calledNumber) {
   if (shopId === null) {
     const db = await getDb();
     if (!db) return null;
-    const results = await db.select().from(shops).where(eq14(shops.twilioPhoneNumber, calledNumber)).limit(1);
+    const results = await db.select().from(shops).where(eq15(shops.twilioPhoneNumber, calledNumber)).limit(1);
     if (results.length === 0) return null;
     shopId = results[0].id;
     contextCache.setPhoneToShopId(calledNumber, shopId);
@@ -4327,10 +4394,10 @@ async function resolveShopContext(calledNumber) {
   if (!context) {
     const db = await getDb();
     if (!db) return null;
-    const shopResults = await db.select().from(shops).where(eq14(shops.id, shopId)).limit(1);
+    const shopResults = await db.select().from(shops).where(eq15(shops.id, shopId)).limit(1);
     if (shopResults.length === 0) return null;
     const shop = shopResults[0];
-    const agentResults = await db.select().from(agentConfigs).where(eq14(agentConfigs.shopId, shopId)).limit(1);
+    const agentResults = await db.select().from(agentConfigs).where(eq15(agentConfigs.shopId, shopId)).limit(1);
     const agent = agentResults[0];
     elevenLabsAgentId = agent?.elevenLabsAgentId || "";
     context = {
@@ -4357,7 +4424,7 @@ async function resolveShopContext(calledNumber) {
   if (!elevenLabsAgentId) {
     const db = await getDb();
     if (db) {
-      const agentResults = await db.select({ elevenLabsAgentId: agentConfigs.elevenLabsAgentId }).from(agentConfigs).where(eq14(agentConfigs.shopId, shopId)).limit(1);
+      const agentResults = await db.select({ elevenLabsAgentId: agentConfigs.elevenLabsAgentId }).from(agentConfigs).where(eq15(agentConfigs.shopId, shopId)).limit(1);
       elevenLabsAgentId = agentResults[0]?.elevenLabsAgentId || "";
     }
   }
@@ -4370,7 +4437,7 @@ async function lookupCallerProfile(phone) {
     const results = await db.select({
       name: callerProfiles.name,
       callerRole: callerProfiles.callerRole
-    }).from(callerProfiles).where(eq14(callerProfiles.phone, phone)).limit(1);
+    }).from(callerProfiles).where(eq15(callerProfiles.phone, phone)).limit(1);
     return results[0] || null;
   } catch {
     return null;
@@ -4402,7 +4469,7 @@ async function getShopRingConfig(shopId) {
   const rows = await db.select({
     ringShopFirstEnabled: shops.ringShopFirstEnabled,
     ringTimeoutSec: shops.ringTimeoutSec
-  }).from(shops).where(eq14(shops.id, shopId)).limit(1);
+  }).from(shops).where(eq15(shops.id, shopId)).limit(1);
   return rows[0] ?? null;
 }
 function buildRingShopFirstTwiML(shopPhone, baylioNumber, timeoutSec) {
@@ -4488,7 +4555,7 @@ twilioRouter.post("/voice", async (req, res) => {
       try {
         const db = await getDb();
         if (!db) return;
-        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq14(shops.id, resolved.shopId)).limit(1);
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq15(shops.id, resolved.shopId)).limit(1);
         if (!shopRow[0]) return;
         await db.insert(callLogs).values({
           shopId: resolved.shopId,
@@ -4545,7 +4612,7 @@ twilioRouter.post("/no-answer", async (req, res) => {
       try {
         const db = await getDb();
         if (!db) return;
-        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq14(shops.id, resolved.shopId)).limit(1);
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq15(shops.id, resolved.shopId)).limit(1);
         if (!shopRow[0]) return;
         await db.insert(callLogs).values({
           shopId: resolved.shopId,
@@ -4588,7 +4655,7 @@ twilioRouter.post("/status", async (req, res) => {
         const db = await getDb();
         if (!db) return;
         if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
-          const shopResult = await db.select({ id: shops.id, ownerId: shops.ownerId }).from(shops).where(eq14(shops.twilioPhoneNumber, To)).limit(1);
+          const shopResult = await db.select({ id: shops.id, ownerId: shops.ownerId }).from(shops).where(eq15(shops.twilioPhoneNumber, To)).limit(1);
           if (shopResult.length > 0) {
             const shop = shopResult[0];
             const callerProfile = await lookupCallerProfile(From);
@@ -4616,7 +4683,7 @@ twilioRouter.post("/status", async (req, res) => {
             });
             if (CallStatus === "completed") {
               try {
-                const callLogResult = await db.select({ id: callLogs.id }).from(callLogs).where(eq14(callLogs.twilioCallSid, CallSid)).limit(1);
+                const callLogResult = await db.select({ id: callLogs.id }).from(callLogs).where(eq15(callLogs.twilioCallSid, CallSid)).limit(1);
                 if (callLogResult.length > 0) {
                   await processCompletedCall(callLogResult[0].id);
                 }
@@ -4651,7 +4718,7 @@ twilioRouter.post(
         try {
           const db = await getDb();
           if (!db) return;
-          await db.update(callLogs).set({ recordingUrl: RecordingUrl }).where(eq14(callLogs.twilioCallSid, CallSid));
+          await db.update(callLogs).set({ recordingUrl: RecordingUrl }).where(eq15(callLogs.twilioCallSid, CallSid));
         } catch (err) {
           console.error("[RECORDING] Error updating call log:", err);
         }
@@ -4676,7 +4743,7 @@ twilioRouter.post(
           try {
             const db = await getDb();
             if (!db) return;
-            await db.update(callLogs).set({ transcription: TranscriptionText }).where(eq14(callLogs.twilioCallSid, CallSid));
+            await db.update(callLogs).set({ transcription: TranscriptionText }).where(eq15(callLogs.twilioCallSid, CallSid));
           } catch (err) {
             console.error("[TRANSCRIPTION] Error updating call log:", err);
           }
@@ -4848,7 +4915,7 @@ function rateLimit(opts) {
 // server/stripe/stripeRoutes.ts
 import express from "express";
 import Stripe2 from "stripe";
-import { eq as eq15 } from "drizzle-orm";
+import { eq as eq16 } from "drizzle-orm";
 import { drizzle as drizzle2 } from "drizzle-orm/postgres-js";
 import postgres2 from "postgres";
 import { PostHog } from "posthog-node";
@@ -4944,8 +5011,32 @@ async function handleCheckoutCompleted(session) {
   const tier = session.metadata?.tier;
   const isSetupFee = session.metadata?.type === "setup_fee";
   if (isSetupFee && shopId) {
-    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq15(subscriptions.shopId, parseInt(shopId)));
+    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq16(subscriptions.shopId, parseInt(shopId)));
     console.log(`[Stripe] Setup fee paid for shop ${shopId}`);
+    return;
+  }
+  const isAdditionalShop = session.metadata?.type === "additional_shop";
+  if (isAdditionalShop && shopId && userId) {
+    const existingSubs2 = await db.select().from(subscriptions).where(eq16(subscriptions.shopId, parseInt(shopId))).limit(1);
+    if (existingSubs2.length > 0) {
+      await db.update(subscriptions).set({
+        status: "active",
+        stripeCustomerId: session.customer,
+        stripeSubscriptionId: session.subscription
+      }).where(eq16(subscriptions.shopId, parseInt(shopId)));
+    } else {
+      await db.insert(subscriptions).values({
+        shopId: parseInt(shopId),
+        ownerId: parseInt(userId),
+        tier: "starter",
+        status: "active",
+        stripeCustomerId: session.customer,
+        stripeSubscriptionId: session.subscription,
+        includedMinutes: ADDITIONAL_SHOP_MINUTES,
+        usedMinutes: 0
+      });
+    }
+    console.log(`[Stripe] Additional shop activated: shop=${shopId}`);
     return;
   }
   if (!userId || !shopId || !tier) {
@@ -4954,7 +5045,7 @@ async function handleCheckoutCompleted(session) {
   }
   const tierConfig = getTierConfig(tier);
   if (!tierConfig) return;
-  const existingSubs = await db.select().from(subscriptions).where(eq15(subscriptions.shopId, parseInt(shopId))).limit(1);
+  const existingSubs = await db.select().from(subscriptions).where(eq16(subscriptions.shopId, parseInt(shopId))).limit(1);
   if (existingSubs.length > 0) {
     await db.update(subscriptions).set({
       tier: tierConfig.id,
@@ -4962,7 +5053,7 @@ async function handleCheckoutCompleted(session) {
       stripeCustomerId: session.customer,
       stripeSubscriptionId: session.subscription,
       includedMinutes: tierConfig.includedMinutes
-    }).where(eq15(subscriptions.shopId, parseInt(shopId)));
+    }).where(eq16(subscriptions.shopId, parseInt(shopId)));
   } else {
     await db.insert(subscriptions).values({
       shopId: parseInt(shopId),
@@ -4997,7 +5088,7 @@ async function handleInvoicePaid(invoice) {
   const invoiceAny = invoice;
   const subscriptionId = invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  const subs = await db.select().from(subscriptions).where(eq15(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const periodStart = invoiceAny.period_start ?? invoiceAny.period?.start;
     const periodEnd = invoiceAny.period_end ?? invoiceAny.period?.end;
@@ -5006,7 +5097,7 @@ async function handleInvoicePaid(invoice) {
       usedMinutes: 0,
       currentPeriodStart: periodStart ? new Date(periodStart * 1e3) : void 0,
       currentPeriodEnd: periodEnd ? new Date(periodEnd * 1e3) : void 0
-    }).where(eq15(subscriptions.stripeSubscriptionId, subscriptionId));
+    }).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId));
   }
   console.log(`[Stripe] Invoice paid for subscription: ${subscriptionId}`);
 }
@@ -5016,9 +5107,9 @@ async function handlePaymentFailed(invoice) {
   const invoiceAny2 = invoice;
   const subscriptionId = invoiceAny2.subscription ?? invoiceAny2.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  await db.update(subscriptions).set({ status: "past_due" }).where(eq15(subscriptions.stripeSubscriptionId, subscriptionId));
+  await db.update(subscriptions).set({ status: "past_due" }).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId));
   console.log(`[Stripe] Payment failed for subscription: ${subscriptionId}`);
-  const subs = await db.select().from(subscriptions).where(eq15(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const ph = getPostHog();
     ph.capture({
@@ -5046,17 +5137,17 @@ async function handleSubscriptionUpdated(sub) {
       (sub.current_period_start ?? 0) * 1e3
     ),
     currentPeriodEnd: new Date((sub.current_period_end ?? 0) * 1e3)
-  }).where(eq15(subscriptions.stripeSubscriptionId, sub.id));
+  }).where(eq16(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription updated: ${sub.id} \u2192 ${status}`);
 }
 async function handleSubscriptionDeleted(sub) {
   const db = await getDb2();
   if (!db) return;
-  await db.update(subscriptions).set({ status: "canceled" }).where(eq15(subscriptions.stripeSubscriptionId, sub.id));
+  await db.update(subscriptions).set({ status: "canceled" }).where(eq16(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription canceled: ${sub.id}`);
   const db2 = await getDb2();
   if (db2) {
-    const canceledSubs = await db2.select().from(subscriptions).where(eq15(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
+    const canceledSubs = await db2.select().from(subscriptions).where(eq16(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
     if (canceledSubs.length > 0) {
       const ph = getPostHog();
       ph.capture({
