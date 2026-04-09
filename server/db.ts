@@ -255,6 +255,7 @@ export async function getShopAnalytics(
   const result = await db
     .select({
       totalCalls: count(),
+      aiHandledCalls: sql<number>`SUM(CASE WHEN ${callLogs.handledByAI} = true THEN 1 ELSE 0 END)`,
       totalRevenue: sql<string>`COALESCE(SUM(${callLogs.estimatedRevenue}), 0)`,
       appointmentsBooked: sql<number>`SUM(CASE WHEN ${callLogs.appointmentBooked} = true THEN 1 ELSE 0 END)`,
       missedCalls: sql<number>`SUM(CASE WHEN ${callLogs.status} = 'missed' THEN 1 ELSE 0 END)`,

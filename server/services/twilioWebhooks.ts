@@ -460,6 +460,20 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     }
 
     // Step 4: Direct-to-AI path (ring-first disabled or no shop phone configured)
+    // Pre-mark the call as AI-handled so analytics are accurate even if /status fires before pipeline
+    setImmediate(async () => {
+      try {
+        const db = await getDb();
+        if (!db) return;
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq(shops.id, resolved.shopId)).limit(1);
+        if (!shopRow[0]) return;
+        await db.insert(callLogs).values({
+          shopId: resolved.shopId, ownerId: shopRow[0].ownerId, twilioCallSid: CallSid,
+          callerPhone: From, direction: "inbound", status: "completed", handledByAI: true,
+          callStartedAt: new Date(), callEndedAt: new Date(),
+        }).onConflictDoUpdate({ target: callLogs.twilioCallSid, set: { handledByAI: true } });
+      } catch (err) { console.error("[CALL] Failed to pre-mark AI call:", err); }
+    });
     return await respondWithElevenLabsAgent(
       res,
       resolved,
@@ -519,6 +533,20 @@ twilioRouter.post("/no-answer", async (req: Request, res: Response) => {
       return res.send(generateVoicemailTwiML("this business"));
     }
 
+    // Pre-mark as AI-handled before routing to ElevenLabs
+    setImmediate(async () => {
+      try {
+        const db = await getDb();
+        if (!db) return;
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq(shops.id, resolved.shopId)).limit(1);
+        if (!shopRow[0]) return;
+        await db.insert(callLogs).values({
+          shopId: resolved.shopId, ownerId: shopRow[0].ownerId, twilioCallSid: CallSid,
+          callerPhone: From, direction: "inbound", status: "completed", handledByAI: true,
+          callStartedAt: new Date(), callEndedAt: new Date(),
+        }).onConflictDoUpdate({ target: callLogs.twilioCallSid, set: { handledByAI: true } });
+      } catch (err) { console.error("[CALL] Failed to pre-mark AI call in /no-answer:", err); }
+    });
     return await respondWithElevenLabsAgent(
       res,
       resolved,

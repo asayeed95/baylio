@@ -112,6 +112,7 @@ function AnalyticsContent() {
   }
   const appointmentsBooked = analytics?.appointmentsBooked ?? 0;
   const missedCalls = analytics?.missedCalls ?? 0;
+  const aiHandledCalls = analytics?.aiHandledCalls ?? 0;
   const totalRevenue = parseFloat(analytics?.totalRevenue ?? "0");
   const avgDuration = parseFloat(analytics?.avgDuration ?? "0");
   const avgSentiment = parseFloat(analytics?.avgSentiment ?? "0");
@@ -129,10 +130,10 @@ function AnalyticsContent() {
 
   const metrics = [
     {
-      title: "Total Calls",
-      value: totalCalls.toLocaleString(),
+      title: "AI-Handled Calls",
+      value: aiHandledCalls.toLocaleString(),
       icon: PhoneCall,
-      description: "All calls handled by AI",
+      description: `${totalCalls} total calls received`,
       color: "text-blue-600",
       bg: "bg-blue-50",
     },

@@ -293,6 +293,7 @@ var callLogs = pgTable("call_logs", {
   qaFlags: jsonb("qaFlags").$type(),
   estimatedRevenue: numeric("estimatedRevenue", { precision: 10, scale: 2 }),
   scorecardData: jsonb("scorecardData").$type(),
+  handledByAI: boolean("handledByAI").default(false).notNull(),
   callStartedAt: timestamp("callStartedAt"),
   callEndedAt: timestamp("callEndedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull()
@@ -559,6 +560,7 @@ async function getShopAnalytics(shopId, startDate, endDate) {
   if (endDate) conditions.push(lte(callLogs.callStartedAt, endDate));
   const result = await db.select({
     totalCalls: count(),
+    aiHandledCalls: sql`SUM(CASE WHEN ${callLogs.handledByAI} = true THEN 1 ELSE 0 END)`,
     totalRevenue: sql`COALESCE(SUM(${callLogs.estimatedRevenue}), 0)`,
     appointmentsBooked: sql`SUM(CASE WHEN ${callLogs.appointmentBooked} = true THEN 1 ELSE 0 END)`,
     missedCalls: sql`SUM(CASE WHEN ${callLogs.status} = 'missed' THEN 1 ELSE 0 END)`,
@@ -4482,6 +4484,27 @@ twilioRouter.post("/voice", async (req, res) => {
       res.type("text/xml");
       return res.send(buildRingShopFirstTwiML(context.phone, To, timeout));
     }
+    setImmediate(async () => {
+      try {
+        const db = await getDb();
+        if (!db) return;
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq14(shops.id, resolved.shopId)).limit(1);
+        if (!shopRow[0]) return;
+        await db.insert(callLogs).values({
+          shopId: resolved.shopId,
+          ownerId: shopRow[0].ownerId,
+          twilioCallSid: CallSid,
+          callerPhone: From,
+          direction: "inbound",
+          status: "completed",
+          handledByAI: true,
+          callStartedAt: /* @__PURE__ */ new Date(),
+          callEndedAt: /* @__PURE__ */ new Date()
+        }).onConflictDoUpdate({ target: callLogs.twilioCallSid, set: { handledByAI: true } });
+      } catch (err) {
+        console.error("[CALL] Failed to pre-mark AI call:", err);
+      }
+    });
     return await respondWithElevenLabsAgent(
       res,
       resolved,
@@ -4518,6 +4541,27 @@ twilioRouter.post("/no-answer", async (req, res) => {
       res.type("text/xml");
       return res.send(generateVoicemailTwiML("this business"));
     }
+    setImmediate(async () => {
+      try {
+        const db = await getDb();
+        if (!db) return;
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq14(shops.id, resolved.shopId)).limit(1);
+        if (!shopRow[0]) return;
+        await db.insert(callLogs).values({
+          shopId: resolved.shopId,
+          ownerId: shopRow[0].ownerId,
+          twilioCallSid: CallSid,
+          callerPhone: From,
+          direction: "inbound",
+          status: "completed",
+          handledByAI: true,
+          callStartedAt: /* @__PURE__ */ new Date(),
+          callEndedAt: /* @__PURE__ */ new Date()
+        }).onConflictDoUpdate({ target: callLogs.twilioCallSid, set: { handledByAI: true } });
+      } catch (err) {
+        console.error("[CALL] Failed to pre-mark AI call in /no-answer:", err);
+      }
+    });
     return await respondWithElevenLabsAgent(
       res,
       resolved,

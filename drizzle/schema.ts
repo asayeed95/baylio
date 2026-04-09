@@ -142,6 +142,7 @@ export const callLogs = pgTable("call_logs", {
     upsell: number; appointment: number; closing: number;
     overall: number; suggestions: string[];
   }>(),
+  handledByAI: boolean("handledByAI").default(false).notNull(),
   callStartedAt: timestamp("callStartedAt"),
   callEndedAt: timestamp("callEndedAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
