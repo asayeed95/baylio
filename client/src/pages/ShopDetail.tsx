@@ -217,7 +217,7 @@ function ShopDetailContent() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {format(new Date(call.startTime), "MMM d, h:mm a")} • {Math.round(call.durationSeconds || 0)}s
+                          {call.startTime ? format(new Date(call.startTime), "MMM d, h:mm a") : "—"} • {Math.round(call.durationSeconds || 0)}s
                         </p>
                       </div>
                     </div>
