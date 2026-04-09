@@ -329,10 +329,14 @@ async function getShopRingConfig(
  *
  * Exported for unit testing.
  */
-export function buildRingShopFirstTwiML(shopPhone: string, timeoutSec: number): string {
+// baylioNumber is passed as a query param so /no-answer doesn't have to rely on
+// Twilio's `To` field, which may contain the dialed shop number in some Dial
+// action callback implementations instead of the original Baylio number.
+export function buildRingShopFirstTwiML(shopPhone: string, baylioNumber: string, timeoutSec: number): string {
+  const actionUrl = `/api/twilio/no-answer?baylio=${encodeURIComponent(baylioNumber)}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="${timeoutSec}" action="/api/twilio/no-answer" method="POST" answerOnBridge="true">
+  <Dial timeout="${timeoutSec}" action="${actionUrl}" method="POST" answerOnBridge="true">
     <Number>${escapeXml(shopPhone)}</Number>
   </Dial>
 </Response>`;
@@ -371,8 +375,9 @@ async function respondWithElevenLabsAgent(
   );
 
   const elapsed = Date.now() - startTime;
+  // Log first 200 chars so we can confirm it's valid XML, not a JSON wrapper
   console.log(
-    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
+    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML preview: ${twiml.substring(0, 200)}`
   );
 
   res.type("text/xml");
@@ -451,7 +456,7 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
         `[CALL] Ring-shop-first enabled — dialing ${context.phone} (timeout=${timeout}s)`
       );
       res.type("text/xml");
-      return res.send(buildRingShopFirstTwiML(context.phone, timeout));
+      return res.send(buildRingShopFirstTwiML(context.phone, To, timeout));
     }
 
     // Step 4: Direct-to-AI path (ring-first disabled or no shop phone configured)
@@ -488,8 +493,12 @@ twilioRouter.post("/no-answer", async (req: Request, res: Response) => {
   const startTime = Date.now();
   try {
     const { To, From, DialCallStatus, CallSid } = req.body;
+    // `baylio` query param is the original Baylio number we embedded in the action URL.
+    // We prefer it over `To` because Twilio Dial action callbacks may send the
+    // dialed (shop) number as `To` rather than the original inbound Baylio number.
+    const baylioNumber = (req.query.baylio as string) || To;
     console.log(
-      `[CALL] /no-answer: To=${To} From=${From} DialCallStatus=${DialCallStatus} SID=${CallSid}`
+      `[CALL] /no-answer: baylioNumber=${baylioNumber} To=${To} From=${From} DialCallStatus=${DialCallStatus} SID=${CallSid}`
     );
 
     // Shop's phone was answered — Twilio is already bridged, end the TwiML
@@ -503,9 +512,9 @@ twilioRouter.post("/no-answer", async (req: Request, res: Response) => {
     const callerName = callerProfile?.name || "Unknown Caller";
     const callerRole = callerProfile?.callerRole || "unknown";
 
-    const resolved = await resolveShopContext(To);
+    const resolved = await resolveShopContext(baylioNumber);
     if (!resolved) {
-      console.warn(`[CALL] /no-answer: no shop found for ${To}`);
+      console.warn(`[CALL] /no-answer: no shop found for ${baylioNumber} (To=${To})`);
       res.type("text/xml");
       return res.send(generateVoicemailTwiML("this business"));
     }
@@ -514,7 +523,7 @@ twilioRouter.post("/no-answer", async (req: Request, res: Response) => {
       res,
       resolved,
       From,
-      To,
+      baylioNumber,
       callerName,
       callerRole,
       startTime

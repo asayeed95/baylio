@@ -4403,10 +4403,11 @@ async function getShopRingConfig(shopId) {
   }).from(shops).where(eq14(shops.id, shopId)).limit(1);
   return rows[0] ?? null;
 }
-function buildRingShopFirstTwiML(shopPhone, timeoutSec) {
+function buildRingShopFirstTwiML(shopPhone, baylioNumber, timeoutSec) {
+  const actionUrl = `/api/twilio/no-answer?baylio=${encodeURIComponent(baylioNumber)}`;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="${timeoutSec}" action="/api/twilio/no-answer" method="POST" answerOnBridge="true">
+  <Dial timeout="${timeoutSec}" action="${actionUrl}" method="POST" answerOnBridge="true">
     <Number>${escapeXml(shopPhone)}</Number>
   </Dial>
 </Response>`;
@@ -4429,7 +4430,7 @@ async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, c
   );
   const elapsed = Date.now() - startTime;
   console.log(
-    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML length=${twiml.length}`
+    `[CALL] ElevenLabs registered OK for shop ${shopId} (${elapsed}ms). TwiML preview: ${twiml.substring(0, 200)}`
   );
   res.type("text/xml");
   res.send(twiml);
@@ -4479,7 +4480,7 @@ twilioRouter.post("/voice", async (req, res) => {
         `[CALL] Ring-shop-first enabled \u2014 dialing ${context.phone} (timeout=${timeout}s)`
       );
       res.type("text/xml");
-      return res.send(buildRingShopFirstTwiML(context.phone, timeout));
+      return res.send(buildRingShopFirstTwiML(context.phone, To, timeout));
     }
     return await respondWithElevenLabsAgent(
       res,
@@ -4500,8 +4501,9 @@ twilioRouter.post("/no-answer", async (req, res) => {
   const startTime = Date.now();
   try {
     const { To, From, DialCallStatus, CallSid } = req.body;
+    const baylioNumber = req.query.baylio || To;
     console.log(
-      `[CALL] /no-answer: To=${To} From=${From} DialCallStatus=${DialCallStatus} SID=${CallSid}`
+      `[CALL] /no-answer: baylioNumber=${baylioNumber} To=${To} From=${From} DialCallStatus=${DialCallStatus} SID=${CallSid}`
     );
     if (DialCallStatus === "completed" || DialCallStatus === "answered") {
       res.type("text/xml");
@@ -4510,9 +4512,9 @@ twilioRouter.post("/no-answer", async (req, res) => {
     const callerProfile = await lookupCallerProfile(From);
     const callerName = callerProfile?.name || "Unknown Caller";
     const callerRole = callerProfile?.callerRole || "unknown";
-    const resolved = await resolveShopContext(To);
+    const resolved = await resolveShopContext(baylioNumber);
     if (!resolved) {
-      console.warn(`[CALL] /no-answer: no shop found for ${To}`);
+      console.warn(`[CALL] /no-answer: no shop found for ${baylioNumber} (To=${To})`);
       res.type("text/xml");
       return res.send(generateVoicemailTwiML("this business"));
     }
@@ -4520,7 +4522,7 @@ twilioRouter.post("/no-answer", async (req, res) => {
       res,
       resolved,
       From,
-      To,
+      baylioNumber,
       callerName,
       callerRole,
       startTime
