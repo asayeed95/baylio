@@ -14,7 +14,14 @@
 
 ### What Changed
 
-1. **fix: surface Twilio 21422 error on number purchase**
+1. **fix: use ulaw_8000 audio format for Twilio phone calls (e46af71)**
+   - Root cause: ElevenLabs agents default to `pcm_16000` (browser/WebRTC) but Twilio PSTN needs `ulaw_8000` (G.711 µ-law 8kHz)
+   - Symptom: caller hears ring-first working (shop phone rings), but after no-answer fallback, AI connects but is completely silent — user speech transcribed, zero agent responses in ElevenLabs conversation log
+   - Fixed: `createConversationalAgent` and `updateConversationalAgent` in `elevenLabsService.ts` now set `agent_output_audio_format: "ulaw_8000"` and `user_input_audio_format: "ulaw_8000"`
+   - Both existing agents patched directly via API: Zee (agent_0601knpttvyyebcv6cnnkrhv1sh1) + Sam/godmode (agent_8401kkzx0edafhbb0c56a04d1kmb)
+   - **Status: deployed, NOT yet verified end-to-end** — user restarting mac before test
+
+2. **fix: surface Twilio 21422 error on number purchase**
    - Root cause: Twilio phone number inventory race condition — number appeared in search results but was purchased by someone else before our buy attempt
    - Previously: unhandled exception → opaque 500 with no user-readable message
    - Now: `purchasePhoneNumber` mutation wraps Twilio call in try/catch; error code 21422 (or any 400) maps to `BAD_REQUEST` with message "no longer available — please search for a new number"
@@ -60,7 +67,8 @@
 
 ### In Progress
 
-- **Live walkthrough as a real shop owner** — Abdur to sign up, onboard a real shop, forward his cell number, call in. Validates the new ring-first routing end-to-end.
+- **AI voice not yet confirmed working** — ring-first routing works (shop phone rings), ulaw_8000 fix deployed, but end-to-end voice not verified before mac restart. First test: toggle ring-first OFF in ShopSettings, call +18624162966, Zee should answer immediately. If Zee speaks → re-enable ring-first and test full flow.
+- **Abdur's shop** — onboarded, phone +18624162966 provisioned, Zee agent (agent_0601knpttvyyebcv6cnnkrhv1sh1), business phone 2013212235, ring-first ON (12s)
 - Layers 2-4 of the phone provisioning architecture (post-Autoblitz)
 
 ---
