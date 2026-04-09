@@ -54,6 +54,24 @@ export default function Subscriptions() {
 function SubscriptionsContent() {
   const [, setLocation] = useLocation();
   const posthog = usePostHog();
+
+  const checkoutMutation = trpc.stripe.createSubscriptionCheckout.useMutation({
+    onSuccess: ({ checkoutUrl }) => {
+      if (checkoutUrl) window.location.href = checkoutUrl;
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to start checkout. Please try again.");
+    },
+  });
+
+  const portalMutation = trpc.stripe.createPortalSession.useMutation({
+    onSuccess: ({ portalUrl }) => {
+      window.location.href = portalUrl;
+    },
+    onError: (err) => {
+      toast.error(err.message || "Failed to open billing portal.");
+    },
+  });
   const { data: allSubs, isLoading } = trpc.subscription.listAll.useQuery();
 
   if (isLoading) {
@@ -199,9 +217,8 @@ function SubscriptionsContent() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() =>
-                          toast.info("Stripe billing integration coming soon")
-                        }
+                        disabled={portalMutation.isPending}
+                        onClick={() => portalMutation.mutate({ shopId: shop.id })}
                       >
                         Manage Billing
                       </Button>
@@ -215,9 +232,10 @@ function SubscriptionsContent() {
                     </p>
                     <Button
                       size="sm"
+                      disabled={checkoutMutation.isPending}
                       onClick={() => {
                         posthog?.capture("subscription_checkout_started", { shop_id: shop.id, shop_name: shop.name });
-                        toast.info("Subscription creation coming soon");
+                        checkoutMutation.mutate({ shopId: shop.id, tier: "starter", billingCycle: "monthly" });
                       }}
                     >
                       Choose Plan
@@ -329,12 +347,18 @@ function SubscriptionsContent() {
                     plan.popular ? "bg-primary text-primary-foreground hover:bg-primary/90" : ""
                   }`}
                   variant={plan.popular ? "default" : "outline"}
+                  disabled={checkoutMutation.isPending}
                   onClick={() => {
-                    posthog?.capture("cta_clicked", { label: `Upgrade to ${plan.tier}`, location: "subscriptions" });
-                    toast.info(`Stripe checkout for ${plan.tier} coming soon.`);
+                    const shopId = allSubs?.[0]?.shop?.id;
+                    if (!shopId) {
+                      toast.error("No shop found. Add a shop first.");
+                      return;
+                    }
+                    posthog?.capture("cta_clicked", { label: `Upgrade to ${plan.tier}`, location: "subscriptions", shop_id: shopId });
+                    checkoutMutation.mutate({ shopId, tier: plan.tier.toLowerCase() as "starter" | "pro" | "elite", billingCycle: "monthly" });
                   }}
                 >
-                  Upgrade to {plan.tier}
+                  {checkoutMutation.isPending ? "Loading..." : `Upgrade to ${plan.tier}`}
                 </Button>
               </CardContent>
             </Card>
