@@ -74,6 +74,9 @@ function createClient() {
 
 // ─── Voice Catalog ──────────────────────────────────────────────────
 
+export type { VoiceCatalogEntry } from "@shared/voiceCatalog";
+export { VOICE_CATALOG } from "@shared/voiceCatalog";
+
 export interface Voice {
   voice_id: string;
   name: string;
@@ -97,6 +100,37 @@ export async function listVoices(): Promise<Voice[]> {
   } catch (error) {
     console.error("[ElevenLabs] Error listing voices:", error);
     throw new Error("Failed to list voices from ElevenLabs");
+  }
+}
+
+/**
+ * Generate a short TTS preview clip for a voice.
+ * Returns the audio as a Buffer (mp3). For browser preview only — NOT for calls.
+ * Calls use ulaw_8000; this uses mp3_44100_128 (browser-compatible).
+ */
+export async function previewVoiceTTS(voiceId: string, text: string): Promise<Buffer> {
+  try {
+    return await withRetry(async () => {
+      const client = createClient();
+      const response = await client.post(
+        `/v1/text-to-speech/${voiceId}`,
+        {
+          text,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75,
+          },
+          output_format: "mp3_44100_128",
+        },
+        { responseType: "arraybuffer" }
+      );
+      return Buffer.from(response.data as ArrayBuffer);
+    }, 3, "previewVoiceTTS");
+  } catch (error) {
+    const axiosError = error as AxiosError;
+    console.error("[ElevenLabs] Error generating voice preview:", axiosError.response?.data || axiosError.message);
+    throw new Error(`Failed to generate voice preview: ${axiosError.message}`);
   }
 }
 
