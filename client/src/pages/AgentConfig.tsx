@@ -1,11 +1,7 @@
 import DashboardLayout from "@/components/DashboardLayout";
 import { trpc } from "@/lib/trpc";
 import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  CardDescription,
+  Card, CardContent, CardHeader, CardTitle, CardDescription,
 } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,34 +12,33 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import {
-  ArrowLeft,
-  Bot,
-  Save,
-  Volume2,
-  MessageSquare,
-  TrendingUp,
-  Zap,
-  CheckCircle2,
-  AlertCircle,
-  Loader2,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Collapsible, CollapsibleContent, CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp, Zap,
+  CheckCircle2, AlertCircle, Loader2, ChevronDown, Globe,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
 import { toast } from "sonner";
 import { usePostHog } from "@posthog/react";
+import VoicePicker from "@/components/VoicePicker";
+import PersonalityPicker, { type CharacterPreset, type PersonalityValues } from "@/components/PersonalityPicker";
 
-/**
- * AI Agent Configuration Page
- *
- * Allows shop owners to customize their AI call agent:
- * - Voice selection (ElevenLabs voice ID)
- * - Agent name and greeting message
- * - System prompt (personality, behavior rules)
- * - Upsell settings (enable/disable, rules, confidence threshold)
- * - Language preference
- *
- * Changes are saved via the shop.saveAgentConfig tRPC mutation.
- */
+const LANGUAGES = [
+  { code: "en", label: "English (American)" },
+  { code: "es", label: "Spanish (Latin American)" },
+  { code: "ar", label: "Arabic" },
+  { code: "pt", label: "Portuguese (Brazilian)" },
+  { code: "hi", label: "Hindi (Hinglish-friendly)" },
+  { code: "bn", label: "Bangla (Conversational)" },
+  { code: "it", label: "Italian" },
+  { code: "tr", label: "Turkish" },
+];
+
 export default function AgentConfig() {
   return (
     <DashboardLayout>
@@ -59,89 +54,93 @@ function AgentConfigContent() {
   const posthog = usePostHog();
 
   const { data: config, isLoading } = trpc.shop.getAgentConfig.useQuery(
-    { shopId },
-    { enabled: shopId > 0 }
+    { shopId }, { enabled: shopId > 0 }
+  );
+  const { data: shop } = trpc.shop.getById.useQuery({ id: shopId }, { enabled: shopId > 0 });
+  const { data: agentStatus, refetch: refetchStatus } = trpc.shop.getAgentStatus.useQuery(
+    { shopId }, { enabled: shopId > 0 }
   );
 
-  const { data: shop } = trpc.shop.getById.useQuery(
-    { id: shopId },
-    { enabled: shopId > 0 }
-  );
+  const utils = trpc.useUtils();
 
-  // Form state
+  // Voice & identity
   const [agentName, setAgentName] = useState("Baylio");
   const [voiceId, setVoiceId] = useState("");
   const [voiceName, setVoiceName] = useState("");
   const [greeting, setGreeting] = useState("");
-  const [systemPrompt, setSystemPrompt] = useState("");
+  const [language, setLanguage] = useState("en");
+
+  // Personality
+  const [personality, setPersonality] = useState<PersonalityValues>({
+    characterPreset: "warm_helper",
+    warmth: 4,
+    salesIntensity: 3,
+    technicalDepth: 2,
+  });
+
+  // Upsell
   const [upsellEnabled, setUpsellEnabled] = useState(true);
   const [confidenceThreshold, setConfidenceThreshold] = useState("0.80");
   const [maxUpsellsPerCall, setMaxUpsellsPerCall] = useState(1);
-  const [language, setLanguage] = useState("en");
 
-  // Load existing config
+  // Advanced (custom system prompt)
+  const [systemPrompt, setSystemPrompt] = useState("");
+  const [advancedOpen, setAdvancedOpen] = useState(false);
+
   useEffect(() => {
     if (config) {
       setAgentName(config.agentName || "Baylio");
       setVoiceId(config.voiceId || "");
       setVoiceName(config.voiceName || "");
       setGreeting(config.greeting || "");
-      setSystemPrompt(config.systemPrompt || "");
+      setLanguage(config.language || "en");
+      setPersonality({
+        characterPreset: (config.characterPreset as CharacterPreset) || "warm_helper",
+        warmth: config.warmth ?? 4,
+        salesIntensity: config.salesIntensity ?? 3,
+        technicalDepth: config.technicalDepth ?? 2,
+      });
       setUpsellEnabled(config.upsellEnabled ?? true);
       setConfidenceThreshold(config.confidenceThreshold || "0.80");
       setMaxUpsellsPerCall(config.maxUpsellsPerCall ?? 1);
-      setLanguage(config.language || "en");
+      setSystemPrompt(config.systemPrompt || "");
     }
   }, [config]);
-
-  const { data: agentStatus, refetch: refetchStatus } =
-    trpc.shop.getAgentStatus.useQuery({ shopId }, { enabled: shopId > 0 });
-
-  const utils = trpc.useUtils();
 
   const saveConfig = trpc.shop.saveAgentConfig.useMutation({
     onSuccess: () => {
       posthog?.capture("agent_config_saved", {
-        shop_id: shopId,
-        voice_id: voiceId || null,
-        upsell_enabled: upsellEnabled,
-        language,
+        shop_id: shopId, voice_id: voiceId || null,
+        upsell_enabled: upsellEnabled, language,
+        character_preset: personality.characterPreset,
       });
       toast.success("Agent configuration saved");
       refetchStatus();
     },
-    onError: err => {
-      toast.error(err.message || "Failed to save configuration");
-    },
+    onError: err => { toast.error(err.message || "Failed to save configuration"); },
   });
 
   const provisionAgent = trpc.shop.provisionAgent.useMutation({
     onSuccess: data => {
-      toast.success(
-        data.action === "created"
-          ? "AI agent created and ready to take calls!"
-          : "AI agent updated with latest config."
-      );
+      toast.success(data.action === "created" ? "AI agent created and ready!" : "AI agent updated.");
       refetchStatus();
       utils.shop.getAgentConfig.invalidate({ shopId });
     },
-    onError: err => {
-      toast.error(err.message || "Failed to provision AI agent");
-    },
+    onError: err => { toast.error(err.message || "Failed to provision AI agent"); },
   });
 
   const handleSave = () => {
     saveConfig.mutate({
-      shopId,
-      agentName,
+      shopId, agentName,
       voiceId: voiceId || undefined,
       voiceName: voiceName || undefined,
       greeting: greeting || undefined,
       systemPrompt: systemPrompt || undefined,
-      upsellEnabled,
-      confidenceThreshold,
-      maxUpsellsPerCall,
-      language,
+      upsellEnabled, confidenceThreshold, maxUpsellsPerCall, language,
+      characterPreset: personality.characterPreset,
+      warmth: personality.warmth,
+      salesIntensity: personality.salesIntensity,
+      technicalDepth: personality.technicalDepth,
     });
   };
 
@@ -154,32 +153,15 @@ function AgentConfigContent() {
     );
   }
 
-  const defaultSystemPrompt = `You are ${agentName}, the AI receptionist for ${shop?.name || "this auto repair shop"}. You are friendly, professional, and knowledgeable about auto repair services.
-
-Your goals:
-1. Answer customer questions about services, pricing, and availability
-2. Book appointments when customers are ready
-3. Capture vehicle information (year, make, model, mileage)
-4. Identify the customer's primary concern and any related service needs
-5. If appropriate, suggest complementary services that would benefit the customer
-
-Always be helpful and never pushy. If you don't know something, offer to have the shop manager call them back.`;
-
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Header */}
       <div className="flex items-center gap-4">
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => setLocation(`/shops/${shopId}`)}
-        >
+        <Button variant="ghost" size="icon" onClick={() => setLocation(`/shops/${shopId}`)}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="flex-1">
-          <h1 className="text-2xl font-semibold tracking-tight">
-            AI Agent Configuration
-          </h1>
+          <h1 className="text-2xl font-semibold tracking-tight">AI Agent Configuration</h1>
           <p className="text-sm text-muted-foreground">{shop?.name}</p>
         </div>
         <Button onClick={handleSave} disabled={saveConfig.isPending}>
@@ -190,51 +172,29 @@ Always be helpful and never pushy. If you don't know something, offer to have th
 
       {/* Agent Status Banner */}
       {agentStatus && (
-        <Card
-          className={
-            agentStatus.isLive
-              ? "border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30"
-              : "border-amber-200 bg-amber-50 dark:border-amber-900 dark:bg-amber-950/30"
-          }
-        >
+        <Card className={agentStatus.isLive ? "border-green-200 bg-green-50" : "border-amber-200 bg-amber-50"}>
           <CardContent className="p-4">
             <div className="flex items-center justify-between gap-4">
               <div className="flex items-center gap-3">
-                {agentStatus.isLive ? (
-                  <CheckCircle2 className="h-5 w-5 text-green-600 dark:text-green-400 shrink-0" />
-                ) : (
-                  <AlertCircle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0" />
-                )}
+                {agentStatus.isLive
+                  ? <CheckCircle2 className="h-5 w-5 text-green-600 shrink-0" />
+                  : <AlertCircle className="h-5 w-5 text-amber-600 shrink-0" />}
                 <div>
                   <p className="text-sm font-medium">
-                    {agentStatus.isLive
-                      ? "Agent is live and answering calls"
-                      : !agentStatus.hasAgent
-                        ? "AI agent not provisioned yet — calls will go to voicemail"
-                        : !agentStatus.hasPhone
-                          ? "No phone number assigned — provision one in Shop Settings"
-                          : "Agent needs configuration"}
+                    {agentStatus.isLive ? "Agent is live and answering calls"
+                      : !agentStatus.hasAgent ? "AI agent not provisioned yet"
+                      : !agentStatus.hasPhone ? "No phone number assigned"
+                      : "Agent needs configuration"}
                   </p>
                   <div className="flex items-center gap-3 mt-1">
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${agentStatus.hasConfig ? "text-green-600" : "text-muted-foreground"}`}
-                    >
+                    <Badge variant="outline" className={`text-xs ${agentStatus.hasConfig ? "text-green-600" : "text-muted-foreground"}`}>
                       {agentStatus.hasConfig ? "Config saved" : "No config"}
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${agentStatus.hasAgent ? "text-green-600" : "text-muted-foreground"}`}
-                    >
+                    <Badge variant="outline" className={`text-xs ${agentStatus.hasAgent ? "text-green-600" : "text-muted-foreground"}`}>
                       {agentStatus.hasAgent ? "Agent provisioned" : "No agent"}
                     </Badge>
-                    <Badge
-                      variant="outline"
-                      className={`text-xs ${agentStatus.hasPhone ? "text-green-600" : "text-muted-foreground"}`}
-                    >
-                      {agentStatus.hasPhone
-                        ? agentStatus.phoneNumber
-                        : "No phone"}
+                    <Badge variant="outline" className={`text-xs ${agentStatus.hasPhone ? "text-green-600" : "text-muted-foreground"}`}>
+                      {agentStatus.hasPhone ? agentStatus.phoneNumber : "No phone"}
                     </Badge>
                   </div>
                 </div>
@@ -245,34 +205,24 @@ Always be helpful and never pushy. If you don't know something, offer to have th
                 size="sm"
                 variant={agentStatus.hasAgent ? "outline" : "default"}
               >
-                {provisionAgent.isPending ? (
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                ) : (
-                  <Zap className="h-4 w-4 mr-2" />
-                )}
-                {provisionAgent.isPending
-                  ? "Provisioning..."
-                  : agentStatus.hasAgent
-                    ? "Update Agent"
-                    : "Go Live"}
+                {provisionAgent.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+                {provisionAgent.isPending ? "Provisioning..." : agentStatus.hasAgent ? "Update Agent" : "Go Live"}
               </Button>
             </div>
           </CardContent>
         </Card>
       )}
 
-      {/* Voice & Identity */}
+      {/* Identity */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
-            <Volume2 className="h-5 w-5 text-primary" />
+            <Bot className="h-5 w-5 text-primary" />
             <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              Voice & Identity
+              Agent Identity
             </CardTitle>
           </div>
-          <CardDescription>
-            Configure how your AI agent sounds and introduces itself.
-          </CardDescription>
+          <CardDescription>Name, greeting, and primary language.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid md:grid-cols-2 gap-4">
@@ -284,44 +234,22 @@ Always be helpful and never pushy. If you don't know something, offer to have th
                 onChange={e => setAgentName(e.target.value)}
                 placeholder="e.g., Baylio, Sarah, Mike"
               />
-              <p className="text-xs text-muted-foreground">
-                The name your AI uses to introduce itself.
-              </p>
+              <p className="text-xs text-muted-foreground">The name the AI uses when answering calls.</p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="language">Language</Label>
-              <Input
-                id="language"
-                value={language}
-                onChange={e => setLanguage(e.target.value)}
-                placeholder="en"
-              />
-              <p className="text-xs text-muted-foreground">
-                ISO language code (e.g., en, es, fr).
-              </p>
-            </div>
-          </div>
-          <div className="grid md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="voice-id">ElevenLabs Voice ID</Label>
-              <Input
-                id="voice-id"
-                value={voiceId}
-                onChange={e => setVoiceId(e.target.value)}
-                placeholder="e.g., 21m00Tcm4TlvDq8ikWAM"
-              />
-              <p className="text-xs text-muted-foreground">
-                Get this from your ElevenLabs dashboard.
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="voice-name">Voice Name (for reference)</Label>
-              <Input
-                id="voice-name"
-                value={voiceName}
-                onChange={e => setVoiceName(e.target.value)}
-                placeholder="e.g., Rachel, Josh"
-              />
+              <Label htmlFor="language">Primary Language</Label>
+              <Select value={language} onValueChange={setLanguage}>
+                <SelectTrigger id="language">
+                  <Globe className="h-4 w-4 mr-2 text-muted-foreground" />
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {LANGUAGES.map(l => (
+                    <SelectItem key={l.code} value={l.code}>{l.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">All agents auto-detect caller language. This sets the default.</p>
             </div>
           </div>
           <div className="space-y-2">
@@ -333,54 +261,53 @@ Always be helpful and never pushy. If you don't know something, offer to have th
               placeholder={`e.g., "Hi, thanks for calling ${shop?.name || "our shop"}! This is ${agentName}, how can I help you today?"`}
               rows={2}
             />
-            <p className="text-xs text-muted-foreground">
-              The first thing the AI says when answering a call.
-            </p>
+            <p className="text-xs text-muted-foreground">Leave blank to use the default greeting.</p>
           </div>
         </CardContent>
       </Card>
 
-      {/* System Prompt */}
+      {/* Voice */}
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Volume2 className="h-5 w-5 text-primary" />
+            <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+              Voice
+            </CardTitle>
+          </div>
+          <CardDescription>
+            Choose how your AI sounds on the phone. All voices speak every supported language.
+            Click ▶ to hear a preview.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <VoicePicker
+            selectedVoiceId={voiceId}
+            onSelect={(id, name) => { setVoiceId(id); setVoiceName(name); }}
+          />
+        </CardContent>
+      </Card>
+
+      {/* Personality */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-primary" />
             <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
-              System Prompt
+              Personality
             </CardTitle>
           </div>
           <CardDescription>
-            Define your AI agent's personality, knowledge, and behavior rules.
-            This is the core instruction set that controls how the agent handles
-            calls.
+            Pick a character archetype, then fine-tune the sliders. These settings are automatically
+            compiled into your agent's instructions.
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Textarea
-              value={systemPrompt}
-              onChange={e => setSystemPrompt(e.target.value)}
-              placeholder={defaultSystemPrompt}
-              rows={12}
-              className="font-mono text-sm"
-            />
-            <div className="flex items-center justify-between">
-              <p className="text-xs text-muted-foreground">
-                {systemPrompt.length} characters
-              </p>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={() => setSystemPrompt(defaultSystemPrompt)}
-              >
-                Load Default Template
-              </Button>
-            </div>
-          </div>
+        <CardContent>
+          <PersonalityPicker values={personality} onChange={setPersonality} />
         </CardContent>
       </Card>
 
-      {/* Upsell Configuration */}
+      {/* Upsell */}
       <Card>
         <CardHeader>
           <div className="flex items-center gap-2">
@@ -389,65 +316,74 @@ Always be helpful and never pushy. If you don't know something, offer to have th
               Upsell Engine
             </CardTitle>
           </div>
-          <CardDescription>
-            Configure intelligent service recommendations. The AI suggests
-            complementary services based on customer symptoms and vehicle needs.
-          </CardDescription>
+          <CardDescription>Configure intelligent service recommendations.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
               <Label>Enable Upselling</Label>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Allow the AI to suggest additional services during calls.
-              </p>
+              <p className="text-xs text-muted-foreground mt-0.5">Allow the AI to suggest additional services.</p>
             </div>
-            <Switch
-              checked={upsellEnabled}
-              onCheckedChange={setUpsellEnabled}
-            />
+            <Switch checked={upsellEnabled} onCheckedChange={setUpsellEnabled} />
           </div>
           {upsellEnabled && (
             <>
               <Separator />
               <div className="grid md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="confidence">Confidence Threshold</Label>
+                  <Label>Confidence Threshold</Label>
                   <Input
-                    id="confidence"
-                    type="number"
-                    step="0.05"
-                    min="0"
-                    max="1"
+                    type="number" step="0.05" min="0" max="1"
                     value={confidenceThreshold}
                     onChange={e => setConfidenceThreshold(e.target.value)}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Only suggest services when confidence is above this level
-                    (0-1).
-                  </p>
+                  <p className="text-xs text-muted-foreground">Only suggest when confidence is above this (0-1).</p>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="max-upsells">Max Upsells Per Call</Label>
+                  <Label>Max Upsells Per Call</Label>
                   <Input
-                    id="max-upsells"
-                    type="number"
-                    min={0}
-                    max={5}
+                    type="number" min={0} max={5}
                     value={maxUpsellsPerCall}
-                    onChange={e =>
-                      setMaxUpsellsPerCall(parseInt(e.target.value) || 1)
-                    }
+                    onChange={e => setMaxUpsellsPerCall(parseInt(e.target.value) || 1)}
                   />
-                  <p className="text-xs text-muted-foreground">
-                    Limit suggestions to avoid sounding pushy.
-                  </p>
                 </div>
               </div>
             </>
           )}
         </CardContent>
       </Card>
+
+      {/* Advanced — Custom Instructions */}
+      <Collapsible open={advancedOpen} onOpenChange={setAdvancedOpen}>
+        <Card>
+          <CardHeader className="pb-3">
+            <CollapsibleTrigger className="flex items-center justify-between w-full group">
+              <div className="flex items-center gap-2">
+                <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                  Custom Instructions (Advanced)
+                </CardTitle>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${advancedOpen ? "rotate-180" : ""}`} />
+            </CollapsibleTrigger>
+          </CardHeader>
+          <CollapsibleContent>
+            <CardContent className="space-y-3 pt-0">
+              <p className="text-xs text-muted-foreground">
+                The personality settings above automatically build your agent's instructions. Only add custom rules
+                here for things unique to your shop (e.g., "Always mention we offer fleet discounts").
+              </p>
+              <Textarea
+                value={systemPrompt}
+                onChange={e => setSystemPrompt(e.target.value)}
+                placeholder="Shop-specific rules that apply to every call..."
+                rows={6}
+                className="font-mono text-sm"
+              />
+              <p className="text-xs text-muted-foreground">{systemPrompt.length} characters</p>
+            </CardContent>
+          </CollapsibleContent>
+        </Card>
+      </Collapsible>
     </div>
   );
 }
