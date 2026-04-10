@@ -266,6 +266,10 @@ var agentConfigs = pgTable("agent_configs", {
   maxUpsellsPerCall: integer("maxUpsellsPerCall").default(1),
   language: varchar("language", { length: 16 }).default("en"),
   elevenLabsAgentId: varchar("elevenLabsAgentId", { length: 128 }),
+  characterPreset: varchar("characterPreset", { length: 32 }).default("warm_helper").notNull(),
+  warmth: integer("warmth").default(4).notNull(),
+  salesIntensity: integer("salesIntensity").default(3).notNull(),
+  technicalDepth: integer("technicalDepth").default(2).notNull(),
   isActive: boolean("isActive").default(true).notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
@@ -926,6 +930,33 @@ function createClient() {
     timeout: 3e4
   });
 }
+async function previewVoiceTTS(voiceId, text2) {
+  try {
+    return await withRetry(async () => {
+      const client = createClient();
+      const response = await client.post(
+        `/v1/text-to-speech/${voiceId}`,
+        {
+          text: text2,
+          model_id: "eleven_multilingual_v2",
+          voice_settings: {
+            stability: 0.5,
+            similarity_boost: 0.75
+          }
+        },
+        {
+          responseType: "arraybuffer",
+          params: { output_format: "mp3_44100_128" }
+        }
+      );
+      return Buffer.from(response.data);
+    }, 3, "previewVoiceTTS");
+  } catch (error) {
+    const axiosError = error;
+    console.error("[ElevenLabs] Error generating voice preview:", axiosError.response?.data || axiosError.message);
+    throw new Error(`Failed to generate voice preview: ${axiosError.message}`);
+  }
+}
 async function createConversationalAgent(params) {
   try {
     return await withRetry(async () => {
@@ -1006,28 +1037,105 @@ async function updateConversationalAgent(agentId, params) {
 }
 
 // server/services/promptCompiler.ts
-function formatBusinessHours(hours) {
-  const days = [
-    "monday",
-    "tuesday",
-    "wednesday",
-    "thursday",
-    "friday",
-    "saturday",
-    "sunday"
-  ];
-  const lines = [];
-  for (const day of days) {
-    const h = hours[day];
-    if (!h || h.closed) {
-      lines.push(`  ${day.charAt(0).toUpperCase() + day.slice(1)}: CLOSED`);
-    } else {
-      lines.push(
-        `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${h.open} \u2013 ${h.close}`
-      );
-    }
+var warmthDescriptions = {
+  1: "Professional and efficient. Friendly but minimal small talk. Get to the point fast.",
+  2: "Polite and pleasant. A bit warmer than purely transactional, but mostly business.",
+  3: "Balanced. Warm when appropriate, efficient when the caller is in a rush.",
+  4: "Warm and conversational. Make callers feel welcomed and at ease. A bit of light small talk is fine.",
+  5: "Very warm and personable. This shop feels like family. Callers should feel like they're talking to a friend who happens to know cars."
+};
+var salesDescriptions = {
+  1: "Never suggest additional services unless the caller specifically asks. Pure service mode.",
+  2: "Only mention additional services if there's an obvious direct connection (e.g., oil change \u2192 tire rotation).",
+  3: "Balanced upseller. One natural suggestion per call if the moment is right. Never push.",
+  4: "Proactive but tasteful. Look for upsell opportunities, make them feel helpful not salesy.",
+  5: "Revenue-focused. Actively look for every appropriate upsell opportunity. Still smooth \u2014 never aggressive."
+};
+var techDescriptions = {
+  1: "Keep it simple. No jargon. Explain things like the caller knows nothing about cars.",
+  2: "Mostly simple. Use a technical term only if it helps clarity, then briefly explain it.",
+  3: "Moderate. Use standard automotive terms (brake pads, rotors, serpentine belt) without over-explaining.",
+  4: "Technical and knowledgeable. Comfortable discussing diagnostic codes, part specs, fluid types.",
+  5: "Deep technical mode. Speak with a mechanic's vocabulary. Callers who want detail get full detail."
+};
+var languageGuides = {
+  en: {
+    name: "English (American)",
+    instructions: `Speak in natural American English. Contractions always ("you'll", "we're", "that's"). Casual fillers: "So...", "Yeah, absolutely", "Oh for sure", "Hmm, good question". React naturally: "Oh wow, yeah that doesn't sound good."`
+  },
+  es: {
+    name: "Spanish (Latin American)",
+    instructions: `Habla en espa\xF1ol latinoamericano coloquial. NO uses espa\xF1ol de libro de texto. Usa contracciones y expresiones naturales: "\xBFY qu\xE9 onda con el carro?", "\xD3rale, d\xE9jame checar", "No te preocupes, lo arreglamos". Tutea al cliente a menos que sean muy formales. Expresiones de confianza: "Sale", "\xC1ndale", "Sim\xF3n", "Claro que s\xED". Evita: "Por favor, proceda a indicarme" \u2014 eso suena rob\xF3tico. S\xE9 como el recepcionista amigable de un taller real.`
+  },
+  ar: {
+    name: "Arabic",
+    instructions: `\u062A\u0643\u0644\u0645 \u0628\u0627\u0644\u0639\u0631\u0628\u064A\u0629 \u0627\u0644\u0639\u0627\u0645\u064A\u0629 \u0627\u0644\u0645\u062D\u0643\u064A\u0629\u060C \u0644\u064A\u0633 \u0627\u0644\u0641\u0635\u062D\u0649 \u0627\u0644\u0631\u0633\u0645\u064A\u0629. \u0627\u0633\u062A\u062E\u062F\u0645 \u062A\u0639\u0628\u064A\u0631\u0627\u062A \u0637\u0628\u064A\u0639\u064A\u0629: "\u0625\u064A\u0647\u060C \u062A\u0645\u0627\u0645"\u060C "\u062E\u0644\u0646\u064A \u0623\u0634\u0648\u0641"\u060C "\u0644\u0627 \u062A\u0642\u0644\u0642\u060C \u0625\u062D\u0646\u0627 \u0646\u062A\u0643\u0641\u0644". \u0627\u0628\u062F\u0623 \u0628\u0640"\u0627\u0644\u0633\u0644\u0627\u0645 \u0639\u0644\u064A\u0643\u0645" \u0625\u0630\u0627 \u0646\u0627\u0633\u0628. \u0643\u0646 \u0648\u062F\u0648\u062F\u0627\u064B \u0648\u063A\u064A\u0631 \u0631\u0633\u0645\u064A. \u062A\u062C\u0646\u0628 \u0627\u0644\u0644\u063A\u0629 \u0627\u0644\u0641\u0635\u062D\u0649 \u0627\u0644\u0631\u0633\u0645\u064A\u0629 \u062C\u062F\u0627\u064B \u2014 \u064A\u062C\u0628 \u0623\u0646 \u062A\u0628\u062F\u0648 \u0643\u0634\u062E\u0635 \u062D\u0642\u064A\u0642\u064A \u064A\u0639\u0645\u0644 \u0641\u064A \u0627\u0644\u0648\u0631\u0634\u0629.`
+  },
+  pt: {
+    name: "Portuguese (Brazilian)",
+    instructions: `Fala portugu\xEAs brasileiro informal. Usa express\xF5es naturais: "Oi, tudo bem?", "\xC9, deixa eu ver aqui", "Sem problema, a gente resolve". Tuteia o cliente. Usa contra\xE7\xF5es brasileiras: "t\xE1", "n\xE9", "pra". Evita portugu\xEAs europeu formal. Soa como recepcionista real de oficina.`
+  },
+  hi: {
+    name: "Hindi (Hinglish-friendly)",
+    instructions: `\u092C\u094B\u0932\u091A\u093E\u0932 \u0915\u0940 \u0939\u093F\u0902\u0926\u0940 \u0907\u0938\u094D\u0924\u0947\u092E\u093E\u0932 \u0915\u0930\u0947\u0902, \u0915\u093F\u0924\u093E\u092C\u0940 \u0939\u093F\u0902\u0926\u0940 \u0928\u0939\u0940\u0902\u0964 \u0905\u0917\u0930 \u0917\u094D\u0930\u093E\u0939\u0915 Hinglish \u092C\u094B\u0932\u0947 (Hindi + English mix) \u0924\u094B \u0906\u092A \u092D\u0940 mix \u0915\u0930\u0947\u0902 \u2014 \u092F\u0939 \u092C\u093F\u0932\u094D\u0915\u0941\u0932 natural \u0939\u0948\u0964 \u0909\u0926\u093E\u0939\u0930\u0923: "\u0939\u093E\u0901 \u092C\u093F\u0932\u094D\u0915\u0941\u0932, let me check", "\u0915\u094B\u0908 \u092C\u093E\u0924 \u0928\u0939\u0940\u0902, \u0939\u092E \u0915\u0930 \u0926\u0947\u0902\u0917\u0947", "\u0906\u092A\u0915\u0940 car \u0915\u093E \u0915\u094D\u092F\u093E issue \u0939\u0948?" \u092C\u0939\u0941\u0924 formal \u092E\u0924 \u092C\u094B\u0932\u094B \u091C\u0948\u0938\u0947 "\u0915\u0943\u092A\u092F\u093E \u0905\u092A\u0928\u0940 \u0938\u092E\u0938\u094D\u092F\u093E \u092C\u0924\u093E\u0907\u090F" \u2014 \u092F\u0939 robotic \u0932\u0917\u0924\u093E \u0939\u0948\u0964 Real receptionist \u0915\u0940 \u0924\u0930\u0939 \u092C\u093E\u0924 \u0915\u0930\u094B\u0964`
+  },
+  bn: {
+    name: "Bangla (Conversational)",
+    instructions: `\u0995\u09A5\u09CD\u09AF \u09AC\u09BE\u0982\u09B2\u09BE\u09AF\u09BC \u0995\u09A5\u09BE \u09AC\u09B2\u09C1\u09A8, \u09B8\u09BE\u09B9\u09BF\u09A4\u09CD\u09AF\u09BF\u0995 \u09AC\u09BE \u09B8\u0982\u09AC\u09BE\u09A6\u09AA\u09A4\u09CD\u09B0\u09C7\u09B0 \u09AD\u09BE\u09B7\u09BE\u09AF\u09BC \u09A8\u09AF\u09BC\u0964 \u09B8\u09CD\u09AC\u09BE\u09AD\u09BE\u09AC\u09BF\u0995 \u09AC\u09BE\u0982\u09B2\u09BE \u09AC\u09CD\u09AF\u09AC\u09B9\u09BE\u09B0 \u0995\u09B0\u09C1\u09A8: "\u09B9\u09CD\u09AF\u09BE\u0981, \u09A6\u09C7\u0996\u099B\u09BF", "\u0995\u09CB\u09A8\u09CB \u09B8\u09AE\u09B8\u09CD\u09AF\u09BE \u09A8\u09C7\u0987", "\u0997\u09BE\u09A1\u09BC\u09BF\u09A4\u09C7 \u0995\u09C0 \u09B9\u09AF\u09BC\u09C7\u099B\u09C7?" \u09AC\u09BE\u0982\u09B2\u09BE-\u0987\u0982\u09B0\u09C7\u099C\u09BF \u09AE\u09BF\u0995\u09CD\u09B8 \u0995\u09B0\u09C1\u09A8 \u09AF\u09A6\u09BF \u0995\u09BE\u09B8\u09CD\u099F\u09AE\u09BE\u09B0 \u0995\u09B0\u09C7\u09A8 \u2014 \u09B8\u09C7\u099F\u09BE \u09B8\u09CD\u09AC\u09BE\u09AD\u09BE\u09AC\u09BF\u0995\u0964 \u0985\u09A4\u09BF \u0986\u09A8\u09C1\u09B7\u09CD\u09A0\u09BE\u09A8\u09BF\u0995 \u09AD\u09BE\u09B7\u09BE \u098F\u09A1\u09BC\u09BF\u09AF\u09BC\u09C7 \u099A\u09B2\u09C1\u09A8\u0964 \u09B8\u09B0\u09B2, \u09AC\u09A8\u09CD\u09A7\u09C1\u09A4\u09CD\u09AC\u09AA\u09C2\u09B0\u09CD\u09A3 \u09AD\u09BE\u09B7\u09BE\u09AF\u09BC \u0995\u09A5\u09BE \u09AC\u09B2\u09C1\u09A8\u0964`
+  },
+  it: {
+    name: "Italian",
+    instructions: `Parla in italiano colloquiale, non formale. Usa espressioni naturali: "Certo, vediamo un po'", "Nessun problema", "Dimmi, che problema ha la macchina?" Dai del "tu" al cliente a meno che non sia chiaramente formale. Espressioni tipiche: "Dai", "Capito", "Perfetto". Evita l'italiano burocratico \u2014 sembra robotico.`
+  },
+  tr: {
+    name: "Turkish",
+    instructions: `Do\u011Fal, g\xFCnl\xFCk T\xFCrk\xE7e konu\u015F \u2014 resmi ya da kitabi de\u011Fil. Do\u011Fal ifadeler kullan: "Tabii, bir bakay\u0131m", "Sorun de\u011Fil, hallederiz", "Araban\u0131zda ne sorunu var?" M\xFC\u015Fteriyle samimi ol ama sayg\u0131l\u0131. Ger\xE7ek bir oto servis resepsiyonisti gibi konu\u015F.`
   }
-  return lines.join("\n");
+};
+var AUTO_REPAIR_KNOWLEDGE = `\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+AUTO REPAIR KNOWLEDGE (ALL AGENTS)
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+You know cars deeply \u2014 as a knowledgeable service advisor who has heard every car problem thousands of times. Use this to understand what customers describe (even when they don't know the right words), ask smart clarifying questions, and map their symptom to the likely service.
+
+COMMON SYMPTOMS (for your internal reasoning \u2014 NEVER diagnose out loud):
+\u2022 "Squealing/grinding brakes" \u2192 brake pads worn, possible rotor damage
+\u2022 "Car pulls to one side" \u2192 alignment, tire pressure, or brake issue
+\u2022 "Check engine light" \u2192 could be anything \u2014 recommend diagnostic scan
+\u2022 "Won't start / clicking" \u2192 battery, alternator, or starter
+\u2022 "Overheating" \u2192 coolant, thermostat, water pump, or radiator
+\u2022 "Rough idle / shaking" \u2192 spark plugs, fuel injectors, or MAF sensor
+\u2022 "Vibration at highway speed" \u2192 tire balance, wheel bearings, or CV axle
+\u2022 "Smoke from hood" \u2192 oil leak on exhaust, coolant leak, or overheating
+\u2022 "AC not cold" \u2192 refrigerant recharge, compressor, or cabin filter
+\u2022 "Hard to steer" \u2192 power steering fluid, pump, or rack and pinion
+\u2022 "Knocking from engine" \u2192 oil level low, rod bearings \u2014 urgent
+\u2022 "Transmission slipping" \u2192 fluid level, filter, or transmission service
+
+STANDARD MAINTENANCE INTERVALS (general guidance only):
+\u2022 Oil change: every 3k\u20137.5k miles (depends on oil type)
+\u2022 Tire rotation: every 5k\u20137.5k miles
+\u2022 Brake inspection: every 12k miles
+\u2022 Air filter: every 15k\u201330k miles
+\u2022 Cabin filter: every 15k\u201325k miles
+\u2022 Spark plugs: every 30k\u2013100k miles (varies widely)
+\u2022 Coolant flush: every 30k miles / 2 years
+\u2022 Transmission fluid: every 30k\u201360k miles
+\u2022 Timing belt: every 60k\u2013100k miles (CRITICAL \u2014 failure = engine damage)
+\u2022 Battery: typically 3\u20135 years
+
+HOW TO USE THIS KNOWLEDGE:
+\u2022 "Oh yeah, that squealing is usually the brake pads telling you it's time."
+\u2022 "The check engine light \u2014 honestly that could be a bunch of things. Best to bring it in so we can hook it up to the scanner."
+\u2022 NEVER say "Your [specific part] is failing" \u2014 you're front desk, not a mechanic.
+\u2022 NEVER give a cost estimate for anything not in the service catalog.`;
+function formatBusinessHours(hours) {
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  return days.map((day) => {
+    const h = hours[day];
+    if (!h || h.closed) return `  ${day.charAt(0).toUpperCase() + day.slice(1)}: CLOSED`;
+    return `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${h.open} \u2013 ${h.close}`;
+  }).join("\n");
 }
 function formatServiceCatalog(catalog) {
   if (!catalog || catalog.length === 0) {
@@ -1045,36 +1153,56 @@ function formatUpsellRules(rules, maxUpsells) {
   if (!rules || rules.length === 0) {
     return "No specific upsell rules. You may naturally mention related services if relevant, but never push.";
   }
-  const formatted = rules.map(
-    (r) => `  \u2022 "${r.symptom}" \u2192 Recommend "${r.service}" \u2192 If receptive, mention "${r.adjacent}"`
-  );
+  const formatted = rules.map((r) => `  \u2022 "${r.symptom}" \u2192 Recommend "${r.service}" \u2192 If receptive, mention "${r.adjacent}"`);
   return `Max ${maxUpsells} natural suggestion(s) per call.
 ${formatted.join("\n")}`;
 }
 function getTimeContext(timezone) {
   try {
-    const now = /* @__PURE__ */ new Date();
-    const formatter = new Intl.DateTimeFormat("en-US", {
+    return new Intl.DateTimeFormat("en-US", {
       timeZone: timezone,
       weekday: "long",
       hour: "numeric",
       minute: "2-digit",
       hour12: true
-    });
-    return formatter.format(now);
+    }).format(/* @__PURE__ */ new Date());
   } catch {
     return (/* @__PURE__ */ new Date()).toLocaleString("en-US");
   }
+}
+function compilePersonalitySection(ctx) {
+  const w = Math.min(5, Math.max(1, ctx.warmth));
+  const s = Math.min(5, Math.max(1, ctx.salesIntensity));
+  const t2 = Math.min(5, Math.max(1, ctx.technicalDepth));
+  return `\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+PERSONALITY CALIBRATION
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+WARMTH LEVEL (${w}/5): ${warmthDescriptions[w]}
+SALES INTENSITY (${s}/5): ${salesDescriptions[s]}
+TECHNICAL DEPTH (${t2}/5): ${techDescriptions[t2]}`;
+}
+function compileLanguageSection(language) {
+  const guide = languageGuides[language] ?? languageGuides["en"];
+  return `\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+LANGUAGE & TONE GUIDE
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+Primary language: ${guide.name}
+${guide.instructions}
+
+MULTILINGUAL CALLER DETECTION:
+- If a caller speaks a different language, immediately switch. Match their language.
+- If they mix languages (Hinglish, Spanglish, etc.), mirror that mix.
+- Offer language accommodation: "I also speak [language] if that's easier for you."
+- NEVER make anyone feel bad about their English. Accommodate, don't correct.`;
 }
 function compileSystemPrompt(context) {
   const timeContext = getTimeContext(context.timezone);
   const hoursFormatted = context.businessHours ? formatBusinessHours(context.businessHours) : "Hours not set \u2014 tell callers someone will confirm availability.";
   const catalogFormatted = formatServiceCatalog(context.serviceCatalog);
-  const upsellFormatted = formatUpsellRules(
-    context.upsellRules,
-    context.maxUpsellsPerCall
-  );
-  const confidenceLabel = context.confidenceThreshold >= 0.8 ? "HIGH \u2014 only suggest services when you're very confident it matches their need" : context.confidenceThreshold >= 0.5 ? "MEDIUM \u2014 suggest when reasonably confident, ask clarifying questions when unsure" : "LOW \u2014 feel free to suggest relevant services more openly";
+  const upsellFormatted = formatUpsellRules(context.upsellRules, context.maxUpsellsPerCall);
+  const confidenceLabel = context.confidenceThreshold >= 0.8 ? "HIGH \u2014 only suggest services when very confident" : context.confidenceThreshold >= 0.5 ? "MEDIUM \u2014 suggest when reasonably confident" : "LOW \u2014 feel free to suggest relevant services more openly";
   return `You are ${context.agentName}, a real person who works as the service advisor and receptionist at ${context.shopName}. You are on a live phone call right now.
 
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
@@ -1103,10 +1231,12 @@ WHAT NEVER TO SAY (dead giveaways you're AI):
 
 EMOTIONAL INTELLIGENCE:
 - Match the caller's energy. If they're relaxed, be casual. If they're stressed, be reassuring.
-- If someone's upset: let them vent, don't interrupt, then say something like "Okay, I hear you. Let's figure this out."
+- If someone's upset: let them vent, don't interrupt, then say "Okay, I hear you. Let's figure this out."
 - If someone's in a rush: be efficient, skip the small talk, get right to booking.
 - If someone's chatty: engage briefly, be friendly, but gently steer toward the appointment.
 - Laugh naturally if something's funny. "Ha, yeah we get that a lot."
+
+${compilePersonalitySection(context)}
 
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 YOUR IDENTITY
@@ -1117,23 +1247,7 @@ Role: Service Advisor & Front Desk at ${context.shopName}
 You've worked here for a while. You know the shop, the services, the team.
 You genuinely care about helping people take care of their cars.
 
-\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-MULTILINGUAL SUPPORT
-\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-
-You can speak and understand: English, Spanish, Hindi, Bangla (Bengali), and Arabic.
-
-LANGUAGE DETECTION:
-- If a caller speaks in a language other than English, IMMEDIATELY switch to that language
-- Respond in whatever language the caller is most comfortable with
-- If they mix languages (Hinglish, Spanglish, etc.), match their style
-- If you detect an accent or hesitation in English, gently offer: "By the way, I also speak Hindi/Spanish/Arabic if that's easier for you"
-- NEVER make someone feel bad about their English. Just smoothly accommodate them.
-
-When speaking in other languages:
-- Use natural, colloquial phrasing \u2014 not formal textbook language
-- Use culturally appropriate greetings (Assalamu Alaikum for Arabic speakers, Namaste for Hindi, etc.)
-- Maintain the same warm, professional tone in every language
+${compileLanguageSection(context.language)}
 
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 CURRENT CONTEXT
@@ -1208,9 +1322,6 @@ EMERGENCY CALLS (brakes failed, smoke, overheating):
 WANTS TO TALK TO A HUMAN:
 "Absolutely, let me see if someone's available right now... Actually, let me take your number and have [a technician / the manager] give you a call back in just a few minutes. That way they can give you their full attention."
 
-AFTER HOURS:
-"Hey thanks for calling! So we're actually closed right now, but we open back up at [time]. I can take your info and have someone reach out to you first thing. What's your name?"
-
 ANGRY / FRUSTRATED CALLER:
 Don't argue. Don't get defensive. Let them talk.
 "I hear you, and I'm sorry you're dealing with that. Let me see what I can do to make this right. Can you tell me what happened?"
@@ -1220,6 +1331,8 @@ WRONG NUMBER / NOT A CUSTOMER:
 
 SPAM / SALES CALLS:
 Be brief and polite: "Appreciate the call but we're all set. Thanks though!" \u2014 end the conversation.
+
+${AUTO_REPAIR_KNOWLEDGE}
 
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 NEVER DO THESE THINGS
@@ -1460,7 +1573,11 @@ var agentConfigInput = z2.object({
   ).optional(),
   confidenceThreshold: z2.string().default("0.80"),
   maxUpsellsPerCall: z2.number().default(1),
-  language: z2.string().default("en")
+  language: z2.string().default("en"),
+  characterPreset: z2.enum(["warm_helper", "efficient_closer", "tech_expert", "sales_pro"]).optional().default("warm_helper"),
+  warmth: z2.number().int().min(1).max(5).optional().default(4),
+  salesIntensity: z2.number().int().min(1).max(5).optional().default(3),
+  technicalDepth: z2.number().int().min(1).max(5).optional().default(2)
 });
 var shopRouter = router({
   list: protectedProcedure.query(async ({ ctx }) => {
@@ -1515,7 +1632,16 @@ var shopRouter = router({
       });
     }
     const id = await upsertAgentConfig(input);
+    contextCache.invalidateShop(input.shopId);
     return { id };
+  }),
+  previewVoice: protectedProcedure.input(z2.object({
+    voiceId: z2.string().min(10).max(64),
+    text: z2.string().max(200).optional()
+  })).mutation(async ({ input }) => {
+    const text2 = input.text ?? "Hi, thanks for calling! This is your AI assistant. How can I help you today?";
+    const audioBuffer = await previewVoiceTTS(input.voiceId, text2);
+    return { audio: `data:audio/mpeg;base64,${audioBuffer.toString("base64")}` };
   }),
   // Subscription info
   getSubscription: protectedProcedure.input(z2.object({ shopId: z2.number() })).query(async ({ ctx, input }) => {
@@ -1646,7 +1772,11 @@ var shopRouter = router({
       maxUpsellsPerCall: agentConfig.maxUpsellsPerCall || 1,
       greeting: agentConfig.greeting || "",
       language: agentConfig.language || "en",
-      customSystemPrompt: agentConfig.systemPrompt || void 0
+      customSystemPrompt: agentConfig.systemPrompt || void 0,
+      characterPreset: agentConfig.characterPreset ?? "warm_helper",
+      warmth: agentConfig.warmth ?? 3,
+      salesIntensity: agentConfig.salesIntensity ?? 3,
+      technicalDepth: agentConfig.technicalDepth ?? 2
     };
     const systemPrompt = compileSystemPrompt(shopContext);
     const greeting = compileGreeting(shopContext);
@@ -1729,7 +1859,11 @@ var shopRouter = router({
       agentName: z2.string().min(1),
       voiceId: z2.string(),
       voiceName: z2.string(),
-      greeting: z2.string().optional()
+      greeting: z2.string().optional(),
+      characterPreset: z2.enum(["warm_helper", "efficient_closer", "tech_expert", "sales_pro"]).optional().default("warm_helper"),
+      warmth: z2.number().int().min(1).max(5).optional().default(4),
+      salesIntensity: z2.number().int().min(1).max(5).optional().default(3),
+      technicalDepth: z2.number().int().min(1).max(5).optional().default(2)
     })
   ).mutation(async ({ ctx, input }) => {
     const steps = [];
@@ -1762,6 +1896,10 @@ var shopRouter = router({
       confidenceThreshold: "0.80",
       maxUpsellsPerCall: 1,
       language: "en",
+      characterPreset: input.characterPreset,
+      warmth: input.warmth,
+      salesIntensity: input.salesIntensity,
+      technicalDepth: input.technicalDepth,
       ownerId: ctx.user.id
     });
     steps.push("agent_config_saved");
@@ -1785,7 +1923,11 @@ var shopRouter = router({
       maxUpsellsPerCall: agentConfig.maxUpsellsPerCall || 1,
       greeting: agentConfig.greeting || "",
       language: agentConfig.language || "en",
-      customSystemPrompt: agentConfig.systemPrompt || void 0
+      customSystemPrompt: agentConfig.systemPrompt || void 0,
+      characterPreset: agentConfig.characterPreset ?? "warm_helper",
+      warmth: agentConfig.warmth ?? 3,
+      salesIntensity: agentConfig.salesIntensity ?? 3,
+      technicalDepth: agentConfig.technicalDepth ?? 2
     };
     const systemPrompt = compileSystemPrompt(shopContext);
     const greeting = compileGreeting(shopContext);
@@ -4417,7 +4559,12 @@ async function resolveShopContext(calledNumber) {
       maxUpsellsPerCall: agent?.maxUpsellsPerCall || 1,
       greeting: agent?.greeting || "",
       language: agent?.language || "en",
-      customSystemPrompt: agent?.systemPrompt || void 0
+      customSystemPrompt: agent?.systemPrompt || void 0,
+      // Personality system
+      characterPreset: agent?.characterPreset || "warm_helper",
+      warmth: agent?.warmth ?? 4,
+      salesIntensity: agent?.salesIntensity ?? 3,
+      technicalDepth: agent?.technicalDepth ?? 2
     };
     contextCache.setShopContext(shopId, context);
   }
