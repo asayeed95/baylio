@@ -437,6 +437,10 @@ export const shopRouter = router({
         voiceId: z.string(),
         voiceName: z.string(),
         greeting: z.string().optional(),
+        characterPreset: z.enum(["warm_helper", "efficient_closer", "tech_expert", "sales_pro"]).optional().default("warm_helper"),
+        warmth: z.number().int().min(1).max(5).optional().default(4),
+        salesIntensity: z.number().int().min(1).max(5).optional().default(3),
+        technicalDepth: z.number().int().min(1).max(5).optional().default(2),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -477,6 +481,10 @@ export const shopRouter = router({
         confidenceThreshold: "0.80",
         maxUpsellsPerCall: 1,
         language: "en",
+        characterPreset: input.characterPreset,
+        warmth: input.warmth,
+        salesIntensity: input.salesIntensity,
+        technicalDepth: input.technicalDepth,
         ownerId: ctx.user.id,
       });
       steps.push("agent_config_saved");

@@ -30,10 +30,13 @@ import {
   Sparkles,
   Search,
   AlertCircle,
+  Volume2,
 } from "lucide-react";
 import { useState, useMemo } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
+import VoicePicker from "@/components/VoicePicker";
+import PersonalityPicker, { type CharacterPreset, type PersonalityValues } from "@/components/PersonalityPicker";
 
 /**
  * Onboarding Wizard
@@ -104,12 +107,6 @@ const COMMON_SERVICES = [
 
 const SERVICE_CATEGORIES = Array.from(new Set(COMMON_SERVICES.map(s => s.category)));
 
-const VOICE_OPTIONS = [
-  { id: "cjVigY5qzO86Huf0OWal", name: "Charlie", description: "Friendly, conversational male" },
-  { id: "EXAVITQu4vr4xnSDxMaL", name: "Sarah", description: "Professional, warm female" },
-  { id: "onwK4e9ZLuTAKqWW03F9", name: "Daniel", description: "Calm, authoritative male" },
-  { id: "XB0fDUnXU5powFXDhCwa", name: "Charlotte", description: "Energetic, upbeat female" },
-];
 
 export default function Onboarding() {
   const [, setLocation] = useLocation();
@@ -136,9 +133,15 @@ export default function Onboarding() {
 
   // Step 3: Agent Config
   const [agentName, setAgentName] = useState("");
-  const [voiceId, setVoiceId] = useState(VOICE_OPTIONS[0].id);
-  const [voiceName, setVoiceName] = useState(VOICE_OPTIONS[0].name);
+  const [voiceId, setVoiceId] = useState("21m00Tcm4TlvDq8ikWAM"); // Rachel — default
+  const [voiceName, setVoiceName] = useState("Rachel");
   const [greeting, setGreeting] = useState("");
+  const [personality, setPersonality] = useState<PersonalityValues>({
+    characterPreset: "warm_helper",
+    warmth: 4,
+    salesIntensity: 3,
+    technicalDepth: 2,
+  });
 
   // Step 4: Go Live
   const [provisioningStatus, setProvisioningStatus] = useState<"idle" | "provisioning" | "done" | "error">("idle");
@@ -246,6 +249,10 @@ export default function Onboarding() {
         voiceId,
         voiceName,
         greeting: greeting.trim() || undefined,
+        characterPreset: personality.characterPreset,
+        warmth: personality.warmth,
+        salesIntensity: personality.salesIntensity,
+        technicalDepth: personality.technicalDepth,
       });
 
       setResult(res);
@@ -823,34 +830,33 @@ export default function Onboarding() {
             {/* Voice Selection */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base">Voice</CardTitle>
-                <CardDescription>Choose how your AI sounds on the phone.</CardDescription>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Volume2 className="h-4 w-4" /> Voice
+                </CardTitle>
+                <CardDescription>
+                  Choose how your AI sounds. Click ▶ to preview. All voices speak every supported language.
+                </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="grid sm:grid-cols-2 gap-3">
-                  {VOICE_OPTIONS.map((voice) => (
-                    <div
-                      key={voice.id}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-all ${
-                        voiceId === voice.id
-                          ? "border-primary bg-primary/5 ring-1 ring-primary/20"
-                          : "hover:border-primary/30"
-                      }`}
-                      onClick={() => {
-                        setVoiceId(voice.id);
-                        setVoiceName(voice.name);
-                      }}
-                    >
-                      <div className="flex-1">
-                        <p className="font-medium text-sm">{voice.name}</p>
-                        <p className="text-xs text-muted-foreground">{voice.description}</p>
-                      </div>
-                      {voiceId === voice.id && (
-                        <CheckCircle2 className="h-5 w-5 text-primary flex-shrink-0" />
-                      )}
-                    </div>
-                  ))}
-                </div>
+                <VoicePicker
+                  selectedVoiceId={voiceId}
+                  onSelect={(id, name) => { setVoiceId(id); setVoiceName(name); }}
+                />
+              </CardContent>
+            </Card>
+
+            {/* Personality */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Bot className="h-4 w-4" /> Personality
+                </CardTitle>
+                <CardDescription>
+                  Pick a character and adjust the sliders. This controls how your AI sounds on calls.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <PersonalityPicker values={personality} onChange={setPersonality} />
               </CardContent>
             </Card>
 
