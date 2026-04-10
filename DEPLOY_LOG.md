@@ -7,6 +7,44 @@
 
 ## Latest Deploy
 
+- **Date:** 2026-04-09
+- **Branch:** main
+- **Commit:** `2267644`
+
+### What Changed
+
+**feat: AI Agent Config — Voice Picker, Personality System, Language Guides**
+
+1. **Voice Picker** — Replaced raw ElevenLabs voice ID text field with a curated 16-voice grid grouped by accent (American, British, Australian, Spanish-Latam). Each card has a Play ▶ button for live TTS preview. All voices use `eleven_multilingual_v2`. Voice catalog lives in `shared/voiceCatalog.ts` (safe for both server + client bundle).
+
+2. **Personality System** — 4 character presets (Warm Helper, Efficient Closer, Tech Expert, Sales Pro) + 3 fine-tune sliders (Warmth, Sales Intensity, Technical Depth, each 1–5). Preset clicks snap sliders to preset defaults. These compile into `compilePersonalitySection()` in the system prompt.
+
+3. **Language Guides** — 8 languages (EN, ES, AR, PT, HI, BN, IT, TR) with genuinely colloquial per-language instructions. Spanish uses "Órale, déjame checar" not textbook Spanish. Bangla starts with "কথ্য বাংলায়" (conversational Bangla). Falls back to English for unknown codes.
+
+4. **Auto Repair Knowledge** — Deep car knowledge baked into ALL agents by default: symptom-to-service map, maintenance intervals, "never diagnose out loud" rules. Not configurable per shop.
+
+5. **Database** — 4 new columns on `agent_configs`: `characterPreset varchar(32)`, `warmth integer`, `salesIntensity integer`, `technicalDepth integer` (all NOT NULL with defaults). Migration: `scripts/add-personality-columns.mjs`.
+
+6. **Commits:** `255105f` (schema), `f4f7218` (voice catalog), `237de26` (prompt compiler), `d2f6db9` (ShopContext assembly), `f13053c` (router), `0b057d1` (VoicePicker), `37a8fec` (PersonalityPicker), + AgentConfig + Onboarding rewrites.
+
+### Previous Deploy (2026-04-09 — earlier session)
+
+- **Commit:** `fce910d`
+
+1. **fix: AI voice now confirmed working end-to-end**
+   - Root cause 1: `gemini-2.5-flash` silently fails on ElevenLabs starter plan — LLM never called, first_message never played. Switched Zee + Sam to `gpt-4o-mini` via API PATCH.
+   - Root cause 2: `conversation_initiation_client_data` with undeclared dynamic variables in Register Call API created broken sessions (WebSocket connected but conversation never started). Removed client data entirely — agent has full prompt baked in.
+   - Root cause 3: Tried bypassing Register Call API with direct `?agent_id=` WebSocket URL — drops calls because ElevenLabs' Twilio endpoint requires `conversation_id` pre-registration for the Media Streams protocol. Reverted.
+   - `/no-answer` handler now reads `?baylio=` query param (Baylio number embedded in action URL) instead of relying on Twilio's `To` field, which can be the shop's phone number in Dial action callbacks.
+   - **Confirmed working:** Test agent (GPT-4o-mini minimal) answered. Zee restored with GPT-4o-mini, needs one more real call confirmation.
+
+2. **fix: ShopDetail crash on null startTime**
+   - `new Date(null)` was throwing RangeError when call logs had null startTime. Guard added.
+
+### Previous Deploy (2026-04-08)
+
+## Latest Deploy (PREVIOUS)
+
 - **Date:** 2026-04-08
 - **Branch:** main
 - **Commit:** `cbc5279`

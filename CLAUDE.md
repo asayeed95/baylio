@@ -318,7 +318,10 @@ Full schema in `drizzle/schema.ts`. Key tables:
 - **Twilio signature validation** — enforced in production (was `logOnly: true`, fixed in `bc2ddf0`). Includes Vercel `?path=` query param stripping (`8d3c54d`).
 - **Inbound call routing** — Twilio → ElevenLabs with real compiled shop-specific prompts
 - **Sales line bypass** — `844-875-2441` routes directly to Sam sales agent (agent ID `agent_8401kkzx0edafhbb0c56a04d1kmb`) bypassing shop resolution
-- **Prompt compiler** — Full service-advisor persona with multilingual support (EN/ES/HI/BN/AR), objection handling (angry callers, emergencies, spam, wrong numbers, after-hours), never-diagnose rules, subtle upselling with 3-stage confidence
+- **Prompt compiler** — Full service-advisor persona with multilingual support (EN/ES/AR/PT/HI/BN/IT/TR) via per-language colloquial guides, objection handling (angry callers, emergencies, spam, wrong numbers, after-hours), never-diagnose rules, subtle upselling with 3-stage confidence, deep auto repair knowledge baked in
+- **Voice Picker** — 16-voice curated grid (American, British, Australian, Spanish-Latam) with live TTS preview button; `shared/voiceCatalog.ts` shared between server + client
+- **Personality System** — 4 character presets (Warm Helper, Efficient Closer, Tech Expert, Sales Pro) + 3 fine-tune sliders (Warmth, Sales Intensity, Technical Depth 1–5) compiled into system prompt via `compilePersonalitySection()`
+- **Language Guides** — 8 languages with genuinely colloquial per-language instructions (not generic "speak naturally"); Bangla and Hindi use native-script examples
 - **Post-call pipeline architecture** — LLM analysis, usage metering, notifications, integrations (Google Calendar/Sheets/HubSpot/Shopmonkey, SMS follow-up) all wired
 - **Stripe integration** — 3 tiers (Starter $199, Pro $349, Elite $599), setup fees, checkout sessions, customer portal, webhook handlers for `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted`
 - **Admin portal** at `/admin` (admin role required)
@@ -500,6 +503,6 @@ If yes, we're ready. If no, fix whatever's blocking that.
 
 ---
 
-*Last updated: 2026-04-07 (ring-shop-first routing shipped, P0 cleared)*
+*Last updated: 2026-04-09 (AI agent config — voice picker, personality system, language guides shipped)*
 *Owner: Abdur (asayeed95 / One Asec LLC)*
 *Agents: Claude Code (backend/infra) + Antigravity (UI/UX)*
