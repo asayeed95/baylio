@@ -4226,6 +4226,10 @@ ${transcription}`
                 type: "boolean",
                 description: "Whether an appointment was successfully booked"
               },
+              appointmentDateTime: {
+                type: ["string", "null"],
+                description: "ISO 8601 datetime of the scheduled appointment if booked (e.g. '2026-04-10T10:00:00'), or null if not booked or no specific time mentioned"
+              },
               upsellAttempted: {
                 type: "boolean",
                 description: "Whether an additional service was suggested"
@@ -4247,6 +4251,7 @@ ${transcription}`
               "qaFlags",
               "summary",
               "appointmentBooked",
+              "appointmentDateTime",
               "upsellAttempted",
               "upsellAccepted",
               "estimatedRevenue"
@@ -4272,6 +4277,7 @@ ${transcription}`
       qaFlags: ["analysis_failed"],
       summary: "Call analysis failed. Manual review recommended.",
       appointmentBooked: false,
+      appointmentDateTime: null,
       upsellAttempted: false,
       upsellAccepted: false,
       estimatedRevenue: 0
@@ -4288,9 +4294,7 @@ async function processCompletedCall(callLogId) {
     if (call.transcription) {
       const shopResults = await db.select().from(shops).where(eq14(shops.id, call.shopId)).limit(1);
       const shop = shopResults[0];
-      const catalog = (shop?.serviceCatalog || []).map(
-        (s) => s.name
-      );
+      const catalog = (shop?.serviceCatalog || []).map((s) => s.name);
       const analysis = await analyzeTranscription(
         call.transcription,
         shop?.name || "Auto Repair Shop",
@@ -4367,8 +4371,7 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
         customerName: callLog.callerName || "Customer",
         customerPhone: callLog.callerPhone || "",
         service: analysis.serviceRequested,
-        dateTime: new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
-        // Default: tomorrow (actual date extracted from transcription in production)
+        dateTime: analysis.appointmentDateTime || new Date(Date.now() + 24 * 60 * 60 * 1e3).toISOString(),
         notes: analysis.summary
       });
     } catch (err) {
