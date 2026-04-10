@@ -109,9 +109,9 @@ export async function analyzeTranscription(
                 description: "Whether an appointment was successfully booked",
               },
               appointmentDateTime: {
-                type: ["string", "null"],
+                anyOf: [{ type: "string" }, { type: "null" }],
                 description:
-                  "ISO 8601 datetime of the scheduled appointment if booked (e.g. '2026-04-10T10:00:00'), or null if not booked or no specific time mentioned",
+                  "ISO 8601 datetime of the scheduled appointment if booked (e.g. '2026-04-10T10:00:00'). Must be a valid ISO string or null if no specific time was mentioned.",
               },
               upsellAttempted: {
                 type: "boolean",
@@ -328,19 +328,30 @@ async function runPostCallIntegrations(
     estimatedRevenue: number;
   }
 ): Promise<void> {
-  // Google Calendar: create appointment if booked
-  if (analysis.appointmentBooked) {
-    try {
-      await createAppointment(shopId, {
-        customerName: callLog.callerName || "Customer",
-        customerPhone: callLog.callerPhone || "",
-        service: analysis.serviceRequested,
-        dateTime: analysis.appointmentDateTime || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString(),
-        notes: analysis.summary,
-      });
-    } catch (err) {
-      console.error("[POST-CALL] Calendar integration error:", err);
+  // Google Calendar: create appointment only when we have a valid extracted datetime
+  if (analysis.appointmentBooked && analysis.appointmentDateTime) {
+    const parsedDate = new Date(analysis.appointmentDateTime);
+    if (!isNaN(parsedDate.getTime())) {
+      try {
+        await createAppointment(shopId, {
+          customerName: callLog.callerName || "Customer",
+          customerPhone: callLog.callerPhone || "",
+          service: analysis.serviceRequested,
+          dateTime: parsedDate.toISOString(),
+          notes: analysis.summary,
+        });
+      } catch (err) {
+        console.error("[POST-CALL] Calendar integration error:", err);
+      }
+    } else {
+      console.warn(
+        `[POST-CALL] appointmentDateTime "${analysis.appointmentDateTime}" is not a valid ISO string — skipping calendar creation`
+      );
     }
+  } else if (analysis.appointmentBooked) {
+    console.log(
+      "[POST-CALL] Appointment booked but no specific datetime extracted — skipping calendar creation"
+    );
   }
 
   // Google Sheets: sync call data
