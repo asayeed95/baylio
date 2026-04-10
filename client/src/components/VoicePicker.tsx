@@ -48,7 +48,7 @@ export default function VoicePicker({ selectedVoiceId, onSelect }: Props) {
       }
       const audio = new Audio(data.audio);
       audioRef.current = audio;
-      audio.play();
+      audio.play().catch(() => setPlayingId(null));
       audio.onended = () => setPlayingId(null);
     },
     onError: () => {
