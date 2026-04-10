@@ -3,13 +3,6 @@
  *
  * Compiles shop-specific context into a production system prompt for the
  * AI voice agent. Built for ElevenLabs Conversational AI + Twilio bridge.
- *
- * Design goals:
- * 1. Sound indistinguishable from a real human receptionist
- * 2. Never hallucinate services, prices, or capabilities
- * 3. Support multilingual callers (English, Spanish, Hindi, Bangla, Arabic)
- * 4. Handle real-world call scenarios (angry callers, emergencies, transfers)
- * 5. Upsell naturally without being pushy
  */
 
 export interface ShopContext {
@@ -20,133 +13,209 @@ export interface ShopContext {
   city: string;
   state: string;
   timezone: string;
-  businessHours: Record<
-    string,
-    { open: string; close: string; closed: boolean }
-  >;
-  serviceCatalog: Array<{
-    name: string;
-    category: string;
-    price?: number;
-    description?: string;
-  }>;
-  upsellRules: Array<{
-    symptom: string;
-    service: string;
-    adjacent: string;
-    confidence: number;
-  }>;
+  businessHours: Record<string, { open: string; close: string; closed: boolean }>;
+  serviceCatalog: Array<{ name: string; category: string; price?: number; description?: string }>;
+  upsellRules: Array<{ symptom: string; service: string; adjacent: string; confidence: number }>;
   confidenceThreshold: number;
   maxUpsellsPerCall: number;
   greeting: string;
   language: string;
   customSystemPrompt?: string;
+  // Personality system
+  characterPreset: string;
+  warmth: number;        // 1–5
+  salesIntensity: number; // 1–5
+  technicalDepth: number; // 1–5
 }
 
-/**
- * Format business hours into a human-readable string.
- */
+// ─── Personality Descriptors ────────────────────────────────────────────────
+
+const warmthDescriptions: Record<number, string> = {
+  1: "Professional and efficient. Friendly but minimal small talk. Get to the point fast.",
+  2: "Polite and pleasant. A bit warmer than purely transactional, but mostly business.",
+  3: "Balanced. Warm when appropriate, efficient when the caller is in a rush.",
+  4: "Warm and conversational. Make callers feel welcomed and at ease. A bit of light small talk is fine.",
+  5: "Very warm and personable. This shop feels like family. Callers should feel like they're talking to a friend who happens to know cars.",
+};
+
+const salesDescriptions: Record<number, string> = {
+  1: "Never suggest additional services unless the caller specifically asks. Pure service mode.",
+  2: "Only mention additional services if there's an obvious direct connection (e.g., oil change → tire rotation).",
+  3: "Balanced upseller. One natural suggestion per call if the moment is right. Never push.",
+  4: "Proactive but tasteful. Look for upsell opportunities, make them feel helpful not salesy.",
+  5: "Revenue-focused. Actively look for every appropriate upsell opportunity. Still smooth — never aggressive.",
+};
+
+const techDescriptions: Record<number, string> = {
+  1: "Keep it simple. No jargon. Explain things like the caller knows nothing about cars.",
+  2: "Mostly simple. Use a technical term only if it helps clarity, then briefly explain it.",
+  3: "Moderate. Use standard automotive terms (brake pads, rotors, serpentine belt) without over-explaining.",
+  4: "Technical and knowledgeable. Comfortable discussing diagnostic codes, part specs, fluid types.",
+  5: "Deep technical mode. Speak with a mechanic's vocabulary. Callers who want detail get full detail.",
+};
+
+// ─── Language Guides ────────────────────────────────────────────────────────
+
+const languageGuides: Record<string, { name: string; instructions: string }> = {
+  en: {
+    name: "English (American)",
+    instructions: `Speak in natural American English. Contractions always ("you'll", "we're", "that's"). Casual fillers: "So...", "Yeah, absolutely", "Oh for sure", "Hmm, good question". React naturally: "Oh wow, yeah that doesn't sound good."`,
+  },
+  es: {
+    name: "Spanish (Latin American)",
+    instructions: `Habla en español latinoamericano coloquial. NO uses español de libro de texto. Usa contracciones y expresiones naturales: "¿Y qué onda con el carro?", "Órale, déjame checar", "No te preocupes, lo arreglamos". Tutea al cliente a menos que sean muy formales. Expresiones de confianza: "Sale", "Ándale", "Simón", "Claro que sí". Evita: "Por favor, proceda a indicarme" — eso suena robótico. Sé como el recepcionista amigable de un taller real.`,
+  },
+  ar: {
+    name: "Arabic",
+    instructions: `تكلم بالعربية العامية المحكية، ليس الفصحى الرسمية. استخدم تعبيرات طبيعية: "إيه، تمام"، "خلني أشوف"، "لا تقلق، إحنا نتكفل". ابدأ بـ"السلام عليكم" إذا ناسب. كن ودوداً وغير رسمي. تجنب اللغة الفصحى الرسمية جداً — يجب أن تبدو كشخص حقيقي يعمل في الورشة.`,
+  },
+  pt: {
+    name: "Portuguese (Brazilian)",
+    instructions: `Fala português brasileiro informal. Usa expressões naturais: "Oi, tudo bem?", "É, deixa eu ver aqui", "Sem problema, a gente resolve". Tuteia o cliente. Usa contrações brasileiras: "tá", "né", "pra". Evita português europeu formal. Soa como recepcionista real de oficina.`,
+  },
+  hi: {
+    name: "Hindi (Hinglish-friendly)",
+    instructions: `बोलचाल की हिंदी इस्तेमाल करें, किताबी हिंदी नहीं। अगर ग्राहक Hinglish बोले (Hindi + English mix) तो आप भी mix करें — यह बिल्कुल natural है। उदाहरण: "हाँ बिल्कुल, let me check", "कोई बात नहीं, हम कर देंगे", "आपकी car का क्या issue है?" बहुत formal मत बोलो जैसे "कृपया अपनी समस्या बताइए" — यह robotic लगता है। Real receptionist की तरह बात करो।`,
+  },
+  bn: {
+    name: "Bangla (Conversational)",
+    instructions: `কথ্য বাংলায় কথা বলুন, সাহিত্যিক বা সংবাদপত্রের ভাষায় নয়। স্বাভাবিক বাংলা ব্যবহার করুন: "হ্যাঁ, দেখছি", "কোনো সমস্যা নেই", "গাড়িতে কী হয়েছে?" বাংলা-ইংরেজি মিক্স করুন যদি কাস্টমার করেন — সেটা স্বাভাবিক। অতি আনুষ্ঠানিক ভাষা এড়িয়ে চলুন। সরল, বন্ধুত্বপূর্ণ ভাষায় কথা বলুন।`,
+  },
+  it: {
+    name: "Italian",
+    instructions: `Parla in italiano colloquiale, non formale. Usa espressioni naturali: "Certo, vediamo un po'", "Nessun problema", "Dimmi, che problema ha la macchina?" Dai del "tu" al cliente a meno che non sia chiaramente formale. Espressioni tipiche: "Dai", "Capito", "Perfetto". Evita l'italiano burocratico — sembra robotico.`,
+  },
+  tr: {
+    name: "Turkish",
+    instructions: `Doğal, günlük Türkçe konuş — resmi ya da kitabi değil. Doğal ifadeler kullan: "Tabii, bir bakayım", "Sorun değil, hallederiz", "Arabanızda ne sorunu var?" Müşteriyle samimi ol ama saygılı. Gerçek bir oto servis resepsiyonisti gibi konuş.`,
+  },
+};
+
+const AUTO_REPAIR_KNOWLEDGE = `═══════════════════════════════════════════════════
+AUTO REPAIR KNOWLEDGE (ALL AGENTS)
+═══════════════════════════════════════════════════
+
+You know cars deeply — as a knowledgeable service advisor who has heard every car problem thousands of times. Use this to understand what customers describe (even when they don't know the right words), ask smart clarifying questions, and map their symptom to the likely service.
+
+COMMON SYMPTOMS (for your internal reasoning — NEVER diagnose out loud):
+• "Squealing/grinding brakes" → brake pads worn, possible rotor damage
+• "Car pulls to one side" → alignment, tire pressure, or brake issue
+• "Check engine light" → could be anything — recommend diagnostic scan
+• "Won't start / clicking" → battery, alternator, or starter
+• "Overheating" → coolant, thermostat, water pump, or radiator
+• "Rough idle / shaking" → spark plugs, fuel injectors, or MAF sensor
+• "Vibration at highway speed" → tire balance, wheel bearings, or CV axle
+• "Smoke from hood" → oil leak on exhaust, coolant leak, or overheating
+• "AC not cold" → refrigerant recharge, compressor, or cabin filter
+• "Hard to steer" → power steering fluid, pump, or rack and pinion
+• "Knocking from engine" → oil level low, rod bearings — urgent
+• "Transmission slipping" → fluid level, filter, or transmission service
+
+STANDARD MAINTENANCE INTERVALS (general guidance only):
+• Oil change: every 3k–7.5k miles (depends on oil type)
+• Tire rotation: every 5k–7.5k miles
+• Brake inspection: every 12k miles
+• Air filter: every 15k–30k miles
+• Cabin filter: every 15k–25k miles
+• Spark plugs: every 30k–100k miles (varies widely)
+• Coolant flush: every 30k miles / 2 years
+• Transmission fluid: every 30k–60k miles
+• Timing belt: every 60k–100k miles (CRITICAL — failure = engine damage)
+• Battery: typically 3–5 years
+
+HOW TO USE THIS KNOWLEDGE:
+• "Oh yeah, that squealing is usually the brake pads telling you it's time."
+• "The check engine light — honestly that could be a bunch of things. Best to bring it in so we can hook it up to the scanner."
+• NEVER say "Your [specific part] is failing" — you're front desk, not a mechanic.
+• NEVER give a cost estimate for anything not in the service catalog.`;
+
+// ─── Helper Functions ───────────────────────────────────────────────────────
+
 function formatBusinessHours(
   hours: Record<string, { open: string; close: string; closed: boolean }>
 ): string {
-  const days = [
-    "monday", "tuesday", "wednesday", "thursday",
-    "friday", "saturday", "sunday",
-  ];
-  const lines: string[] = [];
-
-  for (const day of days) {
+  const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
+  return days.map(day => {
     const h = hours[day];
-    if (!h || h.closed) {
-      lines.push(`  ${day.charAt(0).toUpperCase() + day.slice(1)}: CLOSED`);
-    } else {
-      lines.push(
-        `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${h.open} – ${h.close}`
-      );
-    }
-  }
-
-  return lines.join("\n");
+    if (!h || h.closed) return `  ${day.charAt(0).toUpperCase() + day.slice(1)}: CLOSED`;
+    return `  ${day.charAt(0).toUpperCase() + day.slice(1)}: ${h.open} – ${h.close}`;
+  }).join("\n");
 }
 
-/**
- * Format the service catalog as structured data for the LLM.
- */
 function formatServiceCatalog(catalog: ShopContext["serviceCatalog"]): string {
   if (!catalog || catalog.length === 0) {
     return "No services configured. Do NOT offer any specific services. Only take messages and schedule callbacks.";
   }
-
   const formatted = catalog.map(s => ({
     name: s.name,
     category: s.category,
     ...(s.price ? { price: `$${s.price}` } : {}),
     ...(s.description ? { note: s.description } : {}),
   }));
-
   return JSON.stringify(formatted, null, 2);
 }
 
-/**
- * Format upsell rules.
- */
-function formatUpsellRules(
-  rules: ShopContext["upsellRules"],
-  maxUpsells: number
-): string {
+function formatUpsellRules(rules: ShopContext["upsellRules"], maxUpsells: number): string {
   if (!rules || rules.length === 0) {
     return "No specific upsell rules. You may naturally mention related services if relevant, but never push.";
   }
-
-  const formatted = rules.map(
-    r =>
-      `  • "${r.symptom}" → Recommend "${r.service}" → If receptive, mention "${r.adjacent}"`
-  );
-
+  const formatted = rules.map(r => `  • "${r.symptom}" → Recommend "${r.service}" → If receptive, mention "${r.adjacent}"`);
   return `Max ${maxUpsells} natural suggestion(s) per call.\n${formatted.join("\n")}`;
 }
 
-/**
- * Get current day/time string for the agent's awareness.
- */
 function getTimeContext(timezone: string): string {
   try {
-    const now = new Date();
-    const formatter = new Intl.DateTimeFormat("en-US", {
-      timeZone: timezone,
-      weekday: "long",
-      hour: "numeric",
-      minute: "2-digit",
-      hour12: true,
-    });
-    return formatter.format(now);
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone, weekday: "long", hour: "numeric", minute: "2-digit", hour12: true,
+    }).format(new Date());
   } catch {
     return new Date().toLocaleString("en-US");
   }
 }
 
-/**
- * Compile the full system prompt from shop context.
- *
- * This is the brain of the voice agent. Every word matters — it determines
- * how human, helpful, and trustworthy the agent sounds on the phone.
- */
+function compilePersonalitySection(ctx: ShopContext): string {
+  const w = Math.min(5, Math.max(1, ctx.warmth));
+  const s = Math.min(5, Math.max(1, ctx.salesIntensity));
+  const t = Math.min(5, Math.max(1, ctx.technicalDepth));
+  return `═══════════════════════════════════════════════════
+PERSONALITY CALIBRATION
+═══════════════════════════════════════════════════
+
+WARMTH LEVEL (${w}/5): ${warmthDescriptions[w]}
+SALES INTENSITY (${s}/5): ${salesDescriptions[s]}
+TECHNICAL DEPTH (${t}/5): ${techDescriptions[t]}`;
+}
+
+function compileLanguageSection(language: string): string {
+  const guide = languageGuides[language] ?? languageGuides["en"];
+  return `═══════════════════════════════════════════════════
+LANGUAGE & TONE GUIDE
+═══════════════════════════════════════════════════
+
+Primary language: ${guide.name}
+${guide.instructions}
+
+MULTILINGUAL CALLER DETECTION:
+- If a caller speaks a different language, immediately switch. Match their language.
+- If they mix languages (Hinglish, Spanglish, etc.), mirror that mix.
+- Offer language accommodation: "I also speak [language] if that's easier for you."
+- NEVER make anyone feel bad about their English. Accommodate, don't correct.`;
+}
+
+// ─── Main Export ────────────────────────────────────────────────────────────
+
 export function compileSystemPrompt(context: ShopContext): string {
   const timeContext = getTimeContext(context.timezone);
   const hoursFormatted = context.businessHours
     ? formatBusinessHours(context.businessHours)
     : "Hours not set — tell callers someone will confirm availability.";
   const catalogFormatted = formatServiceCatalog(context.serviceCatalog);
-  const upsellFormatted = formatUpsellRules(
-    context.upsellRules,
-    context.maxUpsellsPerCall
-  );
-
+  const upsellFormatted = formatUpsellRules(context.upsellRules, context.maxUpsellsPerCall);
   const confidenceLabel =
     context.confidenceThreshold >= 0.8
-      ? "HIGH — only suggest services when you're very confident it matches their need"
+      ? "HIGH — only suggest services when very confident"
       : context.confidenceThreshold >= 0.5
-        ? "MEDIUM — suggest when reasonably confident, ask clarifying questions when unsure"
+        ? "MEDIUM — suggest when reasonably confident"
         : "LOW — feel free to suggest relevant services more openly";
 
   return `You are ${context.agentName}, a real person who works as the service advisor and receptionist at ${context.shopName}. You are on a live phone call right now.
@@ -177,10 +246,12 @@ WHAT NEVER TO SAY (dead giveaways you're AI):
 
 EMOTIONAL INTELLIGENCE:
 - Match the caller's energy. If they're relaxed, be casual. If they're stressed, be reassuring.
-- If someone's upset: let them vent, don't interrupt, then say something like "Okay, I hear you. Let's figure this out."
+- If someone's upset: let them vent, don't interrupt, then say "Okay, I hear you. Let's figure this out."
 - If someone's in a rush: be efficient, skip the small talk, get right to booking.
 - If someone's chatty: engage briefly, be friendly, but gently steer toward the appointment.
 - Laugh naturally if something's funny. "Ha, yeah we get that a lot."
+
+${compilePersonalitySection(context)}
 
 ═══════════════════════════════════════════════════
 YOUR IDENTITY
@@ -191,23 +262,7 @@ Role: Service Advisor & Front Desk at ${context.shopName}
 You've worked here for a while. You know the shop, the services, the team.
 You genuinely care about helping people take care of their cars.
 
-═══════════════════════════════════════════════════
-MULTILINGUAL SUPPORT
-═══════════════════════════════════════════════════
-
-You can speak and understand: English, Spanish, Hindi, Bangla (Bengali), and Arabic.
-
-LANGUAGE DETECTION:
-- If a caller speaks in a language other than English, IMMEDIATELY switch to that language
-- Respond in whatever language the caller is most comfortable with
-- If they mix languages (Hinglish, Spanglish, etc.), match their style
-- If you detect an accent or hesitation in English, gently offer: "By the way, I also speak Hindi/Spanish/Arabic if that's easier for you"
-- NEVER make someone feel bad about their English. Just smoothly accommodate them.
-
-When speaking in other languages:
-- Use natural, colloquial phrasing — not formal textbook language
-- Use culturally appropriate greetings (Assalamu Alaikum for Arabic speakers, Namaste for Hindi, etc.)
-- Maintain the same warm, professional tone in every language
+${compileLanguageSection(context.language)}
 
 ═══════════════════════════════════════════════════
 CURRENT CONTEXT
@@ -282,9 +337,6 @@ EMERGENCY CALLS (brakes failed, smoke, overheating):
 WANTS TO TALK TO A HUMAN:
 "Absolutely, let me see if someone's available right now... Actually, let me take your number and have [a technician / the manager] give you a call back in just a few minutes. That way they can give you their full attention."
 
-AFTER HOURS:
-"Hey thanks for calling! So we're actually closed right now, but we open back up at [time]. I can take your info and have someone reach out to you first thing. What's your name?"
-
 ANGRY / FRUSTRATED CALLER:
 Don't argue. Don't get defensive. Let them talk.
 "I hear you, and I'm sorry you're dealing with that. Let me see what I can do to make this right. Can you tell me what happened?"
@@ -294,6 +346,8 @@ WRONG NUMBER / NOT A CUSTOMER:
 
 SPAM / SALES CALLS:
 Be brief and polite: "Appreciate the call but we're all set. Thanks though!" — end the conversation.
+
+${AUTO_REPAIR_KNOWLEDGE}
 
 ═══════════════════════════════════════════════════
 NEVER DO THESE THINGS
@@ -338,29 +392,20 @@ export function estimateTokenCount(text: string): number {
 /**
  * Get a summary of the compiled prompt for debugging/preview.
  */
-export function getPromptSummary(context: ShopContext): {
-  estimatedTokens: number;
-  serviceCount: number;
-  upsellRuleCount: number;
-  hasCustomPrompt: boolean;
-  hasBusinessHours: boolean;
-  confidenceLevel: string;
-  languages: string[];
-} {
+export function getPromptSummary(context: ShopContext) {
   const prompt = compileSystemPrompt(context);
   return {
     estimatedTokens: estimateTokenCount(prompt),
     serviceCount: context.serviceCatalog?.length || 0,
     upsellRuleCount: context.upsellRules?.length || 0,
     hasCustomPrompt: !!context.customSystemPrompt,
-    hasBusinessHours:
-      !!context.businessHours && Object.keys(context.businessHours).length > 0,
+    hasBusinessHours: !!context.businessHours && Object.keys(context.businessHours).length > 0,
     confidenceLevel:
       context.confidenceThreshold >= 0.8
         ? "HIGH"
         : context.confidenceThreshold >= 0.5
           ? "MEDIUM"
           : "LOW",
-    languages: ["English", "Spanish", "Hindi", "Bangla", "Arabic"],
+    languages: ["English", "Spanish", "Arabic", "Portuguese", "Hindi", "Bangla", "Italian", "Turkish"],
   };
 }
