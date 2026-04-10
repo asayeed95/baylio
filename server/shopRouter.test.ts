@@ -57,6 +57,8 @@ vi.mock("./services/elevenLabsService", () => ({
   getAgent: vi.fn(),
   getSubscriptionInfo: vi.fn(),
   getConversationHistory: vi.fn().mockResolvedValue([]),
+  previewVoiceTTS: vi.fn().mockResolvedValue(Buffer.from("mp3data")),
+  VOICE_CATALOG: [],
 }));
 
 vi.mock("./services/twilioProvisioning", () => ({
@@ -295,5 +297,41 @@ describe("shopRouter — onboarding flow", () => {
       const caller = appRouter.createCaller(createContext());
       await expect(caller.shop.searchPhoneNumbers({ areaCode: "12" })).rejects.toThrow();
     });
+  });
+});
+
+describe("saveAgentConfig — personality fields", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("accepts characterPreset, warmth, salesIntensity, technicalDepth", async () => {
+    const { getShopById, upsertAgentConfig } = await import("./db");
+    const mockGetShopById = vi.mocked(getShopById);
+    mockGetShopById.mockResolvedValue({ id: 1, ownerId: 42 } as any);
+    const mockUpsert = vi.mocked(upsertAgentConfig);
+    mockUpsert.mockResolvedValue(1);
+
+    const caller = appRouter.createCaller({ user: { id: 42 } } as any);
+    const result = await caller.shop.saveAgentConfig({
+      shopId: 1,
+      agentName: "Jordan",
+      characterPreset: "sales_pro",
+      warmth: 5,
+      salesIntensity: 5,
+      technicalDepth: 3,
+    });
+    expect(result).toEqual({ id: 1 });
+    expect(mockUpsert).toHaveBeenCalledWith(
+      expect.objectContaining({ characterPreset: "sales_pro", warmth: 5, salesIntensity: 5, technicalDepth: 3 })
+    );
+  });
+});
+
+describe("previewVoice", () => {
+  beforeEach(() => vi.clearAllMocks());
+
+  it("returns a base64 data URL for a valid voice ID", async () => {
+    const caller = appRouter.createCaller({ user: { id: 42 } } as any);
+    const result = await caller.shop.previewVoice({ voiceId: "21m00Tcm4TlvDq8ikWAM" });
+    expect(result.audio).toMatch(/^data:audio\/mpeg;base64,/);
   });
 });

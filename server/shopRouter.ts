@@ -25,6 +25,7 @@ import {
 import {
   createConversationalAgent,
   updateConversationalAgent,
+  previewVoiceTTS,
 } from "./services/elevenLabsService";
 import {
   compileSystemPrompt,
@@ -78,6 +79,10 @@ const agentConfigInput = z.object({
   confidenceThreshold: z.string().default("0.80"),
   maxUpsellsPerCall: z.number().default(1),
   language: z.string().default("en"),
+  characterPreset: z.enum(["warm_helper", "efficient_closer", "tech_expert", "sales_pro"]).optional(),
+  warmth: z.number().int().min(1).max(5).optional(),
+  salesIntensity: z.number().int().min(1).max(5).optional(),
+  technicalDepth: z.number().int().min(1).max(5).optional(),
 });
 
 export const shopRouter = router({
@@ -153,7 +158,19 @@ export const shopRouter = router({
         });
       }
       const id = await upsertAgentConfig(input);
+      contextCache.invalidateShop(input.shopId);
       return { id };
+    }),
+
+  previewVoice: protectedProcedure
+    .input(z.object({
+      voiceId: z.string().min(10).max(64),
+      text: z.string().max(200).optional(),
+    }))
+    .mutation(async ({ input }) => {
+      const text = input.text ?? "Hi, thanks for calling! This is your AI assistant. How can I help you today?";
+      const audioBuffer = await previewVoiceTTS(input.voiceId, text);
+      return { audio: `data:audio/mpeg;base64,${audioBuffer.toString("base64")}` };
     }),
 
   // Subscription info
@@ -319,6 +336,10 @@ export const shopRouter = router({
         greeting: agentConfig.greeting || "",
         language: agentConfig.language || "en",
         customSystemPrompt: agentConfig.systemPrompt || undefined,
+        characterPreset: (agentConfig as any).characterPreset ?? "warm_helper",
+        warmth: (agentConfig as any).warmth ?? 3,
+        salesIntensity: (agentConfig as any).salesIntensity ?? 3,
+        technicalDepth: (agentConfig as any).technicalDepth ?? 2,
       };
 
       const systemPrompt = compileSystemPrompt(shopContext);
@@ -484,6 +505,10 @@ export const shopRouter = router({
         greeting: agentConfig.greeting || "",
         language: agentConfig.language || "en",
         customSystemPrompt: agentConfig.systemPrompt || undefined,
+        characterPreset: (agentConfig as any).characterPreset ?? "warm_helper",
+        warmth: (agentConfig as any).warmth ?? 3,
+        salesIntensity: (agentConfig as any).salesIntensity ?? 3,
+        technicalDepth: (agentConfig as any).technicalDepth ?? 2,
       };
 
       const systemPrompt = compileSystemPrompt(shopContext);
