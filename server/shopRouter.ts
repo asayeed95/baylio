@@ -79,10 +79,10 @@ const agentConfigInput = z.object({
   confidenceThreshold: z.string().default("0.80"),
   maxUpsellsPerCall: z.number().default(1),
   language: z.string().default("en"),
-  characterPreset: z.enum(["warm_helper", "efficient_closer", "tech_expert", "sales_pro"]).optional(),
-  warmth: z.number().int().min(1).max(5).optional(),
-  salesIntensity: z.number().int().min(1).max(5).optional(),
-  technicalDepth: z.number().int().min(1).max(5).optional(),
+  characterPreset: z.enum(["warm_helper", "efficient_closer", "tech_expert", "sales_pro"]).optional().default("warm_helper"),
+  warmth: z.number().int().min(1).max(5).optional().default(4),
+  salesIntensity: z.number().int().min(1).max(5).optional().default(3),
+  technicalDepth: z.number().int().min(1).max(5).optional().default(2),
 });
 
 export const shopRouter = router({
