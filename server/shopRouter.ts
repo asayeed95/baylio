@@ -336,10 +336,10 @@ export const shopRouter = router({
         greeting: agentConfig.greeting || "",
         language: agentConfig.language || "en",
         customSystemPrompt: agentConfig.systemPrompt || undefined,
-        characterPreset: (agentConfig as any).characterPreset ?? "warm_helper",
-        warmth: (agentConfig as any).warmth ?? 3,
-        salesIntensity: (agentConfig as any).salesIntensity ?? 3,
-        technicalDepth: (agentConfig as any).technicalDepth ?? 2,
+        characterPreset: agentConfig.characterPreset ?? "warm_helper",
+        warmth: agentConfig.warmth ?? 3,
+        salesIntensity: agentConfig.salesIntensity ?? 3,
+        technicalDepth: agentConfig.technicalDepth ?? 2,
       };
 
       const systemPrompt = compileSystemPrompt(shopContext);
@@ -505,10 +505,10 @@ export const shopRouter = router({
         greeting: agentConfig.greeting || "",
         language: agentConfig.language || "en",
         customSystemPrompt: agentConfig.systemPrompt || undefined,
-        characterPreset: (agentConfig as any).characterPreset ?? "warm_helper",
-        warmth: (agentConfig as any).warmth ?? 3,
-        salesIntensity: (agentConfig as any).salesIntensity ?? 3,
-        technicalDepth: (agentConfig as any).technicalDepth ?? 2,
+        characterPreset: agentConfig.characterPreset ?? "warm_helper",
+        warmth: agentConfig.warmth ?? 3,
+        salesIntensity: agentConfig.salesIntensity ?? 3,
+        technicalDepth: agentConfig.technicalDepth ?? 2,
       };
 
       const systemPrompt = compileSystemPrompt(shopContext);
