@@ -81,6 +81,12 @@ describe("VOICE_CATALOG", () => {
     }
   });
 
+  it("each ID matches ElevenLabs format (20 alphanumeric chars)", () => {
+    for (const v of VOICE_CATALOG) {
+      expect(v.id).toMatch(/^[a-zA-Z0-9]{20}$/);
+    }
+  });
+
   it("each entry has required fields", () => {
     for (const v of VOICE_CATALOG) {
       expect(v.id.length).toBeGreaterThan(10);
@@ -127,9 +133,11 @@ describe("previewVoiceTTS", () => {
       expect.objectContaining({
         text: "Hello, this is a test.",
         model_id: "eleven_multilingual_v2",
-        output_format: "mp3_44100_128",
       }),
-      expect.objectContaining({ responseType: "arraybuffer" })
+      expect.objectContaining({
+        responseType: "arraybuffer",
+        params: { output_format: "mp3_44100_128" },
+      })
     );
   });
 

@@ -121,9 +121,11 @@ export async function previewVoiceTTS(voiceId: string, text: string): Promise<Bu
             stability: 0.5,
             similarity_boost: 0.75,
           },
-          output_format: "mp3_44100_128",
         },
-        { responseType: "arraybuffer" }
+        {
+          responseType: "arraybuffer",
+          params: { output_format: "mp3_44100_128" },
+        }
       );
       return Buffer.from(response.data as ArrayBuffer);
     }, 3, "previewVoiceTTS");
