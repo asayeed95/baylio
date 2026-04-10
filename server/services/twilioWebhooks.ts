@@ -224,6 +224,11 @@ async function resolveShopContext(
       greeting: agent?.greeting || "",
       language: agent?.language || "en",
       customSystemPrompt: agent?.systemPrompt || undefined,
+      // Personality system
+      characterPreset: agent?.characterPreset || "warm_helper",
+      warmth: agent?.warmth ?? 4,
+      salesIntensity: agent?.salesIntensity ?? 3,
+      technicalDepth: agent?.technicalDepth ?? 2,
     };
 
     contextCache.setShopContext(shopId, context);
