@@ -12,6 +12,11 @@ import { createExpressMiddleware } from "@trpc/server/adapters/express";
 import { appRouter } from "./routers";
 import { createContext } from "./_core/context";
 import { twilioRouter } from "./services/twilioWebhooks";
+import { elevenLabsWebhookRouter } from "./services/elevenLabsWebhookService";
+import {
+  samToolsRouter,
+  samTwimlRouter,
+} from "./services/samToolsRouter";
 import { validateTwilioSignature } from "./middleware/twilioValidation";
 import { rateLimit } from "./middleware/rateLimiter";
 import { stripeWebhookRouter } from "./stripe/stripeRoutes";
@@ -38,6 +43,15 @@ app.use(
   validateTwilioSignature(),
   twilioRouter
 );
+
+// ElevenLabs post-call webhook (no Twilio signature — ElevenLabs signs differently)
+app.use("/api/elevenlabs", elevenLabsWebhookRouter);
+
+// Sam tool endpoints (auth via x-sam-tool-secret)
+app.use("/api/sam", samToolsRouter);
+
+// Sam transfer TwiML (Twilio hits this directly via <Redirect>)
+app.use("/api/sam-twiml", webhookLimiter, samTwimlRouter);
 
 // Google OAuth integration routes
 app.use("/api/integrations/google", googleAuthRouter);

@@ -13,20 +13,24 @@ import {
   LogOut,
   BarChart3,
   Building2,
+  Sparkles,
 } from "lucide-react";
-import { Link } from "wouter";
+import { Link, useLocation } from "wouter";
+import AdminSamLeads from "./AdminSamLeads";
 
 function AdminSidebar() {
   const { user, logout } = useAuth();
 
+  const [location] = useLocation();
   const navItems = [
-    { icon: BarChart3, label: "Overview", href: "/" },
-    { icon: Building2, label: "Shops", href: "/shops" },
-    { icon: Users, label: "Partners", href: "/partners-admin" },
-    { icon: Phone, label: "Call Logs", href: "/calls" },
-    { icon: DollarSign, label: "Subscriptions", href: "/subscriptions" },
-    { icon: TrendingUp, label: "Analytics", href: "/analytics" },
-    { icon: Settings, label: "Settings", href: "/settings" },
+    { icon: BarChart3, label: "Overview", href: "/admin" },
+    { icon: Sparkles, label: "Sam Leads", href: "/admin/sam-leads" },
+    { icon: Building2, label: "Shops", href: "/admin/shops" },
+    { icon: Users, label: "Partners", href: "/admin/partners-admin" },
+    { icon: Phone, label: "Call Logs", href: "/admin/calls" },
+    { icon: DollarSign, label: "Subscriptions", href: "/admin/subscriptions" },
+    { icon: TrendingUp, label: "Analytics", href: "/admin/analytics" },
+    { icon: Settings, label: "Settings", href: "/admin/settings" },
   ];
 
   return (
@@ -46,14 +50,25 @@ function AdminSidebar() {
 
       {/* Nav */}
       <nav className="flex-1 p-4 space-y-1">
-        {navItems.map(item => (
-          <Link key={item.href} href={item.href}>
-            <a className="flex items-center gap-3 px-3 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-gray-800 transition-colors text-sm">
-              <item.icon className="w-4 h-4" />
-              {item.label}
-            </a>
-          </Link>
-        ))}
+        {navItems.map(item => {
+          const isActive =
+            location === item.href ||
+            (item.href !== "/admin" && location.startsWith(item.href));
+          return (
+            <Link key={item.href} href={item.href}>
+              <a
+                className={`flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm ${
+                  isActive
+                    ? "bg-emerald-500/10 text-emerald-300"
+                    : "text-gray-400 hover:text-white hover:bg-gray-800"
+                }`}
+              >
+                <item.icon className="w-4 h-4" />
+                {item.label}
+              </a>
+            </Link>
+          );
+        })}
       </nav>
 
       {/* User */}
@@ -260,8 +275,18 @@ export default function AdminPortal() {
     <div className="min-h-screen bg-gray-950 flex">
       <AdminSidebar />
       <main className="flex-1 overflow-auto">
-        <AdminOverview />
+        <AdminContent />
       </main>
     </div>
   );
+}
+
+function AdminContent() {
+  const [location] = useLocation();
+
+  if (location.startsWith("/admin/sam-leads") || location === "/sam-leads") {
+    return <AdminSamLeads />;
+  }
+
+  return <AdminOverview />;
 }

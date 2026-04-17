@@ -40,4 +40,10 @@ export const ENV = {
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   // Anthropic
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
+  // Mem0
+  mem0ApiKey: process.env.MEM0_API_KEY ?? "",
+  // Sam tool auth (shared secret ElevenLabs sends as x-sam-tool-secret)
+  samToolSecret: process.env.SAM_TOOL_SECRET ?? "",
+  // Founder phone for transfer_to_human
+  founderPhone: process.env.FOUNDER_PHONE ?? "+12013212235",
 };

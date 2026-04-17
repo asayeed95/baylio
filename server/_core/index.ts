@@ -7,6 +7,11 @@ import { appRouter } from "../routers";
 import { createContext } from "./context";
 import { serveStatic, setupVite } from "./vite";
 import { twilioRouter } from "../services/twilioWebhooks";
+import { elevenLabsWebhookRouter } from "../services/elevenLabsWebhookService";
+import {
+  samToolsRouter,
+  samTwimlRouter,
+} from "../services/samToolsRouter";
 import { validateTwilioSignature } from "../middleware/twilioValidation";
 import { rateLimit } from "../middleware/rateLimiter";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
@@ -33,6 +38,13 @@ app.use(
   validateTwilioSignature(),
   twilioRouter
 );
+
+// ElevenLabs post-call webhook
+app.use("/api/elevenlabs", elevenLabsWebhookRouter);
+
+// Sam tool endpoints (auth via x-sam-tool-secret)
+app.use("/api/sam", samToolsRouter);
+app.use("/api/sam-twiml", webhookLimiter, samTwimlRouter);
 
 // Google OAuth integration routes
 app.use("/api/integrations/google", googleAuthRouter);

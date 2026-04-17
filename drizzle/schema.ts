@@ -385,3 +385,42 @@ export const integrationSyncLogs = pgTable("integration_sync_logs", {
 });
 export type IntegrationSyncLog = typeof integrationSyncLogs.$inferSelect;
 export type InsertIntegrationSyncLog = typeof integrationSyncLogs.$inferInsert;
+
+// ─── Sam Leads ──────────────────────────────────────────────────────
+// Captured by the Sam sales agent during inbound calls to 844-875-2441.
+// Pushed to Baylio's HubSpot under the platform account (not per-shop).
+export const samLeadIntentEnum = pgEnum("sam_lead_intent", [
+  "shop_owner_prospect",
+  "curious_tester",
+  "car_question",
+  "existing_customer",
+  "onboarding_help",
+  "other",
+]);
+
+export const samLeads = pgTable("sam_leads", {
+  id: serial("id").primaryKey(),
+  callerPhone: varchar("callerPhone", { length: 32 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  shopName: varchar("shopName", { length: 255 }),
+  city: varchar("city", { length: 128 }),
+  intent: samLeadIntentEnum("intent").default("other").notNull(),
+  intentSummary: text("intentSummary"),
+  language: varchar("language", { length: 16 }).default("en"),
+  marketingConsent: boolean("marketingConsent").default(false).notNull(),
+  smsSent: boolean("smsSent").default(false).notNull(),
+  emailSent: boolean("emailSent").default(false).notNull(),
+  transferredToHuman: boolean("transferredToHuman").default(false).notNull(),
+  hubspotContactId: varchar("hubspotContactId", { length: 64 }),
+  conversationId: varchar("conversationId", { length: 128 }),
+  callCount: integer("callCount").default(1).notNull(),
+  lastCalledAt: timestamp("lastCalledAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+}, (t) => ({
+  callerPhoneIdx: uniqueIndex("sam_leads_callerPhone_idx").on(t.callerPhone),
+}));
+
+export type SamLead = typeof samLeads.$inferSelect;
+export type InsertSamLead = typeof samLeads.$inferInsert;

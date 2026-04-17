@@ -182,7 +182,8 @@ import {
   varchar,
   boolean,
   jsonb,
-  numeric
+  numeric,
+  uniqueIndex
 } from "drizzle-orm/pg-core";
 var roleEnum = pgEnum("role", ["user", "admin"]);
 var directionEnum = pgEnum("direction", ["inbound", "outbound"]);
@@ -470,6 +471,37 @@ var integrationSyncLogs = pgTable("integration_sync_logs", {
   metadata: jsonb("metadata").$type(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
+var samLeadIntentEnum = pgEnum("sam_lead_intent", [
+  "shop_owner_prospect",
+  "curious_tester",
+  "car_question",
+  "existing_customer",
+  "onboarding_help",
+  "other"
+]);
+var samLeads = pgTable("sam_leads", {
+  id: serial("id").primaryKey(),
+  callerPhone: varchar("callerPhone", { length: 32 }).notNull(),
+  name: varchar("name", { length: 255 }),
+  email: varchar("email", { length: 320 }),
+  shopName: varchar("shopName", { length: 255 }),
+  city: varchar("city", { length: 128 }),
+  intent: samLeadIntentEnum("intent").default("other").notNull(),
+  intentSummary: text("intentSummary"),
+  language: varchar("language", { length: 16 }).default("en"),
+  marketingConsent: boolean("marketingConsent").default(false).notNull(),
+  smsSent: boolean("smsSent").default(false).notNull(),
+  emailSent: boolean("emailSent").default(false).notNull(),
+  transferredToHuman: boolean("transferredToHuman").default(false).notNull(),
+  hubspotContactId: varchar("hubspotContactId", { length: 64 }),
+  conversationId: varchar("conversationId", { length: 128 }),
+  callCount: integer("callCount").default(1).notNull(),
+  lastCalledAt: timestamp("lastCalledAt").defaultNow().notNull(),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+}, (t2) => ({
+  callerPhoneIdx: uniqueIndex("sam_leads_callerPhone_idx").on(t2.callerPhone)
+}));
 
 // server/db.ts
 var _db = null;
@@ -3372,6 +3404,89 @@ var integrationRouter = router({
   })
 });
 
+// server/samLeadsRouter.ts
+import { z as z12 } from "zod";
+import { TRPCError as TRPCError9 } from "@trpc/server";
+import { desc as desc5, eq as eq8, ilike, or, sql as sql5 } from "drizzle-orm";
+var samLeadsRouter = router({
+  /**
+   * Paginated list of Sam leads, optional search by name/phone/email.
+   */
+  list: adminProcedure.input(
+    z12.object({
+      search: z12.string().trim().optional(),
+      intent: z12.enum([
+        "shop_owner_prospect",
+        "curious_tester",
+        "car_question",
+        "existing_customer",
+        "onboarding_help",
+        "other"
+      ]).optional(),
+      limit: z12.number().int().min(1).max(200).default(50),
+      offset: z12.number().int().min(0).default(0)
+    })
+  ).query(async ({ input }) => {
+    const db = await getDb();
+    if (!db)
+      throw new TRPCError9({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const filters = [];
+    if (input.search) {
+      const term = `%${input.search}%`;
+      filters.push(
+        or(
+          ilike(samLeads.name, term),
+          ilike(samLeads.callerPhone, term),
+          ilike(samLeads.email, term),
+          ilike(samLeads.shopName, term)
+        )
+      );
+    }
+    if (input.intent) {
+      filters.push(eq8(samLeads.intent, input.intent));
+    }
+    const whereClause = filters.length ? filters.reduce((a, b) => sql5`${a} AND ${b}`) : void 0;
+    const baseQuery = db.select().from(samLeads);
+    const rows = whereClause ? await baseQuery.where(whereClause).orderBy(desc5(samLeads.lastCalledAt)).limit(input.limit).offset(input.offset) : await baseQuery.orderBy(desc5(samLeads.lastCalledAt)).limit(input.limit).offset(input.offset);
+    const totalResult = whereClause ? await db.select({ count: sql5`count(*)::int` }).from(samLeads).where(whereClause) : await db.select({ count: sql5`count(*)::int` }).from(samLeads);
+    return {
+      leads: rows,
+      total: totalResult[0]?.count ?? 0
+    };
+  }),
+  /**
+   * Single lead detail.
+   */
+  get: adminProcedure.input(z12.object({ id: z12.number().int() })).query(async ({ input }) => {
+    const db = await getDb();
+    if (!db)
+      throw new TRPCError9({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const rows = await db.select().from(samLeads).where(eq8(samLeads.id, input.id)).limit(1);
+    if (rows.length === 0)
+      throw new TRPCError9({ code: "NOT_FOUND", message: "Lead not found" });
+    return rows[0];
+  }),
+  /**
+   * Funnel stats for the admin overview.
+   */
+  stats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db)
+      throw new TRPCError9({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
+    const [totals] = await db.select({
+      total: sql5`count(*)::int`,
+      prospects: sql5`count(*) filter (where intent = 'shop_owner_prospect')::int`,
+      onboarding: sql5`count(*) filter (where intent = 'onboarding_help')::int`,
+      sms: sql5`count(*) filter (where "smsSent" = true)::int`,
+      email: sql5`count(*) filter (where "emailSent" = true)::int`,
+      transferred: sql5`count(*) filter (where "transferredToHuman" = true)::int`,
+      with_email: sql5`count(*) filter (where email is not null)::int`,
+      marketing_opt_in: sql5`count(*) filter (where "marketingConsent" = true)::int`
+    }).from(samLeads);
+    return totals;
+  })
+});
+
 // server/routers.ts
 var appRouter = router({
   system: systemRouter,
@@ -3392,7 +3507,8 @@ var appRouter = router({
   partner: partnerRouter,
   analytics: analyticsRouter,
   contact: contactRouter,
-  integration: integrationRouter
+  integration: integrationRouter,
+  samLeads: samLeadsRouter
 });
 
 // server/lib/supabase.ts
@@ -3403,7 +3519,7 @@ var anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KE
 var supabaseAdmin = supabaseUrl && serviceRoleKey ? createClient2(supabaseUrl, serviceRoleKey) : null;
 
 // server/_core/context.ts
-import { eq as eq8 } from "drizzle-orm";
+import { eq as eq9 } from "drizzle-orm";
 async function createContext(opts) {
   let user = null;
   const authHeader = opts.req.headers.authorization;
@@ -3414,7 +3530,7 @@ async function createContext(opts) {
       if (supaUser && !error) {
         const dbConn = await getDb();
         if (dbConn) {
-          const result = await dbConn.select().from(users).where(eq8(users.supabaseId, supaUser.id)).limit(1);
+          const result = await dbConn.select().from(users).where(eq9(users.supabaseId, supaUser.id)).limit(1);
           if (result[0]) {
             user = result[0];
           } else {
@@ -3443,7 +3559,7 @@ async function createContext(opts) {
 import { Router as Router2 } from "express";
 
 // server/services/postCallPipeline.ts
-import { eq as eq14, and as and12, sql as sql5 } from "drizzle-orm";
+import { eq as eq15, and as and12, sql as sql6 } from "drizzle-orm";
 
 // server/_core/llm.ts
 var ensureArray = (value) => Array.isArray(value) ? value : [value];
@@ -3624,7 +3740,7 @@ import { google as google2 } from "googleapis";
 // server/services/googleAuth.ts
 import { Router } from "express";
 import { google } from "googleapis";
-import { eq as eq9, and as and7 } from "drizzle-orm";
+import { eq as eq10, and as and7 } from "drizzle-orm";
 var SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/spreadsheets"
@@ -3675,8 +3791,8 @@ googleAuthRouter.get("/callback", async (req, res) => {
     for (const provider of ["google_calendar", "google_sheets"]) {
       const existing = await db.select({ id: shopIntegrations.id }).from(shopIntegrations).where(
         and7(
-          eq9(shopIntegrations.shopId, parseInt(shopId)),
-          eq9(shopIntegrations.provider, provider)
+          eq10(shopIntegrations.shopId, parseInt(shopId)),
+          eq10(shopIntegrations.provider, provider)
         )
       ).limit(1);
       const tokenData = {
@@ -3687,7 +3803,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
         isActive: true
       };
       if (existing.length > 0) {
-        await db.update(shopIntegrations).set(tokenData).where(eq9(shopIntegrations.id, existing[0].id));
+        await db.update(shopIntegrations).set(tokenData).where(eq10(shopIntegrations.id, existing[0].id));
       } else {
         await db.insert(shopIntegrations).values({
           shopId: parseInt(shopId),
@@ -3707,9 +3823,9 @@ async function getGoogleClient(shopId, provider) {
   if (!db) return null;
   const results = await db.select().from(shopIntegrations).where(
     and7(
-      eq9(shopIntegrations.shopId, shopId),
-      eq9(shopIntegrations.provider, provider),
-      eq9(shopIntegrations.isActive, true)
+      eq10(shopIntegrations.shopId, shopId),
+      eq10(shopIntegrations.provider, provider),
+      eq10(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (results.length === 0) return null;
@@ -3727,7 +3843,7 @@ async function getGoogleClient(shopId, provider) {
       await db.update(shopIntegrations).set({
         accessToken: credentials.access_token || integration.accessToken,
         tokenExpiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null
-      }).where(eq9(shopIntegrations.id, integration.id));
+      }).where(eq10(shopIntegrations.id, integration.id));
       oauth2Client.setCredentials(credentials);
     } catch (err) {
       console.error("[GOOGLE-AUTH] Token refresh failed:", err);
@@ -3738,7 +3854,7 @@ async function getGoogleClient(shopId, provider) {
 }
 
 // server/services/calendarService.ts
-import { eq as eq10, and as and8 } from "drizzle-orm";
+import { eq as eq11, and as and8 } from "drizzle-orm";
 async function createAppointment(shopId, params) {
   try {
     const auth = await getGoogleClient(shopId, "google_calendar");
@@ -3750,8 +3866,8 @@ async function createAppointment(shopId, params) {
     if (!db) return { success: false, error: "Database unavailable" };
     const integration = await db.select().from(shopIntegrations).where(
       and8(
-        eq10(shopIntegrations.shopId, shopId),
-        eq10(shopIntegrations.provider, "google_calendar")
+        eq11(shopIntegrations.shopId, shopId),
+        eq11(shopIntegrations.provider, "google_calendar")
       )
     ).limit(1);
     const calendarId = integration[0]?.settings?.calendarId || "primary";
@@ -3805,7 +3921,7 @@ async function createAppointment(shopId, params) {
 
 // server/services/sheetsService.ts
 import { google as google3 } from "googleapis";
-import { eq as eq11, and as and9 } from "drizzle-orm";
+import { eq as eq12, and as and9 } from "drizzle-orm";
 var HEADER_ROW = [
   "Date",
   "Time",
@@ -3828,8 +3944,8 @@ async function syncCallToSheet(shopId, callLog) {
     if (!db) return { success: false, error: "Database unavailable" };
     const integration = await db.select().from(shopIntegrations).where(
       and9(
-        eq11(shopIntegrations.shopId, shopId),
-        eq11(shopIntegrations.provider, "google_sheets")
+        eq12(shopIntegrations.shopId, shopId),
+        eq12(shopIntegrations.provider, "google_sheets")
       )
     ).limit(1);
     const sheetId = integration[0]?.settings?.sheetId;
@@ -3896,7 +4012,7 @@ async function syncCallToSheet(shopId, callLog) {
 
 // server/services/hubspotService.ts
 import { Client } from "@hubspot/api-client";
-import { eq as eq12, and as and10 } from "drizzle-orm";
+import { eq as eq13, and as and10 } from "drizzle-orm";
 function getHubspotClient(apiKey) {
   return new Client({ accessToken: apiKey });
 }
@@ -3905,9 +4021,9 @@ async function getShopHubspotKey(shopId) {
   if (!db) return null;
   const result = await db.select().from(shopIntegrations).where(
     and10(
-      eq12(shopIntegrations.shopId, shopId),
-      eq12(shopIntegrations.provider, "hubspot"),
-      eq12(shopIntegrations.isActive, true)
+      eq13(shopIntegrations.shopId, shopId),
+      eq13(shopIntegrations.provider, "hubspot"),
+      eq13(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (result.length > 0 && result[0].accessToken) {
@@ -4029,15 +4145,15 @@ Duration: ${caller.duration || 0}s`,
 }
 
 // server/services/shopmonkeyService.ts
-import { eq as eq13, and as and11 } from "drizzle-orm";
+import { eq as eq14, and as and11 } from "drizzle-orm";
 async function getShopmonkeyKeys(shopId) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(shopIntegrations).where(
     and11(
-      eq13(shopIntegrations.shopId, shopId),
-      eq13(shopIntegrations.provider, "shopmonkey"),
-      eq13(shopIntegrations.isActive, true)
+      eq14(shopIntegrations.shopId, shopId),
+      eq14(shopIntegrations.provider, "shopmonkey"),
+      eq14(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (result.length === 0) return null;
@@ -4288,11 +4404,11 @@ async function processCompletedCall(callLogId) {
   try {
     const db = await getDb();
     if (!db) return;
-    const callResults = await db.select().from(callLogs).where(eq14(callLogs.id, callLogId)).limit(1);
+    const callResults = await db.select().from(callLogs).where(eq15(callLogs.id, callLogId)).limit(1);
     if (callResults.length === 0) return;
     const call = callResults[0];
     if (call.transcription) {
-      const shopResults = await db.select().from(shops).where(eq14(shops.id, call.shopId)).limit(1);
+      const shopResults = await db.select().from(shops).where(eq15(shops.id, call.shopId)).limit(1);
       const shop = shopResults[0];
       const catalog = (shop?.serviceCatalog || []).map((s) => s.name);
       const analysis = await analyzeTranscription(
@@ -4311,7 +4427,7 @@ async function processCompletedCall(callLogId) {
         upsellAttempted: analysis.upsellAttempted,
         upsellAccepted: analysis.upsellAccepted,
         estimatedRevenue: analysis.estimatedRevenue.toFixed(2)
-      }).where(eq14(callLogs.id, callLogId));
+      }).where(eq15(callLogs.id, callLogId));
       try {
         await runPostCallIntegrations(call.shopId, call, analysis);
       } catch (err) {
@@ -4326,8 +4442,8 @@ async function processCompletedCall(callLogId) {
     if (minutesUsed > 0) {
       const subResults = await db.select().from(subscriptions).where(
         and12(
-          eq14(subscriptions.shopId, call.shopId),
-          eq14(subscriptions.status, "active")
+          eq15(subscriptions.shopId, call.shopId),
+          eq15(subscriptions.status, "active")
         )
       ).limit(1);
       if (subResults.length > 0) {
@@ -4345,8 +4461,8 @@ async function processCompletedCall(callLogId) {
           overageCharge: overageCharge.toFixed(2)
         });
         await db.update(subscriptions).set({
-          usedMinutes: sql5`${subscriptions.usedMinutes} + ${minutesUsed}`
-        }).where(eq14(subscriptions.id, sub.id));
+          usedMinutes: sql6`${subscriptions.usedMinutes} + ${minutesUsed}`
+        }).where(eq15(subscriptions.id, sub.id));
       }
     }
     if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
@@ -4424,13 +4540,13 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
       const profile = await db.select({
         smsOptOut: callerProfiles.smsOptOut,
         doNotSell: callerProfiles.doNotSell
-      }).from(callerProfiles).where(eq14(callerProfiles.phone, callLog.callerPhone)).limit(1);
+      }).from(callerProfiles).where(eq15(callerProfiles.phone, callLog.callerPhone)).limit(1);
       const optedOut = profile[0]?.smsOptOut || profile[0]?.doNotSell;
       const shopResult = await db.select({
         smsFollowUpEnabled: shops.smsFollowUpEnabled,
         name: shops.name,
         phone: shops.phone
-      }).from(shops).where(eq14(shops.id, shopId)).limit(1);
+      }).from(shops).where(eq15(shops.id, shopId)).limit(1);
       const shop = shopResult[0];
       if (!optedOut && shop?.smsFollowUpEnabled) {
         const smsBody = analysis.appointmentBooked ? `Hi! Your appointment for ${analysis.serviceRequested} at ${shop.name} has been noted. We'll confirm the details shortly. Reply STOP to opt out.` : `Thanks for calling ${shop.name}! If you need anything, call us at ${shop.phone || "our shop"}. Reply STOP to opt out.`;
@@ -4442,8 +4558,8 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
   }
 }
 
-// server/services/twilioWebhooks.ts
-import { eq as eq15, sql as sql6 } from "drizzle-orm";
+// server/services/mem0Service.ts
+import MemoryClient from "mem0ai";
 
 // server/_core/env.ts
 var isProduction = process.env.NODE_ENV === "production";
@@ -4478,10 +4594,55 @@ var ENV = {
   hubspotApiKey: process.env.HUBSPOT_API_KEY ?? "",
   resendApiKey: process.env.RESEND_API_KEY ?? "",
   // Anthropic
-  anthropicApiKey: required("ANTHROPIC_API_KEY")
+  anthropicApiKey: required("ANTHROPIC_API_KEY"),
+  // Mem0
+  mem0ApiKey: process.env.MEM0_API_KEY ?? "",
+  // Sam tool auth (shared secret ElevenLabs sends as x-sam-tool-secret)
+  samToolSecret: process.env.SAM_TOOL_SECRET ?? "",
+  // Founder phone for transfer_to_human
+  founderPhone: process.env.FOUNDER_PHONE ?? "+12013212235"
 };
 
+// server/services/mem0Service.ts
+var _client2 = null;
+function getClient() {
+  if (!ENV.mem0ApiKey) return null;
+  if (!_client2) {
+    _client2 = new MemoryClient({ apiKey: ENV.mem0ApiKey });
+  }
+  return _client2;
+}
+function salesUserId(phone) {
+  return `sales_${phone.replace(/[^\d+]/g, "")}`;
+}
+async function getCallerMemory(phone) {
+  const client = getClient();
+  if (!client) return "";
+  try {
+    const { results } = await client.search(
+      "caller background, shop details, objections, interest level",
+      { filters: { user_id: salesUserId(phone) }, topK: 8 }
+    );
+    if (!results.length) return "";
+    return results.map((m) => `- ${m.memory}`).join("\n");
+  } catch (err) {
+    console.error("[MEM0] Error fetching caller memory:", err);
+    return "";
+  }
+}
+async function storeCallMemory(phone, transcript) {
+  const client = getClient();
+  if (!client || !transcript.length) return;
+  try {
+    await client.add(transcript, { userId: salesUserId(phone) });
+    console.log(`[MEM0] Stored ${transcript.length} turns for ${salesUserId(phone)}`);
+  } catch (err) {
+    console.error("[MEM0] Error storing call memory:", err);
+  }
+}
+
 // server/services/twilioWebhooks.ts
+import { eq as eq16, sql as sql7 } from "drizzle-orm";
 var twilioRouter = Router2();
 function generateVoicemailTwiML(shopName) {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -4502,9 +4663,18 @@ function generateVoicemailTwiML(shopName) {
   <Say voice="Polly.Joanna">We didn't receive a recording. Goodbye.</Say>
 </Response>`;
 }
-async function registerElevenLabsCall(elevenLabsAgentId, fromNumber, toNumber) {
+async function registerElevenLabsCall(elevenLabsAgentId, fromNumber, toNumber, conversationInitiationData) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3e3);
+  const body = {
+    agent_id: elevenLabsAgentId,
+    from_number: fromNumber,
+    to_number: toNumber,
+    direction: "inbound"
+  };
+  if (conversationInitiationData) {
+    body.conversation_initiation_client_data = conversationInitiationData;
+  }
   const response = await fetch(
     "https://api.elevenlabs.io/v1/convai/twilio/register-call",
     {
@@ -4514,13 +4684,7 @@ async function registerElevenLabsCall(elevenLabsAgentId, fromNumber, toNumber) {
         "xi-api-key": ENV.elevenLabsApiKey,
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({
-        agent_id: elevenLabsAgentId,
-        from_number: fromNumber,
-        to_number: toNumber,
-        direction: "inbound"
-        // No conversation_initiation_client_data — agent has full prompt baked in
-      })
+      body: JSON.stringify(body)
     }
   );
   clearTimeout(timeout);
@@ -4540,7 +4704,7 @@ async function resolveShopContext(calledNumber) {
   if (shopId === null) {
     const db = await getDb();
     if (!db) return null;
-    const results = await db.select().from(shops).where(eq15(shops.twilioPhoneNumber, calledNumber)).limit(1);
+    const results = await db.select().from(shops).where(eq16(shops.twilioPhoneNumber, calledNumber)).limit(1);
     if (results.length === 0) return null;
     shopId = results[0].id;
     contextCache.setPhoneToShopId(calledNumber, shopId);
@@ -4550,10 +4714,10 @@ async function resolveShopContext(calledNumber) {
   if (!context) {
     const db = await getDb();
     if (!db) return null;
-    const shopResults = await db.select().from(shops).where(eq15(shops.id, shopId)).limit(1);
+    const shopResults = await db.select().from(shops).where(eq16(shops.id, shopId)).limit(1);
     if (shopResults.length === 0) return null;
     const shop = shopResults[0];
-    const agentResults = await db.select().from(agentConfigs).where(eq15(agentConfigs.shopId, shopId)).limit(1);
+    const agentResults = await db.select().from(agentConfigs).where(eq16(agentConfigs.shopId, shopId)).limit(1);
     const agent = agentResults[0];
     elevenLabsAgentId = agent?.elevenLabsAgentId || "";
     context = {
@@ -4585,7 +4749,7 @@ async function resolveShopContext(calledNumber) {
   if (!elevenLabsAgentId) {
     const db = await getDb();
     if (db) {
-      const agentResults = await db.select({ elevenLabsAgentId: agentConfigs.elevenLabsAgentId }).from(agentConfigs).where(eq15(agentConfigs.shopId, shopId)).limit(1);
+      const agentResults = await db.select({ elevenLabsAgentId: agentConfigs.elevenLabsAgentId }).from(agentConfigs).where(eq16(agentConfigs.shopId, shopId)).limit(1);
       elevenLabsAgentId = agentResults[0]?.elevenLabsAgentId || "";
     }
   }
@@ -4598,7 +4762,7 @@ async function lookupCallerProfile(phone) {
     const results = await db.select({
       name: callerProfiles.name,
       callerRole: callerProfiles.callerRole
-    }).from(callerProfiles).where(eq15(callerProfiles.phone, phone)).limit(1);
+    }).from(callerProfiles).where(eq16(callerProfiles.phone, phone)).limit(1);
     return results[0] || null;
   } catch {
     return null;
@@ -4616,7 +4780,7 @@ async function ensureCallerProfile(phone) {
     }).onConflictDoUpdate({
       target: callerProfiles.phone,
       set: {
-        callCount: sql6`${callerProfiles.callCount} + 1`,
+        callCount: sql7`${callerProfiles.callCount} + 1`,
         lastCalledAt: /* @__PURE__ */ new Date()
       }
     });
@@ -4630,7 +4794,7 @@ async function getShopRingConfig(shopId) {
   const rows = await db.select({
     ringShopFirstEnabled: shops.ringShopFirstEnabled,
     ringTimeoutSec: shops.ringTimeoutSec
-  }).from(shops).where(eq15(shops.id, shopId)).limit(1);
+  }).from(shops).where(eq16(shops.id, shopId)).limit(1);
   return rows[0] ?? null;
 }
 function buildRingShopFirstTwiML(shopPhone, baylioNumber, timeoutSec) {
@@ -4682,7 +4846,16 @@ twilioRouter.post("/voice", async (req, res) => {
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected \u2014 routing to Sam (${SAM_AGENT_ID})`);
       try {
-        const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To);
+        const callerMemory = await getCallerMemory(From);
+        const callerContext = callerMemory ? `This caller has contacted Baylio before. Here's what you know about them:
+${callerMemory}` : "This appears to be a first-time caller. No prior history.";
+        console.log(`[CALL] Mem0 context for ${From}: ${callerMemory ? `${callerMemory.length} chars` : "none (new caller)"}`);
+        const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To, {
+          dynamic_variables: {
+            caller_context: callerContext,
+            caller_phone: From
+          }
+        });
         const elapsed = Date.now() - startTime;
         console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
         res.type("text/xml");
@@ -4716,7 +4889,7 @@ twilioRouter.post("/voice", async (req, res) => {
       try {
         const db = await getDb();
         if (!db) return;
-        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq15(shops.id, resolved.shopId)).limit(1);
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq16(shops.id, resolved.shopId)).limit(1);
         if (!shopRow[0]) return;
         await db.insert(callLogs).values({
           shopId: resolved.shopId,
@@ -4773,7 +4946,7 @@ twilioRouter.post("/no-answer", async (req, res) => {
       try {
         const db = await getDb();
         if (!db) return;
-        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq15(shops.id, resolved.shopId)).limit(1);
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq16(shops.id, resolved.shopId)).limit(1);
         if (!shopRow[0]) return;
         await db.insert(callLogs).values({
           shopId: resolved.shopId,
@@ -4816,7 +4989,7 @@ twilioRouter.post("/status", async (req, res) => {
         const db = await getDb();
         if (!db) return;
         if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
-          const shopResult = await db.select({ id: shops.id, ownerId: shops.ownerId }).from(shops).where(eq15(shops.twilioPhoneNumber, To)).limit(1);
+          const shopResult = await db.select({ id: shops.id, ownerId: shops.ownerId }).from(shops).where(eq16(shops.twilioPhoneNumber, To)).limit(1);
           if (shopResult.length > 0) {
             const shop = shopResult[0];
             const callerProfile = await lookupCallerProfile(From);
@@ -4844,7 +5017,7 @@ twilioRouter.post("/status", async (req, res) => {
             });
             if (CallStatus === "completed") {
               try {
-                const callLogResult = await db.select({ id: callLogs.id }).from(callLogs).where(eq15(callLogs.twilioCallSid, CallSid)).limit(1);
+                const callLogResult = await db.select({ id: callLogs.id }).from(callLogs).where(eq16(callLogs.twilioCallSid, CallSid)).limit(1);
                 if (callLogResult.length > 0) {
                   await processCompletedCall(callLogResult[0].id);
                 }
@@ -4879,7 +5052,7 @@ twilioRouter.post(
         try {
           const db = await getDb();
           if (!db) return;
-          await db.update(callLogs).set({ recordingUrl: RecordingUrl }).where(eq15(callLogs.twilioCallSid, CallSid));
+          await db.update(callLogs).set({ recordingUrl: RecordingUrl }).where(eq16(callLogs.twilioCallSid, CallSid));
         } catch (err) {
           console.error("[RECORDING] Error updating call log:", err);
         }
@@ -4904,7 +5077,7 @@ twilioRouter.post(
           try {
             const db = await getDb();
             if (!db) return;
-            await db.update(callLogs).set({ transcription: TranscriptionText }).where(eq15(callLogs.twilioCallSid, CallSid));
+            await db.update(callLogs).set({ transcription: TranscriptionText }).where(eq16(callLogs.twilioCallSid, CallSid));
           } catch (err) {
             console.error("[TRANSCRIPTION] Error updating call log:", err);
           }
@@ -4931,6 +5104,459 @@ twilioRouter.get("/health", (_req, res) => {
     },
     timestamp: (/* @__PURE__ */ new Date()).toISOString()
   });
+});
+
+// server/services/elevenLabsWebhookService.ts
+import { Router as Router3 } from "express";
+var elevenLabsWebhookRouter = Router3();
+elevenLabsWebhookRouter.post(
+  "/conversation",
+  async (req, res) => {
+    res.status(200).send("OK");
+    try {
+      const payload = req.body;
+      if (payload.type !== "post_call_transcription") return;
+      const data = payload.data;
+      if (!data) return;
+      const callerPhone = data.conversation_initiation_client_data?.dynamic_variables?.caller_phone;
+      if (!callerPhone) {
+        console.warn(
+          "[ELEVENLABS-WEBHOOK] No caller_phone in dynamic_variables \u2014 skipping Mem0 storage"
+        );
+        return;
+      }
+      const transcript = data.transcript;
+      if (!transcript?.length) return;
+      const messages = transcript.filter((t2) => t2.message?.trim()).map((t2) => ({
+        role: t2.role === "user" ? "user" : "assistant",
+        content: t2.message.trim()
+      }));
+      await storeCallMemory(callerPhone, messages);
+      console.log(
+        `[ELEVENLABS-WEBHOOK] Stored memory for ${callerPhone} \u2014 conv ${data.conversation_id}`
+      );
+    } catch (err) {
+      console.error("[ELEVENLABS-WEBHOOK] Error processing webhook:", err);
+    }
+  }
+);
+
+// server/services/samToolsRouter.ts
+import { Router as Router4 } from "express";
+import { z as z13 } from "zod";
+
+// server/services/samToolsService.ts
+import { Client as Client2 } from "@hubspot/api-client";
+import { Resend as Resend3 } from "resend";
+import { eq as eq17 } from "drizzle-orm";
+var HUBSPOT_KEY = process.env.HUBSPOT_API_KEY || "";
+var RESEND_KEY = process.env.RESEND_API_KEY || "";
+async function captureLead(input) {
+  const db = await getDb();
+  if (!db) return null;
+  const phone = input.callerPhone.replace(/[^\d+]/g, "");
+  if (!phone) return null;
+  const existing = await db.select().from(samLeads).where(eq17(samLeads.callerPhone, phone)).limit(1);
+  let leadId;
+  const isReturningCaller = existing.length > 0;
+  if (isReturningCaller) {
+    const prior = existing[0];
+    const merged = {
+      name: input.name ?? prior.name ?? void 0,
+      email: input.email ?? prior.email ?? void 0,
+      shopName: input.shopName ?? prior.shopName ?? void 0,
+      city: input.city ?? prior.city ?? void 0,
+      intent: input.intent ?? prior.intent,
+      intentSummary: input.intentSummary ?? prior.intentSummary ?? void 0,
+      language: input.language ?? prior.language ?? "en",
+      marketingConsent: input.marketingConsent ?? prior.marketingConsent ?? false,
+      conversationId: input.conversationId ?? prior.conversationId ?? void 0,
+      callCount: (prior.callCount ?? 0) + 1,
+      lastCalledAt: /* @__PURE__ */ new Date(),
+      updatedAt: /* @__PURE__ */ new Date()
+    };
+    await db.update(samLeads).set(merged).where(eq17(samLeads.id, prior.id));
+    leadId = prior.id;
+  } else {
+    const inserted = await db.insert(samLeads).values({
+      callerPhone: phone,
+      name: input.name,
+      email: input.email,
+      shopName: input.shopName,
+      city: input.city,
+      intent: input.intent ?? "other",
+      intentSummary: input.intentSummary,
+      language: input.language ?? "en",
+      marketingConsent: input.marketingConsent ?? false,
+      conversationId: input.conversationId
+    }).returning({ id: samLeads.id });
+    leadId = inserted[0].id;
+  }
+  let hubspotContactId = null;
+  if (HUBSPOT_KEY) {
+    try {
+      hubspotContactId = await pushLeadToHubspot({ ...input, callerPhone: phone });
+      if (hubspotContactId) {
+        await db.update(samLeads).set({ hubspotContactId, updatedAt: /* @__PURE__ */ new Date() }).where(eq17(samLeads.id, leadId));
+      }
+    } catch (err) {
+      console.error("[SAM-TOOLS] HubSpot push failed:", err);
+    }
+  }
+  return { leadId, hubspotContactId, isReturningCaller };
+}
+async function pushLeadToHubspot(input) {
+  if (!HUBSPOT_KEY) return null;
+  const client = new Client2({ accessToken: HUBSPOT_KEY });
+  const phone = input.callerPhone;
+  const nameParts = (input.name || "").split(" ");
+  const firstname = nameParts[0] || "Unknown";
+  const lastname = nameParts.slice(1).join(" ") || "";
+  let contactId = null;
+  try {
+    const search = await client.crm.contacts.searchApi.doSearch({
+      filterGroups: [
+        {
+          filters: [
+            {
+              propertyName: "phone",
+              operator: "EQ",
+              value: phone
+            }
+          ]
+        }
+      ],
+      properties: ["phone", "firstname", "lastname", "email"],
+      limit: 1
+    });
+    if (search.results.length > 0) {
+      contactId = search.results[0].id;
+    }
+  } catch (err) {
+    console.error("[SAM-TOOLS][HUBSPOT] search failed:", err);
+  }
+  const properties = {
+    phone,
+    firstname,
+    ...lastname ? { lastname } : {},
+    ...input.email ? { email: input.email } : {},
+    ...input.shopName ? { company: input.shopName } : {},
+    ...input.city ? { city: input.city } : {},
+    hs_lead_status: contactId ? "OPEN" : "NEW",
+    lifecyclestage: "lead",
+    baylio_source: "sam_sales_call",
+    ...input.intent ? { baylio_lead_intent: input.intent } : {}
+  };
+  try {
+    if (contactId) {
+      await client.crm.contacts.basicApi.update(contactId, { properties });
+    } else {
+      const created = await client.crm.contacts.basicApi.create({ properties });
+      contactId = created.id;
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[SAM-TOOLS][HUBSPOT] upsert failed:", msg);
+    return null;
+  }
+  if (contactId && input.intentSummary) {
+    try {
+      await client.crm.objects.notes.basicApi.create({
+        properties: {
+          hs_note_body: `[Sam call] ${input.intentSummary}
+
+Intent: ${input.intent || "other"}
+Language: ${input.language || "en"}
+Marketing consent: ${input.marketingConsent ? "yes" : "no"}`,
+          hs_timestamp: (/* @__PURE__ */ new Date()).toISOString()
+        },
+        associations: [
+          {
+            to: { id: contactId },
+            types: [
+              {
+                associationCategory: "HUBSPOT_DEFINED",
+                associationTypeId: 202
+              }
+            ]
+          }
+        ]
+      });
+    } catch (err) {
+      console.error("[SAM-TOOLS][HUBSPOT] note attach failed:", err);
+    }
+  }
+  return contactId;
+}
+async function sendSmsFollowup(input) {
+  const phone = input.callerPhone.replace(/[^\d+]/g, "");
+  if (!phone) return { success: false, error: "Invalid phone" };
+  const consentSuffix = input.marketingConsent ? "\n\nReply STOP to opt out." : "";
+  const body = `Hey, it's Sam from Baylio \u{1F44B}
+
+${input.contentSummary}
+
+More info: baylio.io` + consentSuffix;
+  const result = await sendSMS({ to: phone, body });
+  if (result.success) {
+    try {
+      const db = await getDb();
+      if (db) {
+        await db.update(samLeads).set({ smsSent: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq17(samLeads.callerPhone, phone));
+      }
+    } catch {
+    }
+  }
+  return result;
+}
+async function sendEmailFollowup(input) {
+  if (!RESEND_KEY) {
+    console.warn("[SAM-TOOLS] RESEND_API_KEY missing \u2014 email not sent");
+    return { success: false, error: "Resend not configured" };
+  }
+  const resend3 = new Resend3(RESEND_KEY);
+  const consentLine = input.marketingConsent ? `<p style="color:#888;font-size:11px;margin-top:24px">You agreed to receive occasional emails from Baylio. <a href="mailto:hello@baylio.io?subject=unsubscribe">Unsubscribe</a>.</p>` : "";
+  try {
+    const result = await resend3.emails.send({
+      from: "Sam from Baylio <sam@baylio.io>",
+      to: [input.email],
+      replyTo: "hello@baylio.io",
+      subject: "Baylio \u2014 quick recap from our call",
+      html: `
+        <div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:auto;color:#111">
+          <p>Hey,</p>
+          <p>Sam here \u2014 Baylio's AI agent. Great chatting with you. Here's the recap from our call:</p>
+          <div style="background:#f7f7f7;padding:16px;border-radius:8px;white-space:pre-line">${escapeHtml2(input.contentSummary)}</div>
+          <p>Pricing &amp; features: <a href="https://baylio.io">baylio.io</a></p>
+          <p>If you want to chat with a real human, just reply to this email or call back anytime.</p>
+          <p>\u2014 Sam<br/>Baylio</p>
+          ${consentLine}
+        </div>
+      `,
+      text: `Hey,
+
+Sam here from Baylio. Recap from our call:
+
+${input.contentSummary}
+
+More info: baylio.io
+
+Reply anytime to talk to a human.
+
+\u2014 Sam`
+    });
+    try {
+      const db = await getDb();
+      if (db) {
+        await db.update(samLeads).set({
+          email: input.email,
+          emailSent: true,
+          updatedAt: /* @__PURE__ */ new Date()
+        }).where(eq17(samLeads.callerPhone, input.callerPhone.replace(/[^\d+]/g, "")));
+      }
+    } catch {
+    }
+    return { success: true, id: result.data?.id };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[SAM-TOOLS] Email send failed:", msg);
+    return { success: false, error: msg };
+  }
+}
+async function markTransferred(callerPhone) {
+  try {
+    const db = await getDb();
+    if (!db) return;
+    const phone = callerPhone.replace(/[^\d+]/g, "");
+    await db.update(samLeads).set({ transferredToHuman: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq17(samLeads.callerPhone, phone));
+  } catch (err) {
+    console.error("[SAM-TOOLS] markTransferred failed:", err);
+  }
+}
+function escapeHtml2(s) {
+  return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+}
+
+// server/services/samToolsRouter.ts
+var samToolsRouter = Router4();
+var FOUNDER_PHONE = process.env.FOUNDER_PHONE || "+12013212235";
+function authSamTool(req, res, next) {
+  const secret = ENV.samToolSecret;
+  if (!secret) {
+    if (ENV.isProduction) {
+      console.error("[SAM-TOOLS] SAM_TOOL_SECRET missing in production");
+      res.status(503).json({ error: "tool secret not configured" });
+      return;
+    }
+    next();
+    return;
+  }
+  const provided = req.header("x-sam-tool-secret") || req.header("authorization")?.replace(/^Bearer\s+/i, "");
+  if (provided !== secret) {
+    console.warn("[SAM-TOOLS] Unauthorized tool call");
+    res.status(401).json({ error: "unauthorized" });
+    return;
+  }
+  next();
+}
+samToolsRouter.use(authSamTool);
+var intentEnum = z13.enum([
+  "shop_owner_prospect",
+  "curious_tester",
+  "car_question",
+  "existing_customer",
+  "onboarding_help",
+  "other"
+]);
+var leadSchema = z13.object({
+  caller_phone: z13.string().min(7),
+  name: z13.string().optional(),
+  email: z13.string().email().optional(),
+  shop_name: z13.string().optional(),
+  city: z13.string().optional(),
+  intent: intentEnum.optional(),
+  intent_summary: z13.string().optional(),
+  language: z13.string().optional(),
+  marketing_consent: z13.boolean().optional(),
+  conversation_id: z13.string().optional()
+});
+var smsSchema = z13.object({
+  caller_phone: z13.string().min(7),
+  content_summary: z13.string().min(1).max(800),
+  marketing_consent: z13.boolean().optional()
+});
+var emailSchema = z13.object({
+  caller_phone: z13.string().min(7),
+  email: z13.string().email(),
+  content_summary: z13.string().min(1).max(2e3),
+  marketing_consent: z13.boolean().optional()
+});
+var onboardSchema = z13.object({
+  caller_phone: z13.string().min(7),
+  name: z13.string().optional(),
+  email: z13.string().email().optional(),
+  language: z13.string().optional(),
+  notes: z13.string().optional()
+});
+var transferSchema = z13.object({
+  caller_phone: z13.string().min(7),
+  reason: z13.string().optional()
+});
+samToolsRouter.post("/lead", async (req, res) => {
+  const parsed = leadSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const result = await captureLead({
+    callerPhone: d.caller_phone,
+    name: d.name,
+    email: d.email,
+    shopName: d.shop_name,
+    city: d.city,
+    intent: d.intent,
+    intentSummary: d.intent_summary,
+    language: d.language,
+    marketingConsent: d.marketing_consent ?? false,
+    conversationId: d.conversation_id
+  });
+  if (!result) {
+    res.status(500).json({ ok: false, message: "Failed to save lead" });
+    return;
+  }
+  res.json({
+    ok: true,
+    lead_id: result.leadId,
+    hubspot_contact_id: result.hubspotContactId,
+    is_returning_caller: result.isReturningCaller,
+    message: result.isReturningCaller ? "Lead updated (returning caller)." : "Lead saved."
+  });
+});
+samToolsRouter.post("/sms", async (req, res) => {
+  const parsed = smsSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const result = await sendSmsFollowup({
+    callerPhone: d.caller_phone,
+    contentSummary: d.content_summary,
+    marketingConsent: d.marketing_consent ?? false
+  });
+  res.json({
+    ok: result.success,
+    sms_sid: result.sid,
+    message: result.success ? "SMS sent \u2014 caller should receive it shortly." : `SMS failed: ${result.error || "unknown error"}`
+  });
+});
+samToolsRouter.post("/email", async (req, res) => {
+  const parsed = emailSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const result = await sendEmailFollowup({
+    callerPhone: d.caller_phone,
+    email: d.email,
+    contentSummary: d.content_summary,
+    marketingConsent: d.marketing_consent ?? false
+  });
+  res.json({
+    ok: result.success,
+    email_id: result.id,
+    message: result.success ? "Email sent." : `Email failed: ${result.error || "unknown error"}`
+  });
+});
+samToolsRouter.post("/onboard", async (req, res) => {
+  const parsed = onboardSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  const result = await captureLead({
+    callerPhone: d.caller_phone,
+    name: d.name,
+    email: d.email,
+    intent: "onboarding_help",
+    intentSummary: d.notes ? `Onboarding requested. Notes: ${d.notes}` : "Onboarding assistance requested",
+    language: d.language,
+    marketingConsent: true
+  });
+  res.json({
+    ok: !!result,
+    lead_id: result?.leadId,
+    message: "Onboarding flagged. The Baylio team will reach out within one business day to walk through setup."
+  });
+});
+samToolsRouter.post("/transfer", async (req, res) => {
+  const parsed = transferSchema.safeParse(req.body);
+  if (!parsed.success) {
+    res.status(400).json({ error: "invalid_input", details: parsed.error.flatten() });
+    return;
+  }
+  const d = parsed.data;
+  await markTransferred(d.caller_phone);
+  res.json({
+    ok: true,
+    transfer_number: FOUNDER_PHONE,
+    message: `Transferring to Abdur at ${FOUNDER_PHONE} now. Tell the caller "hold on one sec, connecting you."`
+  });
+});
+var samTwimlRouter = Router4();
+samTwimlRouter.post("/transfer.twiml", (_req, res) => {
+  const twiml = `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna">Hold on one sec, connecting you to Abdur now.</Say>
+  <Dial timeout="25" answerOnBridge="true">
+    <Number>${FOUNDER_PHONE}</Number>
+  </Dial>
+  <Say voice="Polly.Joanna">Looks like Abdur didn't pick up. He'll call you right back.</Say>
+</Response>`;
+  res.type("text/xml").send(twiml);
 });
 
 // server/middleware/twilioValidation.ts
@@ -5076,7 +5702,7 @@ function rateLimit(opts) {
 // server/stripe/stripeRoutes.ts
 import express from "express";
 import Stripe2 from "stripe";
-import { eq as eq16 } from "drizzle-orm";
+import { eq as eq18 } from "drizzle-orm";
 import { drizzle as drizzle2 } from "drizzle-orm/postgres-js";
 import postgres2 from "postgres";
 import { PostHog } from "posthog-node";
@@ -5172,19 +5798,19 @@ async function handleCheckoutCompleted(session) {
   const tier = session.metadata?.tier;
   const isSetupFee = session.metadata?.type === "setup_fee";
   if (isSetupFee && shopId) {
-    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq16(subscriptions.shopId, parseInt(shopId)));
+    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq18(subscriptions.shopId, parseInt(shopId)));
     console.log(`[Stripe] Setup fee paid for shop ${shopId}`);
     return;
   }
   const isAdditionalShop = session.metadata?.type === "additional_shop";
   if (isAdditionalShop && shopId && userId) {
-    const existingSubs2 = await db.select().from(subscriptions).where(eq16(subscriptions.shopId, parseInt(shopId))).limit(1);
+    const existingSubs2 = await db.select().from(subscriptions).where(eq18(subscriptions.shopId, parseInt(shopId))).limit(1);
     if (existingSubs2.length > 0) {
       await db.update(subscriptions).set({
         status: "active",
         stripeCustomerId: session.customer,
         stripeSubscriptionId: session.subscription
-      }).where(eq16(subscriptions.shopId, parseInt(shopId)));
+      }).where(eq18(subscriptions.shopId, parseInt(shopId)));
     } else {
       await db.insert(subscriptions).values({
         shopId: parseInt(shopId),
@@ -5206,7 +5832,7 @@ async function handleCheckoutCompleted(session) {
   }
   const tierConfig = getTierConfig(tier);
   if (!tierConfig) return;
-  const existingSubs = await db.select().from(subscriptions).where(eq16(subscriptions.shopId, parseInt(shopId))).limit(1);
+  const existingSubs = await db.select().from(subscriptions).where(eq18(subscriptions.shopId, parseInt(shopId))).limit(1);
   if (existingSubs.length > 0) {
     await db.update(subscriptions).set({
       tier: tierConfig.id,
@@ -5214,7 +5840,7 @@ async function handleCheckoutCompleted(session) {
       stripeCustomerId: session.customer,
       stripeSubscriptionId: session.subscription,
       includedMinutes: tierConfig.includedMinutes
-    }).where(eq16(subscriptions.shopId, parseInt(shopId)));
+    }).where(eq18(subscriptions.shopId, parseInt(shopId)));
   } else {
     await db.insert(subscriptions).values({
       shopId: parseInt(shopId),
@@ -5249,7 +5875,7 @@ async function handleInvoicePaid(invoice) {
   const invoiceAny = invoice;
   const subscriptionId = invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  const subs = await db.select().from(subscriptions).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const periodStart = invoiceAny.period_start ?? invoiceAny.period?.start;
     const periodEnd = invoiceAny.period_end ?? invoiceAny.period?.end;
@@ -5258,7 +5884,7 @@ async function handleInvoicePaid(invoice) {
       usedMinutes: 0,
       currentPeriodStart: periodStart ? new Date(periodStart * 1e3) : void 0,
       currentPeriodEnd: periodEnd ? new Date(periodEnd * 1e3) : void 0
-    }).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId));
+    }).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId));
   }
   console.log(`[Stripe] Invoice paid for subscription: ${subscriptionId}`);
 }
@@ -5268,9 +5894,9 @@ async function handlePaymentFailed(invoice) {
   const invoiceAny2 = invoice;
   const subscriptionId = invoiceAny2.subscription ?? invoiceAny2.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  await db.update(subscriptions).set({ status: "past_due" }).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId));
+  await db.update(subscriptions).set({ status: "past_due" }).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId));
   console.log(`[Stripe] Payment failed for subscription: ${subscriptionId}`);
-  const subs = await db.select().from(subscriptions).where(eq16(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const ph = getPostHog();
     ph.capture({
@@ -5298,17 +5924,17 @@ async function handleSubscriptionUpdated(sub) {
       (sub.current_period_start ?? 0) * 1e3
     ),
     currentPeriodEnd: new Date((sub.current_period_end ?? 0) * 1e3)
-  }).where(eq16(subscriptions.stripeSubscriptionId, sub.id));
+  }).where(eq18(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription updated: ${sub.id} \u2192 ${status}`);
 }
 async function handleSubscriptionDeleted(sub) {
   const db = await getDb2();
   if (!db) return;
-  await db.update(subscriptions).set({ status: "canceled" }).where(eq16(subscriptions.stripeSubscriptionId, sub.id));
+  await db.update(subscriptions).set({ status: "canceled" }).where(eq18(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription canceled: ${sub.id}`);
   const db2 = await getDb2();
   if (db2) {
-    const canceledSubs = await db2.select().from(subscriptions).where(eq16(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
+    const canceledSubs = await db2.select().from(subscriptions).where(eq18(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
     if (canceledSubs.length > 0) {
       const ph = getPostHog();
       ph.capture({
@@ -5336,6 +5962,9 @@ app.use(
   validateTwilioSignature(),
   twilioRouter
 );
+app.use("/api/elevenlabs", elevenLabsWebhookRouter);
+app.use("/api/sam", samToolsRouter);
+app.use("/api/sam-twiml", webhookLimiter, samTwimlRouter);
 app.use("/api/integrations/google", googleAuthRouter);
 app.use("/api/trpc/contact.submit", contactLimiter);
 app.use(

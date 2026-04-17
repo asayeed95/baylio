@@ -7,11 +7,80 @@
 
 ## Latest Deploy
 
-- **Date:** 2026-04-09
+- **Date:** 2026-04-17
 - **Branch:** main
-- **Commit:** `2267644`
+- **Commit:** _pending push_
 
 ### What Changed
+
+**feat: Sam goes fully agentic — Mem0 memory, 5 tools, multilingual conversational fix, admin lead dashboard**
+
+Massive upgrade to Sam (Baylio's sales agent at 844-875-2441). Sam is no longer a single-purpose voice bot — he's a multi-persona agent with persistent memory, tool calling, and a CRM dashboard.
+
+**1. Persistent caller memory via Mem0** (`server/services/mem0Service.ts`)
+- New `mem0ai@3.0.0` dependency.
+- Sam bypass injects prior-call context via `conversation_initiation_client_data.dynamic_variables` on every inbound call.
+- Post-call webhook at `/api/elevenlabs/conversation` receives the ElevenLabs transcript and stores it in Mem0 keyed by `sales_<phone>`.
+
+**2. New canonical Sam prompt** (`server/services/samPrompt.md`)
+- Multi-persona: salesperson, mechanic-knowledgeable advisor, customer support, onboarding specialist.
+- Intent detection block (shop owner / curious tester / car question / existing customer / onboarding / spam / wrong number).
+- Deep auto repair knowledge (20+ symptoms, 13 maintenance intervals).
+- Full Baylio pricing knowledge baked in (Trial $149, Starter $199, Pro $349, Elite $599 + setup fees + overage + annual + add-ons).
+- **Multilingual fix** — explicit conversational examples per language. Bangla section rewritten with hard rules against newspaper/news-anchor tone (the user's #1 complaint), plus GOOD vs BAD examples.
+
+**3. Five ElevenLabs custom tools wired to backend** (`server/services/samToolsRouter.ts`)
+- `capture_lead` → `/api/sam/lead` — upserts `sam_leads` + pushes to Baylio HubSpot
+- `send_sms_followup` → `/api/sam/sms` — Twilio SMS w/ consent
+- `send_email_followup` → `/api/sam/email` — Resend email w/ consent
+- `start_onboarding_assist` → `/api/sam/onboard` — flags lead for hands-on onboarding
+- `transfer_to_human` → `/api/sam/transfer` — marks lead transferred + returns founder phone (201-321-2235); raw TwiML at `/api/sam-twiml/transfer.twiml`
+- All endpoints auth-gated by `x-sam-tool-secret` header.
+
+**4. New `sam_leads` table** with intent enum, marketing consent, sms/email/transfer flags, callCount, hubspotContactId. Idempotent upsert on `callerPhone`.
+
+**5. Admin Sam Leads dashboard** at `/admin/sam-leads` — table with search, intent filter, 4 stat cards, touch-icon column (sms/email/transfer/repeat-caller).
+
+**6. Setup script** (`scripts/setup-sam.mjs`) — re-runnable. Pushes canonical prompt + 5 tools + post-call webhook + multilingual TTS model to Sam's agent.
+
+**7. Env additions:** `MEM0_API_KEY`, `SAM_TOOL_SECRET`, `FOUNDER_PHONE` (defaults to `+12013212235`).
+
+### Verification
+
+- 19/19 test files pass, 188 passing + 2 skipped (live-API)
+- `pnpm run check` clean
+- `pnpm run build:vercel` clean — `api/index.js` 228.5kb
+
+### Required Post-Push Actions
+
+1. `vercel env add MEM0_API_KEY production` (paste key from mem0.ai)
+2. `vercel env add SAM_TOOL_SECRET production` (generate any random ≥32-char string)
+3. `vercel env pull .env.local`
+4. `pnpm run db:push` — applies the `sam_leads` table migration
+5. `node scripts/setup-sam.mjs` — pushes prompt + tools to ElevenLabs
+6. Test: call 844-875-2441 from a phone, ask Sam in Bangla — confirm conversational tone, not news-anchor.
+
+### Previous Deploy (2026-04-09)
+
+- **Commit:** `de6e5e8`
+
+### What Changed
+
+**fix: P1 cleanup — appointmentDateTime extraction + serviceCatalog types + auth audit**
+
+1. **Authorization audit** — Audited all 60+ tRPC procedures across 11 routers. All procedures verified secure. `notificationRouter.markRead` flagged by audit but confirmed secure at DB layer (`AND notifications.userId = userId` in WHERE clause). No changes needed.
+
+2. **setImmediate error boundaries** — Verified all 4 `setImmediate` callbacks in `twilioWebhooks.ts` already have proper `try/catch` with `console.error`. No changes needed.
+
+3. **appointmentDateTime extracted from LLM** — `analyzeTranscription` now returns `appointmentDateTime: string | null` from the LLM analysis. The JSON schema includes the field with ISO 8601 format hint. `runPostCallIntegrations` uses it for Google Calendar appointment creation, falling back to 24h only if LLM couldn't extract a specific time. Removes the hardcoded "tomorrow" hack.
+
+4. **serviceCatalog `as any` cast removed** — `postCallPipeline.ts` was casting `shop?.serviceCatalog as any`. Drizzle schema already types it correctly via `$type<Array<{ name: string; category: string; price?: number; description?: string }>>()`. Cast removed.
+
+5. **19/19 tests, 188 passing, 2 skipped (live-API)**
+
+### Previous Deploy (2026-04-09 — AI Agent Config)
+
+- **Commit:** `2267644`
 
 **feat: AI Agent Config — Voice Picker, Personality System, Language Guides**
 

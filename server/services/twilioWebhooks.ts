@@ -20,6 +20,7 @@ import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
 import { type ShopContext } from "./promptCompiler";
 import { processCompletedCall } from "./postCallPipeline";
+import { getCallerMemory } from "./mem0Service";
 import { getDb } from "../db";
 import { eq, sql } from "drizzle-orm";
 import {
@@ -99,9 +100,21 @@ async function registerElevenLabsCall(
   elevenLabsAgentId: string,
   fromNumber: string,
   toNumber: string,
+  conversationInitiationData?: Record<string, unknown>
 ): Promise<string> {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), 3000);
+
+  const body: Record<string, unknown> = {
+    agent_id: elevenLabsAgentId,
+    from_number: fromNumber,
+    to_number: toNumber,
+    direction: "inbound",
+  };
+
+  if (conversationInitiationData) {
+    body.conversation_initiation_client_data = conversationInitiationData;
+  }
 
   const response = await fetch(
     "https://api.elevenlabs.io/v1/convai/twilio/register-call",
@@ -112,13 +125,7 @@ async function registerElevenLabsCall(
         "xi-api-key": ENV.elevenLabsApiKey,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({
-        agent_id: elevenLabsAgentId,
-        from_number: fromNumber,
-        to_number: toNumber,
-        direction: "inbound",
-        // No conversation_initiation_client_data — agent has full prompt baked in
-      }),
+      body: JSON.stringify(body),
     }
   );
 
@@ -425,7 +432,20 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected — routing to Sam (${SAM_AGENT_ID})`);
       try {
-        const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To);
+        // Fetch caller memory from Mem0 (non-blocking — falls back to "" on failure)
+        const callerMemory = await getCallerMemory(From);
+        const callerContext = callerMemory
+          ? `This caller has contacted Baylio before. Here's what you know about them:\n${callerMemory}`
+          : "This appears to be a first-time caller. No prior history.";
+
+        console.log(`[CALL] Mem0 context for ${From}: ${callerMemory ? `${callerMemory.length} chars` : "none (new caller)"}`);
+
+        const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To, {
+          dynamic_variables: {
+            caller_context: callerContext,
+            caller_phone: From,
+          },
+        });
         const elapsed = Date.now() - startTime;
         console.log(`[CALL] Sam registered OK (${elapsed}ms). TwiML length=${twiml.length}`);
         res.type("text/xml");
