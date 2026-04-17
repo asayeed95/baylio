@@ -111,3 +111,10 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 .vercel
+
+# Tool artifacts (Manus, Superpowers, etc.)
+.manus/
+.superpowers/
+__manus__/
+client/public/__manus__/
+.posthog-events.json
