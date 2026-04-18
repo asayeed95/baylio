@@ -20,6 +20,7 @@ import {
   TrendingUp,
   CheckCheck,
 } from "lucide-react";
+import { GearRestVisual } from "@/components/visuals/EmptyStateVisuals";
 import { toast } from "sonner";
 
 /**
@@ -121,10 +122,10 @@ function NotificationsContent() {
       {!notifications || notifications.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Bell />
-            </EmptyMedia>
-            <EmptyTitle>No notifications</EmptyTitle>
+            <div className="mb-4 text-foreground">
+              <GearRestVisual />
+            </div>
+            <EmptyTitle>All quiet — no notifications yet</EmptyTitle>
             <EmptyDescription>
               You'll receive alerts here for new calls, high-value leads, and
               system updates.

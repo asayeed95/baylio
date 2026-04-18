@@ -1,11 +1,16 @@
 import { useState, useMemo } from "react";
 import { usePostHog } from "@posthog/react";
+import { motion } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { Link } from "wouter";
+import { HeroVisual } from "@/components/visuals/HeroVisual";
+import { WrenchDivider, TreadDivider } from "@/components/visuals/TreadDivider";
+import { CarLineDraw } from "@/components/visuals/CarLineDraw";
+import { TIER_ICONS } from "@/components/visuals/TierIcons";
 import {
   Phone,
   BarChart3,
@@ -640,49 +645,109 @@ export default function Landing() {
 
       {/* ─── 2. Hero ─── */}
       <section className="container py-12 md:py-32">
-        <div className="max-w-4xl mx-auto text-center">
-          <Badge variant="secondary" className="mb-6">
-            <Phone className="h-3 w-3 mr-1" />
-            AI Receptionist for Auto Repair Shops
-          </Badge>
-          <h1 className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight">
-            Answer Every Call.
-            <br />
-            <span className="text-primary">
-              Book More Jobs. Recover Lost Revenue.
-            </span>
-          </h1>
-          <p className="text-lg md:text-xl text-muted-foreground mb-8 max-w-2xl mx-auto leading-relaxed">
-            Baylio answers your shop's phone 24/7 with a human-sounding AI
-            voice. It captures caller details, books appointments, and makes
-            sure you never lose a customer to a missed call again.
-          </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button
-              size="lg"
-              className="text-base px-8"
-              onClick={() => {
-                posthog?.capture("cta_clicked", { label: "Book a Demo", location: "hero" });
-                window.location.href = "/login";
-              }}
+        <div className="grid md:grid-cols-2 gap-10 md:gap-16 items-center max-w-6xl mx-auto">
+          {/* Left: copy */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.6, ease: "easeOut" }}
+            className="text-center md:text-left"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.4, delay: 0.05 }}
             >
-              Book a Demo
-              <ArrowRight className="ml-2 h-4 w-4" />
-            </Button>
-            <Button
-              size="lg"
-              variant="outline"
-              className="text-base px-8"
-              asChild
+              <Badge variant="secondary" className="mb-6">
+                <Phone className="h-3 w-3 mr-1" />
+                AI Receptionist for Auto Repair Shops
+              </Badge>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.15 }}
+              className="text-4xl md:text-6xl font-bold tracking-tight mb-6 leading-tight"
             >
-              <a href="#how-it-works">See How It Works</a>
-            </Button>
-          </div>
-          <p className="text-sm text-muted-foreground mt-4">
-            Setup in under 10 minutes · No hardware required · 14-day free trial
-          </p>
+              Answer Every Call.
+              <br />
+              <span className="text-primary">
+                Book More Jobs. Recover Lost Revenue.
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.3 }}
+              className="text-lg md:text-xl text-muted-foreground mb-8 max-w-xl md:max-w-none mx-auto md:mx-0 leading-relaxed"
+            >
+              Baylio answers your shop's phone 24/7 with a human-sounding AI
+              voice. It captures caller details, books appointments, and makes
+              sure you never lose a customer to a missed call again.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.45 }}
+              className="flex flex-col sm:flex-row gap-4 justify-center md:justify-start"
+            >
+              <Button
+                size="lg"
+                className="text-base px-8"
+                onClick={() => {
+                  posthog?.capture("cta_clicked", { label: "Book a Demo", location: "hero" });
+                  window.location.href = "/login";
+                }}
+              >
+                Book a Demo
+                <ArrowRight className="ml-2 h-4 w-4" />
+              </Button>
+              <Button
+                size="lg"
+                variant="outline"
+                className="text-base px-8"
+                asChild
+              >
+                <a href="#how-it-works">See How It Works</a>
+              </Button>
+            </motion.div>
+
+            <motion.p
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.5, delay: 0.6 }}
+              className="text-sm text-muted-foreground mt-4"
+            >
+              Setup in under 10 minutes · No hardware required · 14-day free trial
+            </motion.p>
+          </motion.div>
+
+          {/* Right: schematic visual */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
+            className="hidden md:block text-foreground"
+          >
+            <HeroVisual />
+          </motion.div>
+
+          {/* Mobile: show a compact version below copy */}
+          <motion.div
+            initial={{ opacity: 0, y: 12 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.5 }}
+            className="md:hidden text-foreground -mt-4 max-w-sm mx-auto w-full"
+          >
+            <HeroVisual />
+          </motion.div>
         </div>
       </section>
+
+      <WrenchDivider />
 
       {/* ─── 3. What Happens When a Customer Calls ─── */}
       <section id="how-it-works" className="border-y bg-muted/30">
@@ -690,10 +755,16 @@ export default function Landing() {
           <h2 className="text-3xl font-bold text-center mb-4">
             What Happens When a Customer Calls
           </h2>
-          <p className="text-center text-muted-foreground mb-12 max-w-2xl mx-auto">
+          <p className="text-center text-muted-foreground mb-10 max-w-2xl mx-auto">
             From ring to resolution in seconds. No training. No staffing. No
             missed opportunities.
           </p>
+
+          {/* Schematic car outline draws in as section enters viewport */}
+          <div className="max-w-3xl mx-auto mb-10 text-foreground">
+            <CarLineDraw />
+          </div>
+
           <div className="grid md:grid-cols-4 gap-6 max-w-5xl mx-auto">
             {[
               {
@@ -787,6 +858,8 @@ export default function Landing() {
           ))}
         </div>
       </section>
+
+      <TreadDivider />
 
       {/* ─── 5. ROI Calculator ─── */}
       <ROICalculator />
@@ -982,63 +1055,73 @@ export default function Landing() {
             trial. No contracts.
           </p>
           <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-6xl mx-auto">
-            {PRICING_TIERS.map((tier: any) => (
-              <Card
-                key={tier.name}
-                className={`relative border ${tier.popular ? "border-primary" : ""}`}
-              >
-                {tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge className="bg-primary text-primary-foreground font-mono text-xs">
-                      MOST POPULAR
-                    </Badge>
-                  </div>
-                )}
-                {tier.badge && !tier.popular && (
-                  <div className="absolute -top-3 left-1/2 -translate-x-1/2">
-                    <Badge variant="secondary" className="font-mono text-xs">
-                      {tier.badge}
-                    </Badge>
-                  </div>
-                )}
-                <CardHeader className="text-center pb-4">
-                  <CardTitle className="text-xl">{tier.name}</CardTitle>
-                  <p className="text-sm text-muted-foreground">
-                    {tier.description}
-                  </p>
-                  <div className="mt-4">
-                    <span className="text-4xl font-mono font-bold">
-                      ${tier.price}
-                    </span>
-                    <span className="text-muted-foreground">/month</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {tier.minutes} minutes included
-                  </p>
-                </CardHeader>
-                <CardContent>
-                  <ul className="space-y-3 mb-6">
-                    {tier.features.map((feature: string, i: number) => (
-                      <li key={i} className="flex items-start gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
-                        <span>{feature}</span>
-                      </li>
-                    ))}
-                  </ul>
-                  <Button
-                    className="w-full"
-                    variant={tier.popular ? "default" : "outline"}
-                    onClick={() => {
-                      posthog?.capture("pricing_tier_selected", { tier: tier.name, price: tier.price, cta: tier.cta });
-                      posthog?.capture("cta_clicked", { label: tier.cta, location: "pricing", tier: tier.name });
-                      window.location.href = "/login";
-                    }}
-                  >
-                    {tier.cta}
-                  </Button>
-                </CardContent>
-              </Card>
-            ))}
+            {PRICING_TIERS.map((tier: any) => {
+              const TierIcon = TIER_ICONS[tier.name];
+              return (
+                <Card
+                  key={tier.name}
+                  className={`relative border transition-all hover:border-primary/40 ${tier.popular ? "border-primary shadow-sm" : ""}`}
+                >
+                  {tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <Badge className="bg-primary text-primary-foreground font-mono text-xs">
+                        MOST POPULAR
+                      </Badge>
+                    </div>
+                  )}
+                  {tier.badge && !tier.popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2">
+                      <Badge variant="secondary" className="font-mono text-xs">
+                        {tier.badge}
+                      </Badge>
+                    </div>
+                  )}
+                  <CardHeader className="text-center pb-4">
+                    {TierIcon && (
+                      <div
+                        className={`mx-auto mb-2 flex h-14 w-14 items-center justify-center rounded-lg ${tier.popular ? "bg-primary/10 text-primary" : "bg-muted text-steel"}`}
+                      >
+                        <TierIcon size={40} />
+                      </div>
+                    )}
+                    <CardTitle className="text-xl">{tier.name}</CardTitle>
+                    <p className="text-sm text-muted-foreground">
+                      {tier.description}
+                    </p>
+                    <div className="mt-4">
+                      <span className="text-4xl font-mono font-bold">
+                        ${tier.price}
+                      </span>
+                      <span className="text-muted-foreground">/month</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      {tier.minutes} minutes included
+                    </p>
+                  </CardHeader>
+                  <CardContent>
+                    <ul className="space-y-3 mb-6">
+                      {tier.features.map((feature: string, i: number) => (
+                        <li key={i} className="flex items-start gap-2 text-sm">
+                          <CheckCircle2 className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                          <span>{feature}</span>
+                        </li>
+                      ))}
+                    </ul>
+                    <Button
+                      className="w-full"
+                      variant={tier.popular ? "default" : "outline"}
+                      onClick={() => {
+                        posthog?.capture("pricing_tier_selected", { tier: tier.name, price: tier.price, cta: tier.cta });
+                        posthog?.capture("cta_clicked", { label: tier.cta, location: "pricing", tier: tier.name });
+                        window.location.href = "/login";
+                      }}
+                    >
+                      {tier.cta}
+                    </Button>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
           <p className="text-center text-sm text-muted-foreground mt-8">
             Overage: $0.15/minute beyond your plan. Annual billing saves 20%.

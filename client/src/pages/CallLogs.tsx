@@ -47,6 +47,7 @@ import {
   Search,
   Filter,
 } from "lucide-react";
+import { IncomingCallVisual } from "@/components/visuals/EmptyStateVisuals";
 import { useMemo, useState } from "react";
 import { useLocation, useParams } from "wouter";
 
@@ -225,12 +226,12 @@ function CallLogsContent() {
       ) : filteredCalls.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <Phone />
-            </EmptyMedia>
+            <div className="mb-4 text-foreground">
+              <IncomingCallVisual />
+            </div>
             <EmptyTitle>Your AI is ready for its first call</EmptyTitle>
             <EmptyDescription>
-              Test your AI agent by calling your Twilio number: <strong>{shop?.twilioPhoneNumber || shop?.phone || "No number provisioned"}</strong>. 
+              Test your AI agent by calling your Twilio number: <strong>{shop?.twilioPhoneNumber || shop?.phone || "No number provisioned"}</strong>.
               Live call logs, transcriptions, and sentiment scores will appear here.
             </EmptyDescription>
           </EmptyHeader>
