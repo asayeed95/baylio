@@ -352,6 +352,9 @@ export default function Onboarding() {
                     <Label htmlFor="shop-phone">Current Phone Number</Label>
                     <Input
                       id="shop-phone"
+                      type="tel"
+                      inputMode="tel"
+                      autoComplete="tel"
                       placeholder="(555) 123-4567"
                       value={shopPhone}
                       onChange={(e) => setShopPhone(e.target.value)}
@@ -376,23 +379,24 @@ export default function Onboarding() {
                   <Label htmlFor="address">Street Address</Label>
                   <Input
                     id="address"
+                    autoComplete="street-address"
                     placeholder="123 Main Street"
                     value={address}
                     onChange={(e) => setAddress(e.target.value)}
                   />
                 </div>
-                <div className="grid grid-cols-3 gap-4">
-                  <div className="space-y-2">
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="space-y-2 col-span-2 sm:col-span-1">
                     <Label htmlFor="city">City</Label>
-                    <Input id="city" placeholder="Austin" value={city} onChange={(e) => setCity(e.target.value)} />
+                    <Input id="city" placeholder="Austin" autoComplete="address-level2" value={city} onChange={(e) => setCity(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="state">State</Label>
-                    <Input id="state" placeholder="TX" value={state} onChange={(e) => setState(e.target.value)} />
+                    <Input id="state" placeholder="TX" autoComplete="address-level1" value={state} onChange={(e) => setState(e.target.value)} />
                   </div>
                   <div className="space-y-2">
                     <Label htmlFor="zip">ZIP</Label>
-                    <Input id="zip" placeholder="78701" value={zip} onChange={(e) => setZip(e.target.value)} />
+                    <Input id="zip" type="text" inputMode="numeric" placeholder="78701" autoComplete="postal-code" value={zip} onChange={(e) => setZip(e.target.value)} />
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -424,19 +428,24 @@ export default function Onboarding() {
               <CardContent>
                 <div className="space-y-3">
                   {Object.entries(businessHours).map(([day, hours]) => (
-                    <div key={day} className="flex items-center gap-3">
-                      <span className="w-24 text-sm font-medium capitalize">{day}</span>
-                      <label className="flex items-center gap-2 cursor-pointer">
-                        <input
-                          type="checkbox"
-                          checked={!hours.closed}
-                          onChange={(e) => updateHours(day, "closed", !e.target.checked)}
-                          className="rounded border-border"
-                        />
-                        <span className="text-xs text-muted-foreground">Open</span>
-                      </label>
+                    <div key={day} className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-3">
+                      <div className="flex items-center gap-3 sm:flex-1">
+                        <span className="w-24 text-sm font-medium capitalize">{day}</span>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={!hours.closed}
+                            onChange={(e) => updateHours(day, "closed", !e.target.checked)}
+                            className="rounded border-border h-4 w-4"
+                          />
+                          <span className="text-xs text-muted-foreground">Open</span>
+                        </label>
+                        {hours.closed && (
+                          <span className="text-sm text-muted-foreground sm:hidden">Closed</span>
+                        )}
+                      </div>
                       {!hours.closed && (
-                        <>
+                        <div className="flex items-center gap-2 pl-[108px] sm:pl-0">
                           <Input
                             type="time"
                             value={hours.open}
@@ -450,10 +459,10 @@ export default function Onboarding() {
                             onChange={(e) => updateHours(day, "close", e.target.value)}
                             className="w-28 text-sm"
                           />
-                        </>
+                        </div>
                       )}
                       {hours.closed && (
-                        <span className="text-sm text-muted-foreground">Closed</span>
+                        <span className="hidden sm:inline text-sm text-muted-foreground">Closed</span>
                       )}
                     </div>
                   ))}
@@ -565,6 +574,7 @@ export default function Onboarding() {
                             <span className="text-sm text-muted-foreground">$</span>
                             <Input
                               type="number"
+                              inputMode="decimal"
                               className="w-20 h-8 text-sm text-right font-mono"
                               value={service.price ?? ""}
                               onClick={(e) => e.stopPropagation()}
@@ -731,6 +741,8 @@ export default function Onboarding() {
                       <div className="relative">
                         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input
+                          type="text"
+                          inputMode="numeric"
                           placeholder="e.g., 512"
                           value={areaCode}
                           onChange={(e) => {
@@ -1096,9 +1108,9 @@ export default function Onboarding() {
           </div>
         )}
 
-        {/* Navigation Buttons */}
+        {/* Navigation Buttons — sticky on mobile so CTA is always reachable */}
         {provisioningStatus !== "done" && (
-          <div className="flex items-center justify-between mt-8 pt-6 border-t">
+          <div className="flex items-center justify-between mt-8 pt-4 sm:pt-6 border-t sticky bottom-0 bg-background sm:static pb-4 sm:pb-0 -mx-4 px-4 sm:mx-0 sm:px-0">
             <Button
               variant="ghost"
               onClick={() => {

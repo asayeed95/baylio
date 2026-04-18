@@ -118,3 +118,4 @@ temp/
 __manus__/
 client/public/__manus__/
 .posthog-events.json
+.env*.local

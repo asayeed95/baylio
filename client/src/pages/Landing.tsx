@@ -334,7 +334,7 @@ function ROICalculator() {
     }).format(n);
 
   return (
-    <section id="roi-calculator" className="container py-20">
+    <section id="roi-calculator" className="container py-12 md:py-20">
       <h2 className="text-3xl font-bold text-center mb-4">
         <Calculator className="inline h-8 w-8 mr-2 text-primary" />
         See How Much You're Losing
@@ -639,7 +639,7 @@ export default function Landing() {
       </nav>
 
       {/* ─── 2. Hero ─── */}
-      <section className="container py-20 md:py-32">
+      <section className="container py-12 md:py-32">
         <div className="max-w-4xl mx-auto text-center">
           <Badge variant="secondary" className="mb-6">
             <Phone className="h-3 w-3 mr-1" />
@@ -686,7 +686,7 @@ export default function Landing() {
 
       {/* ─── 3. What Happens When a Customer Calls ─── */}
       <section id="how-it-works" className="border-y bg-muted/30">
-        <div className="container py-20">
+        <div className="container py-12 md:py-20">
           <h2 className="text-3xl font-bold text-center mb-4">
             What Happens When a Customer Calls
           </h2>
@@ -739,7 +739,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 4. Outcomes / Business Results ─── */}
-      <section className="container py-20">
+      <section className="container py-12 md:py-20">
         <h2 className="text-3xl font-bold text-center mb-4">
           What Baylio Does for Your Bottom Line
         </h2>
@@ -793,7 +793,7 @@ export default function Landing() {
 
       {/* ─── 6. Hear Baylio in Action ─── */}
       <section className="border-y bg-muted/30">
-        <div className="container py-20">
+        <div className="container py-12 md:py-20">
           <h2 className="text-3xl font-bold text-center mb-4">
             Hear What Your Customers Will Experience
           </h2>
@@ -847,7 +847,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 7. Features ─── */}
-      <section id="features" className="container py-20">
+      <section id="features" className="container py-12 md:py-20">
         <h2 className="text-3xl font-bold text-center mb-4">
           Everything Your Shop Needs to Never Miss a Call
         </h2>
@@ -876,7 +876,7 @@ export default function Landing() {
 
       {/* ─── 8. Who Baylio Is For ─── */}
       <section className="border-y bg-muted/30">
-        <div className="container py-16">
+        <div className="container py-10 md:py-16">
           <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
             Built for Shops That Can't Afford to Miss the Phone
           </h2>
@@ -918,7 +918,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 9. Trust / Credibility ─── */}
-      <section className="container py-20">
+      <section className="container py-12 md:py-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-10">
           Why Shop Owners Trust Baylio
         </h2>
@@ -973,7 +973,7 @@ export default function Landing() {
 
       {/* ─── 10. Pricing ─── */}
       <section id="pricing" className="border-y bg-muted/30">
-        <div className="container py-20">
+        <div className="container py-12 md:py-20">
           <h2 className="text-3xl font-bold text-center mb-4">
             Simple, Transparent Pricing
           </h2>
@@ -1047,7 +1047,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 11. Blog / Resources Preview ─── */}
-      <section className="container py-20">
+      <section className="container py-12 md:py-20">
         <h2 className="text-2xl md:text-3xl font-bold text-center mb-4">
           Resources for Shop Owners
         </h2>
@@ -1096,7 +1096,7 @@ export default function Landing() {
         id="partners"
         className="border-y bg-gradient-to-br from-primary/5 via-background to-primary/10"
       >
-        <div className="container py-20">
+        <div className="container py-12 md:py-20">
           <div className="max-w-5xl mx-auto">
             <div className="text-center mb-12">
               <Badge variant="secondary" className="mb-4">
@@ -1223,7 +1223,7 @@ export default function Landing() {
       </section>
 
       {/* ─── 13. Final CTA ─── */}
-      <section className="container py-20">
+      <section className="container py-12 md:py-20">
         <div className="max-w-3xl mx-auto text-center">
           <h2 className="text-3xl md:text-4xl font-bold mb-4">
             Stop Losing Customers to Missed Calls
