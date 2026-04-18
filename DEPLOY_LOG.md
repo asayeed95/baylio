@@ -7,11 +7,49 @@
 
 ## Latest Deploy
 
-- **Date:** 2026-04-17
+- **Date:** 2026-04-18
 - **Branch:** main
-- **Commit:** _pending push_
+- **Commit:** `7e4e6a6`
 
 ### What Changed
+
+**feat(mobile): optimize signup flow for mobile webapp**
+
+Full mobile pass on the signup-critical path (Landing → Login → Onboarding). Baylio is now mobile-first-friendly for 375/390/412px viewports.
+
+- **Onboarding (client/src/pages/Onboarding.tsx)**
+  - City/State/ZIP grid: `grid-cols-3` → `grid-cols-2 sm:grid-cols-3` (City spans full width on mobile)
+  - Business hours row: flex-row → `flex-col sm:flex-row` (time inputs stack below day+checkbox on mobile, no more horizontal overflow)
+  - Nav buttons: sticky bottom on mobile so CTA is always reachable (`sticky bottom-0 sm:static`)
+  - Phone input: added `type="tel"` + `inputMode="tel"` + `autoComplete="tel"` for mobile keyboard
+  - Address fields: added `autoComplete` attributes (street-address, address-level1/2, postal-code)
+  - Area code + ZIP: `inputMode="numeric"` for numeric keypad
+  - Service price: `inputMode="decimal"`
+- **Login (client/src/pages/Login.tsx)**
+  - Email: `inputMode="email"` + `autoCapitalize="none"` + `autoCorrect="off"` + `spellCheck={false}` + `autoComplete="email"`
+  - Password: `autoComplete="current-password"` for login, `"new-password"` for signup (enables password manager autofill)
+  - Name: `autoComplete="name"`
+- **Landing (client/src/pages/Landing.tsx)**
+  - Hero padding: `py-20 md:py-32` → `py-12 md:py-32`
+  - All section padding: `container py-20` → `container py-12 md:py-20` (10 sections)
+  - Press/testimonial section: `py-16` → `py-10 md:py-16`
+- **.gitignore**: added `.env*.local` (auto-added by `vercel link`)
+
+---
+
+### Previous Deploy (2026-04-17, commit `fdea2f9`)
+
+**chore: Sam fully agentic + infra (Mem0 + SAM_TOOL_SECRET + scripts/setup-sam.mjs fix)**
+
+Environment setup: `MEM0_API_KEY` + `SAM_TOOL_SECRET` added to Vercel production. Sam's ElevenLabs agent patched with 5 tools (capture_lead, send_sms_followup, send_email_followup, start_onboarding_assist, transfer_to_human) + post-call webhook. Fixed ElevenLabs API format in setup-sam.mjs (object headers, descriptions on all fields, eleven_turbo_v2 model for English).
+
+`sam_leads` table confirmed in Supabase (already migrated). `MEM0_API_KEY` → `m0-...`. `SAM_TOOL_SECRET` → 32-byte hex.
+
+Launchd crons running: `com.baylio.qa-nightly` (22:03 daily), `com.baylio.morning-brief` (07:07 daily).
+
+---
+
+### Previous Deploy (2026-04-10, commit `52831ea`)
 
 **feat: Sam goes fully agentic — Mem0 memory, 5 tools, multilingual conversational fix, admin lead dashboard**
 
