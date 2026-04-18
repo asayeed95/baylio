@@ -78,8 +78,8 @@ if (!promptText.includes("{{caller_phone}}")) {
 // ─── Tool definitions ───────────────────────────────────────────────
 
 const toolAuthHeaders = TOOL_SECRET
-  ? [{ type: "value", name: "x-sam-tool-secret", value: TOOL_SECRET }]
-  : [];
+  ? { "x-sam-tool-secret": TOOL_SECRET }
+  : {};
 
 const tools = [
   {
@@ -123,7 +123,7 @@ const tools = [
           },
           marketing_consent: {
             type: "boolean",
-            description: "True ONLY if caller explicitly agreed to marketing follow-ups",
+            description: "True ONLY if caller explicitly agreed to follow-up marketing messages",
           },
           conversation_id: {
             type: "string",
@@ -152,7 +152,7 @@ const tools = [
             description:
               "1-3 sentence message body. Will be wrapped with 'Hey, it's Sam from Baylio' and a baylio.io link.",
           },
-          marketing_consent: { type: "boolean" },
+          marketing_consent: { type: "boolean", description: "True ONLY if caller explicitly agreed to receive marketing SMS" },
         },
       },
     },
@@ -171,12 +171,12 @@ const tools = [
         required: ["caller_phone", "email", "content_summary"],
         properties: {
           caller_phone: { type: "string", description: "Use {{caller_phone}}" },
-          email: { type: "string" },
+          email: { type: "string", description: "Caller's email address" },
           content_summary: {
             type: "string",
             description: "Body of the email. Plain prose, can be multiple paragraphs.",
           },
-          marketing_consent: { type: "boolean" },
+          marketing_consent: { type: "boolean", description: "True ONLY if caller explicitly agreed to receive marketing emails" },
         },
       },
     },
@@ -195,9 +195,9 @@ const tools = [
         required: ["caller_phone"],
         properties: {
           caller_phone: { type: "string", description: "Use {{caller_phone}}" },
-          name: { type: "string" },
-          email: { type: "string" },
-          language: { type: "string" },
+          name: { type: "string", description: "Caller's full name" },
+          email: { type: "string", description: "Caller's email address" },
+          language: { type: "string", description: "Primary language code (en/es/ar/pt/hi/bn/it/tr)" },
           notes: {
             type: "string",
             description: "Anything specific about their setup (locations, current solution, etc.)",
@@ -245,7 +245,7 @@ const payload = {
     },
     tts: {
       // Multilingual model so non-English languages don't sound like a news anchor.
-      model_id: "eleven_turbo_v2_5",
+      model_id: "eleven_turbo_v2",
       stability: 0.55,
       similarity_boost: 0.75,
       style: 0.4,
