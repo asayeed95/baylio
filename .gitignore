@@ -118,4 +118,8 @@ temp/
 __manus__/
 client/public/__manus__/
 .posthog-events.json
+
+# Claude Code runtime state (not config — routines/commands/skills stay tracked)
+.claude/scheduled_tasks.json
+.claude/scheduled_tasks.lock
 .env*.local

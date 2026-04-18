@@ -77,6 +77,18 @@ Update when loops close. Add new ones as they surface.
 - **blocking:** NO
 - **note:** These are reference docs, not runtime. Low priority. CLAUDE.md is the authoritative source.
 
+### [LOOP-014] Test Coverage Gaps — Money Path + Tenant Isolation
+- **loop:** Nightly QA (`qwen2.5-coder:32b`, tests area, 2026-04-17) flagged 5 highest-risk untested paths. These are not new bugs — they are coverage gaps on critical code:
+  - **`server/services/twilioWebhooks.ts`** — the `/voice` and `/no-answer` handler branches (sales-line bypass, ring-first `<Dial>`, after-hours, no-answer → ElevenLabs fallback) have no unit tests. `twilio.test.ts` covers signature + schema only; `twilioRingFirst.test.ts` covers TwiML structure, not the branch routing.
+  - **Stripe layer** — `server/stripe/products.ts`, `stripeRouter.ts`, `stripeRoutes.ts` have ZERO tests. Webhook handlers for `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted` are all untested. This is LOOP-002's shape expressed in unit-test form.
+  - **`server/shopRouter.ts::completeOnboarding`** — the 586-line onboarding endpoint (shop create + agent config + Twilio number provisioning) is only indirectly tested via `signupFlow.test.ts` (9 tests, auth/signup side only).
+  - **`server/services/elevenLabsService.ts::registerElevenLabsCall`** — core of the live call flow (Register Call API → TwiML). `elevenLabsRetry.test.ts` only exercises the retry wrapper around it.
+  - **`server/middleware/tenantScope.ts`** — multi-tenant row isolation helper. No tests. Regressions here = cross-shop data leaks.
+- **risk_level:** MEDIUM
+- **blocking:** NO — but these are LOOP-001 and LOOP-002 shaped in test form. First paying-customer bug most likely originates here.
+- **next_action:** One PR per gap. Start with `registerElevenLabsCall` (smallest, highest-leverage) and `tenantScope.ts` (security-critical, small surface).
+- **surfaced_by:** `logs/qa-2026-04-17.md` nightly QA tests area, confirmed by file-presence audit.
+
 ---
 
 ## LOW RISK / KNOWN LIMITATIONS

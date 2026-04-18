@@ -136,9 +136,19 @@ Massive upgrade to Sam (Baylio's sales agent at 844-875-2441). Sam is no longer 
 1. `vercel env add MEM0_API_KEY production` (paste key from mem0.ai)
 2. `vercel env add SAM_TOOL_SECRET production` (generate any random ≥32-char string)
 3. `vercel env pull .env.local`
-4. `pnpm run db:push` — applies the `sam_leads` table migration
+4. ~~`pnpm run db:push`~~ — ~~drizzle-kit push is broken (LOOP-006). Use: `node --env-file=.env.local scripts/add-sam-leads.mjs` (idempotent script created 2026-04-17).~~ **DONE 2026-04-17 23:40** — table created, 19 columns verified, unique index `sam_leads_callerPhone_idx` (quoted, case-preserved) on callerPhone.
 5. `node scripts/setup-sam.mjs` — pushes prompt + tools to ElevenLabs
 6. Test: call 844-875-2441 from a phone, ask Sam in Bangla — confirm conversational tone, not news-anchor.
+
+### Infrastructure Additions (2026-04-17 23:00)
+
+Not a product deploy — local developer automation.
+
+1. **Nightly QA pipeline** — `scripts/qa/nightly-qa.sh` runs `pnpm run check` + `pnpm test` + one area of Ollama review against Windows PC at `192.168.0.238:11434` (qwen2.5-coder:32b default). Area rotates by day-of-week. Logs to `logs/qa-YYYY-MM-DD.md` (git-ignored). Slash command: `/qa [area]`.
+2. **Morning brief** — `scripts/qa/run-morning-launchd.sh` pipes a brief prompt through `claude -p`, writes `logs/brief-YYYY-MM-DD.md`. Slash command: `/morning`.
+3. **Scheduling via launchd** — `~/Library/LaunchAgents/com.baylio.qa-nightly.plist` (22:03) + `com.baylio.morning-brief.plist` (07:07). Claude Code `CronCreate` with `durable: true` tested and confirmed NOT persistent on current build — the flag is accepted but no `.claude/scheduled_tasks.json` is written. Fell back to launchd for reliability.
+4. **sam_leads migration script** — `scripts/add-sam-leads.mjs` (idempotent, matches `add-ring-columns.mjs` pattern). Not yet executed — awaiting `DATABASE_URL` via `vercel env pull .env.local`.
+5. **Stale process cleanup** — killed zombie `drizzle-kit studio` (PID 93446) + `esbuild` helper (PID 93458) referencing a deleted path `/Users/agencyflow/baylio/`. The old checkout directory no longer exists; processes were holding refs to deleted inodes. No other processes pointing outside `~/projects/baylio/`.
 
 ### Previous Deploy (2026-04-09)
 
