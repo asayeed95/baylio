@@ -5,6 +5,22 @@ Update when loops close. Add new ones as they surface.
 
 ---
 
+## MEDIUM RISK / NOT BLOCKING
+
+### [LOOP-014] Test Coverage Gaps — Money-Path + Tenant Isolation
+- **loop:** Five critical code paths have zero or near-zero test coverage.
+- **risk_level:** MEDIUM
+- **blocking:** NO — tests pass, but gaps mean regressions could ship silently.
+- **gaps:**
+  1. `twilioWebhooks.ts` — `/voice` and `/no-answer` request handlers are untested (core money path)
+  2. Stripe layer (`stripeRouter.ts`, `stripeRoutes.ts`, `products.ts`) — tracks to LOOP-002; no webhook handler tests
+  3. `shopRouter.ts` `completeOnboarding` — 586-line critical path, not fully covered
+  4. `elevenLabsService.ts` `registerElevenLabsCall` — the call registration function is untested
+  5. `tenantScope.ts` — zero tests for the multi-tenant isolation middleware
+- **next_action:** Write integration tests for `/voice` + `/no-answer` first (highest risk). Then stripe webhook handlers.
+
+---
+
 ## BLOCKING / HIGH RISK
 
 ### [LOOP-001] Full User Journey Not Verified End-to-End

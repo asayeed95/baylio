@@ -5,6 +5,32 @@ Format: `## [DATE] — Decision Title` then Why/Alternatives/Outcome.
 
 ---
 
+## [2026-04-17] — Advanced AI Architecture for Baylio (Multi-Model Stack)
+
+**Decision:** Baylio's AI stack is upgraded to a layered multi-model architecture. Each layer uses the best model for its job. The live call path is untouched.
+
+**Architecture:**
+
+| Layer | Model | Role |
+|-------|-------|------|
+| Live call path | ElevenLabs + gpt-4o-mini + Claude (post-call) | Existing proven stack — fast, deterministic, guarded. Do not change. |
+| Nightly QA | Ollama qwen2.5-coder:32b (LAN: 192.168.0.238:11434) | Code analysis, test generation, regression checks. Already running. |
+| Orchestration copilot | MiniMax M2.7 | Exception analysis, flow optimization, admin-level reasoning |
+| Integration fabric | Pipedream | Confirmations, missed-call follow-ups, CRM sync, owner alerts — event-driven webhooks |
+| Implementation lead | Claude Opus 4.7 in Claude Code | Feature implementation, architecture decisions, complex refactors |
+| Weekly deep review | MiniMax M2.7 | Cross-transcript analysis, handoff failure detection, weekly summary |
+
+**Why:** No single model excels at all layers. Claude Code is best for implementation. qwen2.5-coder is free on LAN for QA. MiniMax M2.7 has large context for weekly transcript review. Pipedream handles event glue without custom infrastructure.
+
+**Alternatives considered:**
+- All-Claude stack — expensive for high-frequency QA/analytics tasks
+- All-OpenAI — vendor lock-in, worse code analysis than qwen for local use
+- Custom orchestration server — unnecessary complexity; Pipedream handles it
+
+**Outcome:** Implementation is staged. Nightly QA already running (launchd). Pipedream integration next after LOOP-001 (E2E journey) is verified.
+
+---
+
 ## [2026-04-09] — Personality System: Sliders Over Free Text
 
 **Decision:** 4 character presets + 3 fine-tune sliders (Warmth, Sales Intensity, Technical Depth 1–5) instead of a free-text "personality instructions" field.
