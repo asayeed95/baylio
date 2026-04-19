@@ -140,7 +140,14 @@ export async function getOrganizationsByOwner(ownerId: number) {
 export async function createShop(data: InsertShop) {
   const db = await getDb();
   if (!db) return undefined;
-  const result = await db.insert(shops).values(data).returning({ id: shops.id });
+  const now = new Date();
+  const trialStarted = data.trialStartedAt ?? now;
+  const trialEnds =
+    data.trialEndsAt ?? new Date(now.getTime() + 14 * 24 * 60 * 60 * 1000);
+  const result = await db
+    .insert(shops)
+    .values({ ...data, trialStartedAt: trialStarted, trialEndsAt: trialEnds })
+    .returning({ id: shops.id });
   return result[0].id;
 }
 

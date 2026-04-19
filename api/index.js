@@ -252,6 +252,13 @@ var shops = pgTable("shops", {
   ringTimeoutSec: integer("ringTimeoutSec").default(12).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
   twilioPhoneSid: varchar("twilioPhoneSid", { length: 64 }),
+  // Trial lifecycle — NULL trialEndsAt means "no trial applies" (e.g., paying customer)
+  trialStartedAt: timestamp("trialStartedAt"),
+  trialEndsAt: timestamp("trialEndsAt"),
+  trialDay7EmailSentAt: timestamp("trialDay7EmailSentAt"),
+  trialDay12EmailSentAt: timestamp("trialDay12EmailSentAt"),
+  trialDay13EmailSentAt: timestamp("trialDay13EmailSentAt"),
+  trialDay14EmailSentAt: timestamp("trialDay14EmailSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull()
 });
@@ -554,7 +561,10 @@ async function getOrganizationsByOwner(ownerId) {
 async function createShop(data) {
   const db = await getDb();
   if (!db) return void 0;
-  const result = await db.insert(shops).values(data).returning({ id: shops.id });
+  const now = /* @__PURE__ */ new Date();
+  const trialStarted = data.trialStartedAt ?? now;
+  const trialEnds = data.trialEndsAt ?? new Date(now.getTime() + 14 * 24 * 60 * 60 * 1e3);
+  const result = await db.insert(shops).values({ ...data, trialStartedAt: trialStarted, trialEndsAt: trialEnds }).returning({ id: shops.id });
   return result[0].id;
 }
 async function getShopsByOwner(ownerId) {
@@ -2414,6 +2424,82 @@ var notificationRouter = router({
 // server/subscriptionRouter.ts
 import { z as z5 } from "zod";
 import { TRPCError as TRPCError5 } from "@trpc/server";
+
+// server/services/trialService.ts
+import { and as and4, eq as eq5, inArray } from "drizzle-orm";
+async function getShopAccessStatus(shopId) {
+  const db = await getDb();
+  if (!db) {
+    return {
+      hasAccess: false,
+      reason: "shop_not_found",
+      trialEndsAt: null,
+      trialDaysRemaining: null,
+      subscriptionStatus: null
+    };
+  }
+  const shopRow = await db.select({ trialEndsAt: shops.trialEndsAt }).from(shops).where(eq5(shops.id, shopId)).limit(1);
+  if (!shopRow[0]) {
+    return {
+      hasAccess: false,
+      reason: "shop_not_found",
+      trialEndsAt: null,
+      trialDaysRemaining: null,
+      subscriptionStatus: null
+    };
+  }
+  const trialEndsAt = shopRow[0].trialEndsAt;
+  const subRow = await db.select({ status: subscriptions.status }).from(subscriptions).where(
+    and4(
+      eq5(subscriptions.shopId, shopId),
+      inArray(subscriptions.status, ["active", "trialing", "past_due"])
+    )
+  ).limit(1);
+  const subscriptionStatus = subRow[0]?.status ?? null;
+  if (subscriptionStatus) {
+    return {
+      hasAccess: true,
+      reason: "subscription",
+      trialEndsAt,
+      trialDaysRemaining: computeDaysRemaining(trialEndsAt),
+      subscriptionStatus
+    };
+  }
+  if (!trialEndsAt) {
+    return {
+      hasAccess: false,
+      reason: "no_trial",
+      trialEndsAt: null,
+      trialDaysRemaining: null,
+      subscriptionStatus: null
+    };
+  }
+  const now = /* @__PURE__ */ new Date();
+  if (trialEndsAt.getTime() > now.getTime()) {
+    return {
+      hasAccess: true,
+      reason: "trial",
+      trialEndsAt,
+      trialDaysRemaining: computeDaysRemaining(trialEndsAt),
+      subscriptionStatus: null
+    };
+  }
+  return {
+    hasAccess: false,
+    reason: "trial_expired",
+    trialEndsAt,
+    trialDaysRemaining: 0,
+    subscriptionStatus: null
+  };
+}
+function computeDaysRemaining(trialEndsAt) {
+  if (!trialEndsAt) return null;
+  const ms = trialEndsAt.getTime() - Date.now();
+  if (ms <= 0) return 0;
+  return Math.ceil(ms / (24 * 60 * 60 * 1e3));
+}
+
+// server/subscriptionRouter.ts
 var TIER_CONFIG = {
   trial: { includedMinutes: 150, monthlyPrice: 149, setupFee: 0 },
   starter: { includedMinutes: 300, monthlyPrice: 199, setupFee: 500 },
@@ -2546,6 +2632,18 @@ var subscriptionRouter = router({
    */
   getTierConfig: protectedProcedure.query(() => {
     return TIER_CONFIG;
+  }),
+  /**
+   * Access status for the signed-in user's first shop — powers the trial
+   * banner and the lock screen. Returns `null` when the user has no shop
+   * yet (pre-onboarding).
+   */
+  getAccessStatus: protectedProcedure.query(async ({ ctx }) => {
+    const userShops = await getShopsByOwner(ctx.user.id);
+    if (userShops.length === 0) return null;
+    const shop = userShops[0];
+    const access = await getShopAccessStatus(shop.id);
+    return { shopId: shop.id, shopName: shop.name, ...access };
   })
 });
 
@@ -2901,7 +2999,7 @@ var stripeRouter = router({
 
 // server/partnerRouter.ts
 import { z as z8 } from "zod";
-import { eq as eq5, and as and4, desc as desc2, sql as sql3 } from "drizzle-orm";
+import { eq as eq6, and as and5, desc as desc2, sql as sql3 } from "drizzle-orm";
 import { TRPCError as TRPCError7 } from "@trpc/server";
 import { nanoid } from "nanoid";
 var partnerRouter = router({
@@ -2915,7 +3013,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const result = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const result = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     return result[0] || null;
   }),
   /**
@@ -2934,7 +3032,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const existing = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const existing = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (existing.length > 0) {
       return { id: existing[0].id, referralCode: existing[0].referralCode };
     }
@@ -2959,7 +3057,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return null;
     const p = partner[0];
     const referralStats = await db.select({
@@ -2970,7 +3068,7 @@ var partnerRouter = router({
       churned: sql3`SUM(CASE WHEN ${referrals.status} = 'churned' THEN 1 ELSE 0 END)`,
       totalCommission: sql3`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
       totalMonthlyValue: sql3`COALESCE(SUM(CASE WHEN ${referrals.status} = 'subscribed' THEN ${referrals.monthlyValue} ELSE 0 END), 0)`
-    }).from(referrals).where(eq5(referrals.partnerId, p.id));
+    }).from(referrals).where(eq6(referrals.partnerId, p.id));
     const stats = referralStats[0];
     return {
       partner: p,
@@ -2999,15 +3097,15 @@ var partnerRouter = router({
   ).query(async ({ ctx, input }) => {
     const db = await getDb();
     if (!db) return { referrals: [], total: 0 };
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return { referrals: [], total: 0 };
-    const conditions = [eq5(referrals.partnerId, partner[0].id)];
+    const conditions = [eq6(referrals.partnerId, partner[0].id)];
     const statusFilter = input?.status || "all";
     if (statusFilter !== "all") {
-      conditions.push(eq5(referrals.status, statusFilter));
+      conditions.push(eq6(referrals.status, statusFilter));
     }
-    const results = await db.select().from(referrals).where(and4(...conditions)).orderBy(desc2(referrals.createdAt)).limit(input?.limit || 50).offset(input?.offset || 0);
-    const countResult = await db.select({ count: sql3`COUNT(*)` }).from(referrals).where(and4(...conditions));
+    const results = await db.select().from(referrals).where(and5(...conditions)).orderBy(desc2(referrals.createdAt)).limit(input?.limit || 50).offset(input?.offset || 0);
+    const countResult = await db.select({ count: sql3`COUNT(*)` }).from(referrals).where(and5(...conditions));
     return {
       referrals: results,
       total: countResult[0]?.count || 0
@@ -3019,20 +3117,20 @@ var partnerRouter = router({
   getEarnings: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return null;
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return null;
     const p = partner[0];
     const monthlyEarnings = await db.select({
       month: sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`,
       earned: sql3`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
       count: sql3`COUNT(*)`
-    }).from(referrals).where(eq5(referrals.partnerId, p.id)).groupBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`).orderBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`);
+    }).from(referrals).where(eq6(referrals.partnerId, p.id)).groupBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`).orderBy(sql3`TO_CHAR(${referrals.createdAt}, 'YYYY-MM')`);
     const byTier = await db.select({
       tier: referrals.subscriptionTier,
       earned: sql3`COALESCE(SUM(${referrals.commissionEarned}), 0)`,
       count: sql3`COUNT(*)`
     }).from(referrals).where(
-      and4(eq5(referrals.partnerId, p.id), eq5(referrals.status, "subscribed"))
+      and5(eq6(referrals.partnerId, p.id), eq6(referrals.status, "subscribed"))
     ).groupBy(referrals.subscriptionTier);
     return {
       totalEarnings: parseFloat(p.totalEarnings?.toString() || "0"),
@@ -3048,7 +3146,7 @@ var partnerRouter = router({
   getMyNetwork: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return { network: [], totalMRR: 0 };
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return { network: [], totalMRR: 0 };
     const network = await db.select({
       referralId: referrals.id,
@@ -3060,7 +3158,7 @@ var partnerRouter = router({
       commissionEarned: referrals.commissionEarned,
       convertedAt: referrals.convertedAt,
       createdAt: referrals.createdAt
-    }).from(referrals).where(eq5(referrals.partnerId, partner[0].id)).orderBy(desc2(referrals.createdAt));
+    }).from(referrals).where(eq6(referrals.partnerId, partner[0].id)).orderBy(desc2(referrals.createdAt));
     const totalMRR = network.filter((n) => n.status === "subscribed").reduce(
       (sum, n) => sum + parseFloat(n.monthlyValue?.toString() || "0"),
       0
@@ -3081,7 +3179,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) {
       throw new TRPCError7({
         code: "NOT_FOUND",
@@ -3105,7 +3203,7 @@ var partnerRouter = router({
     }).returning({ id: partnerPayouts.id });
     await db.update(partners).set({
       pendingEarnings: sql3`${partners.pendingEarnings} - ${input.amount.toFixed(2)}`
-    }).where(eq5(partners.id, p.id));
+    }).where(eq6(partners.id, p.id));
     return { payoutId: result[0].id, amount: input.amount };
   }),
   /**
@@ -3114,9 +3212,9 @@ var partnerRouter = router({
   getMyPayouts: protectedProcedure.query(async ({ ctx }) => {
     const db = await getDb();
     if (!db) return [];
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) return [];
-    return db.select().from(partnerPayouts).where(eq5(partnerPayouts.partnerId, partner[0].id)).orderBy(desc2(partnerPayouts.requestedAt));
+    return db.select().from(partnerPayouts).where(eq6(partnerPayouts.partnerId, partner[0].id)).orderBy(desc2(partnerPayouts.requestedAt));
   }),
   /**
    * Update partner settings (payout method, notifications, profile).
@@ -3138,7 +3236,7 @@ var partnerRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    const partner = await db.select().from(partners).where(eq5(partners.userId, ctx.user.id)).limit(1);
+    const partner = await db.select().from(partners).where(eq6(partners.userId, ctx.user.id)).limit(1);
     if (partner.length === 0) {
       throw new TRPCError7({
         code: "NOT_FOUND",
@@ -3160,7 +3258,7 @@ var partnerRouter = router({
     if (input.notifyNewsletter !== void 0)
       updateData.notifyNewsletter = input.notifyNewsletter;
     if (Object.keys(updateData).length > 0) {
-      await db.update(partners).set(updateData).where(eq5(partners.id, partner[0].id));
+      await db.update(partners).set(updateData).where(eq6(partners.id, partner[0].id));
     }
     return { success: true };
   })
@@ -3168,7 +3266,7 @@ var partnerRouter = router({
 
 // server/analyticsRouter.ts
 import { z as z9 } from "zod";
-import { eq as eq6, and as and5, gte as gte3, sql as sql4, count as count2, desc as desc3 } from "drizzle-orm";
+import { eq as eq7, and as and6, gte as gte3, sql as sql4, count as count2, desc as desc3 } from "drizzle-orm";
 var TWILIO_RATE_PER_MIN = 0.014;
 var ELEVENLABS_RATE_PER_CHAR = 11e-5;
 var AVG_CHARS_PER_MINUTE = 600;
@@ -3188,7 +3286,7 @@ var analyticsRouter = router({
     const now = /* @__PURE__ */ new Date();
     const monthStart = input?.startDate ? new Date(input.startDate) : new Date(now.getFullYear(), now.getMonth(), 1);
     const monthEnd = input?.endDate ? new Date(input.endDate) : new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
-    const userShops = await db.select({ id: shops.id }).from(shops).where(eq6(shops.ownerId, ctx.user.id));
+    const userShops = await db.select({ id: shops.id }).from(shops).where(eq7(shops.ownerId, ctx.user.id));
     const shopIds = userShops.map((s) => s.id);
     if (shopIds.length === 0) {
       return {
@@ -3209,7 +3307,7 @@ var analyticsRouter = router({
       callCount: count2(),
       totalSeconds: sql4`COALESCE(SUM(${callLogs.duration}), 0)`
     }).from(callLogs).where(
-      and5(
+      and6(
         sql4`${callLogs.shopId} IN (${sql4.raw(shopIdList)})`,
         gte3(callLogs.createdAt, monthStart)
       )
@@ -3228,9 +3326,9 @@ var analyticsRouter = router({
       elite: 599
     };
     const activeSubs = await db.select({ tier: subscriptions.tier }).from(subscriptions).where(
-      and5(
+      and6(
         sql4`${subscriptions.shopId} IN (${sql4.raw(shopIdList)})`,
-        eq6(subscriptions.status, "active")
+        eq7(subscriptions.status, "active")
       )
     );
     const revenue = activeSubs.reduce(
@@ -3244,7 +3342,7 @@ var analyticsRouter = router({
       date: sql4`DATE(${callLogs.createdAt})`,
       count: count2()
     }).from(callLogs).where(
-      and5(
+      and6(
         sql4`${callLogs.shopId} IN (${sql4.raw(shopIdList)})`,
         gte3(callLogs.createdAt, thirtyDaysAgo)
       )
@@ -3387,6 +3485,156 @@ async function sendSupportReply(data) {
     text: data.body
   });
 }
+function formatTrialEndDate(trialEndsAt) {
+  return trialEndsAt.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/New_York"
+  });
+}
+function trialWrap(inner) {
+  return `<div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a;line-height:1.6">${inner}<hr style="border:none;border-top:1px solid #eee;margin:24px 0" /><p style="font-size:12px;color:#888">Baylio \xB7 AI phone receptionist for auto repair shops \xB7 <a href="https://baylio.io" style="color:#888">baylio.io</a></p></div>`;
+}
+async function sendTrialEmail(params) {
+  if (!resend2) {
+    console.log(`[EmailService] No RESEND_API_KEY \u2014 would send ${params.tag} to ${params.to}`);
+    return false;
+  }
+  try {
+    const result = await resend2.emails.send({
+      from: "Baylio <hello@baylio.io>",
+      to: [params.to],
+      replyTo: "support@baylio.io",
+      subject: params.subject,
+      html: params.html,
+      text: params.text
+    });
+    console.log(`[EmailService] ${params.tag} sent to ${params.to}:`, result.data?.id);
+    return true;
+  } catch (err) {
+    console.error(`[EmailService] ${params.tag} send failed:`, err);
+    return false;
+  }
+}
+async function sendTrialDay7Email(data) {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const endsOn = formatTrialEndDate(data.trialEndsAt);
+  const subject = `You're halfway through your Baylio trial`;
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>You're 7 days into your Baylio trial at <strong>${escapeHtml(data.shopName)}</strong>. Your trial runs until <strong>${escapeHtml(endsOn)}</strong>.</p>
+    <p>A few things worth checking before your trial ends:</p>
+    <ul>
+      <li>Review your call logs \u2014 any callers you would have missed?</li>
+      <li>Listen to a transcript and check how Baylio handled the conversation.</li>
+      <li>Book an appointment through a test call to see the flow end-to-end.</li>
+    </ul>
+    <p>Questions or want a walkthrough? Just reply to this email \u2014 a real person reads every reply.</p>
+    <p>\u2014 The Baylio team</p>
+  `);
+  const text2 = [
+    `Hey ${name},`,
+    "",
+    `You're 7 days into your Baylio trial at ${data.shopName}. Your trial runs until ${endsOn}.`,
+    "",
+    "A few things worth checking before your trial ends:",
+    " - Review your call logs \u2014 any callers you would have missed?",
+    " - Listen to a transcript and check how Baylio handled the conversation.",
+    " - Book an appointment through a test call to see the flow end-to-end.",
+    "",
+    "Questions or want a walkthrough? Just reply to this email.",
+    "",
+    "\u2014 The Baylio team"
+  ].join("\n");
+  return sendTrialEmail({ to: data.toEmail, subject, html, text: text2, tag: "Trial day 7" });
+}
+async function sendTrialDay12Email(data) {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const endsOn = formatTrialEndDate(data.trialEndsAt);
+  const subject = `2 days left on your Baylio trial`;
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>Heads up \u2014 your Baylio trial for <strong>${escapeHtml(data.shopName)}</strong> ends in <strong>2 days</strong> (on ${escapeHtml(endsOn)}).</p>
+    <p>When the trial ends, incoming callers will hear a voicemail instead of your AI receptionist. To keep Baylio answering your phone, pick a plan before ${escapeHtml(endsOn)}:</p>
+    <p style="margin:24px 0">
+      <a href="https://baylio.io/pricing" style="background:#0d9488;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Choose your plan</a>
+    </p>
+    <p>Want to talk through which plan fits your shop? Just reply \u2014 happy to help.</p>
+    <p>\u2014 The Baylio team</p>
+  `);
+  const text2 = [
+    `Hey ${name},`,
+    "",
+    `Heads up \u2014 your Baylio trial for ${data.shopName} ends in 2 days (on ${endsOn}).`,
+    "",
+    "When the trial ends, incoming callers will hear a voicemail instead of your AI receptionist. To keep Baylio answering your phone, pick a plan before the trial ends:",
+    "",
+    "https://baylio.io/pricing",
+    "",
+    "Want to talk through which plan fits your shop? Just reply.",
+    "",
+    "\u2014 The Baylio team"
+  ].join("\n");
+  return sendTrialEmail({ to: data.toEmail, subject, html, text: text2, tag: "Trial day 12" });
+}
+async function sendTrialDay13Email(data) {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const endsOn = formatTrialEndDate(data.trialEndsAt);
+  const subject = `Your Baylio trial ends tomorrow`;
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>Your Baylio trial for <strong>${escapeHtml(data.shopName)}</strong> ends <strong>tomorrow</strong> (${escapeHtml(endsOn)}).</p>
+    <p>If you don't pick a plan by then, incoming callers will hit a voicemail instead of your AI receptionist \u2014 which means every missed call after that is a real missed opportunity.</p>
+    <p style="margin:24px 0">
+      <a href="https://baylio.io/pricing" style="background:#0d9488;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Choose your plan</a>
+    </p>
+    <p>Takes about a minute. If you need a hand or want to compare plans, reply to this email.</p>
+    <p>\u2014 The Baylio team</p>
+  `);
+  const text2 = [
+    `Hey ${name},`,
+    "",
+    `Your Baylio trial for ${data.shopName} ends tomorrow (${endsOn}).`,
+    "",
+    "If you don't pick a plan by then, incoming callers will hit a voicemail instead of your AI receptionist \u2014 which means every missed call after that is a real missed opportunity.",
+    "",
+    "Choose your plan: https://baylio.io/pricing",
+    "",
+    "Takes about a minute. If you need a hand, reply to this email.",
+    "",
+    "\u2014 The Baylio team"
+  ].join("\n");
+  return sendTrialEmail({ to: data.toEmail, subject, html, text: text2, tag: "Trial day 13" });
+}
+async function sendTrialDay14Email(data) {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const subject = `Your Baylio trial has ended`;
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>Your Baylio trial for <strong>${escapeHtml(data.shopName)}</strong> has ended. Right now, callers to your Baylio number are hearing a voicemail instead of your AI receptionist.</p>
+    <p>Your shop settings, agent configuration, and call history are all saved. Pick a plan and Baylio picks up the next call.</p>
+    <p style="margin:24px 0">
+      <a href="https://baylio.io/pricing" style="background:#0d9488;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Reactivate Baylio</a>
+    </p>
+    <p>Not sure which plan, or want to extend your trial? Reply \u2014 we're happy to figure it out with you.</p>
+    <p>\u2014 The Baylio team</p>
+  `);
+  const text2 = [
+    `Hey ${name},`,
+    "",
+    `Your Baylio trial for ${data.shopName} has ended. Right now, callers to your Baylio number are hearing a voicemail instead of your AI receptionist.`,
+    "",
+    "Your shop settings, agent configuration, and call history are all saved. Pick a plan and Baylio picks up the next call.",
+    "",
+    "Reactivate: https://baylio.io/pricing",
+    "",
+    "Not sure which plan, or want to extend? Reply \u2014 happy to help.",
+    "",
+    "\u2014 The Baylio team"
+  ].join("\n");
+  return sendTrialEmail({ to: data.toEmail, subject, html, text: text2, tag: "Trial day 14" });
+}
 
 // server/contactRouter.ts
 var contactRouter = router({
@@ -3428,7 +3676,7 @@ ${input.message}`
 // server/integrationRouter.ts
 import { z as z11 } from "zod";
 import { TRPCError as TRPCError8 } from "@trpc/server";
-import { eq as eq7, and as and6, desc as desc4 } from "drizzle-orm";
+import { eq as eq8, and as and7, desc as desc4 } from "drizzle-orm";
 var integrationRouter = router({
   /** List all active integrations for a shop */
   listConnected: protectedProcedure.input(z11.object({ shopId: z11.number() })).query(async ({ ctx, input }) => {
@@ -3437,9 +3685,9 @@ var integrationRouter = router({
     const db = await getDb();
     if (!db) return [];
     return db.select().from(shopIntegrations).where(
-      and6(
-        eq7(shopIntegrations.shopId, input.shopId),
-        eq7(shopIntegrations.isActive, true)
+      and7(
+        eq8(shopIntegrations.shopId, input.shopId),
+        eq8(shopIntegrations.isActive, true)
       )
     );
   }),
@@ -3455,7 +3703,7 @@ var integrationRouter = router({
         code: "INTERNAL_SERVER_ERROR",
         message: "Database unavailable"
       });
-    await db.update(shopIntegrations).set({ isActive: false }).where(eq7(shopIntegrations.id, input.integrationId));
+    await db.update(shopIntegrations).set({ isActive: false }).where(eq8(shopIntegrations.id, input.integrationId));
     return { success: true };
   }),
   /** Save integration settings (API keys, calendar ID, sheet ID, etc.) */
@@ -3484,9 +3732,9 @@ var integrationRouter = router({
         message: "Database unavailable"
       });
     const existing = await db.select({ id: shopIntegrations.id }).from(shopIntegrations).where(
-      and6(
-        eq7(shopIntegrations.shopId, input.shopId),
-        eq7(shopIntegrations.provider, input.provider)
+      and7(
+        eq8(shopIntegrations.shopId, input.shopId),
+        eq8(shopIntegrations.provider, input.provider)
       )
     ).limit(1);
     if (existing.length > 0) {
@@ -3494,7 +3742,7 @@ var integrationRouter = router({
         settings: input.settings || {},
         ...input.accessToken ? { accessToken: input.accessToken } : {},
         isActive: true
-      }).where(eq7(shopIntegrations.id, existing[0].id));
+      }).where(eq8(shopIntegrations.id, existing[0].id));
     } else {
       await db.insert(shopIntegrations).values({
         shopId: input.shopId,
@@ -3517,14 +3765,14 @@ var integrationRouter = router({
     if (!shop || shop.ownerId !== ctx.user.id) return [];
     const db = await getDb();
     if (!db) return [];
-    return db.select().from(integrationSyncLogs).where(eq7(integrationSyncLogs.shopId, input.shopId)).orderBy(desc4(integrationSyncLogs.createdAt)).limit(input.limit);
+    return db.select().from(integrationSyncLogs).where(eq8(integrationSyncLogs.shopId, input.shopId)).orderBy(desc4(integrationSyncLogs.createdAt)).limit(input.limit);
   })
 });
 
 // server/samLeadsRouter.ts
 import { z as z12 } from "zod";
 import { TRPCError as TRPCError9 } from "@trpc/server";
-import { desc as desc5, eq as eq8, ilike, or, sql as sql5 } from "drizzle-orm";
+import { desc as desc5, eq as eq9, ilike, or, sql as sql5 } from "drizzle-orm";
 var samLeadsRouter = router({
   /**
    * Paginated list of Sam leads, optional search by name/phone/email.
@@ -3560,7 +3808,7 @@ var samLeadsRouter = router({
       );
     }
     if (input.intent) {
-      filters.push(eq8(samLeads.intent, input.intent));
+      filters.push(eq9(samLeads.intent, input.intent));
     }
     const whereClause = filters.length ? filters.reduce((a, b) => sql5`${a} AND ${b}`) : void 0;
     const baseQuery = db.select().from(samLeads);
@@ -3578,7 +3826,7 @@ var samLeadsRouter = router({
     const db = await getDb();
     if (!db)
       throw new TRPCError9({ code: "INTERNAL_SERVER_ERROR", message: "DB unavailable" });
-    const rows = await db.select().from(samLeads).where(eq8(samLeads.id, input.id)).limit(1);
+    const rows = await db.select().from(samLeads).where(eq9(samLeads.id, input.id)).limit(1);
     if (rows.length === 0)
       throw new TRPCError9({ code: "NOT_FOUND", message: "Lead not found" });
     return rows[0];
@@ -3708,7 +3956,7 @@ var anonKey = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KE
 var supabaseAdmin = supabaseUrl && serviceRoleKey ? createClient2(supabaseUrl, serviceRoleKey) : null;
 
 // server/_core/context.ts
-import { eq as eq9 } from "drizzle-orm";
+import { eq as eq10 } from "drizzle-orm";
 async function createContext(opts) {
   let user = null;
   const authHeader = opts.req.headers.authorization;
@@ -3719,7 +3967,7 @@ async function createContext(opts) {
       if (supaUser && !error) {
         const dbConn = await getDb();
         if (dbConn) {
-          const result = await dbConn.select().from(users).where(eq9(users.supabaseId, supaUser.id)).limit(1);
+          const result = await dbConn.select().from(users).where(eq10(users.supabaseId, supaUser.id)).limit(1);
           if (result[0]) {
             user = result[0];
           } else {
@@ -3748,7 +3996,7 @@ async function createContext(opts) {
 import { Router as Router2 } from "express";
 
 // server/services/postCallPipeline.ts
-import { eq as eq15, and as and12, sql as sql6 } from "drizzle-orm";
+import { eq as eq16, and as and13, sql as sql6 } from "drizzle-orm";
 
 // server/_core/llm.ts
 var ensureArray = (value) => Array.isArray(value) ? value : [value];
@@ -3929,7 +4177,7 @@ import { google as google2 } from "googleapis";
 // server/services/googleAuth.ts
 import { Router } from "express";
 import { google } from "googleapis";
-import { eq as eq10, and as and7 } from "drizzle-orm";
+import { eq as eq11, and as and8 } from "drizzle-orm";
 var SCOPES = [
   "https://www.googleapis.com/auth/calendar",
   "https://www.googleapis.com/auth/spreadsheets"
@@ -3979,9 +4227,9 @@ googleAuthRouter.get("/callback", async (req, res) => {
     }
     for (const provider of ["google_calendar", "google_sheets"]) {
       const existing = await db.select({ id: shopIntegrations.id }).from(shopIntegrations).where(
-        and7(
-          eq10(shopIntegrations.shopId, parseInt(shopId)),
-          eq10(shopIntegrations.provider, provider)
+        and8(
+          eq11(shopIntegrations.shopId, parseInt(shopId)),
+          eq11(shopIntegrations.provider, provider)
         )
       ).limit(1);
       const tokenData = {
@@ -3992,7 +4240,7 @@ googleAuthRouter.get("/callback", async (req, res) => {
         isActive: true
       };
       if (existing.length > 0) {
-        await db.update(shopIntegrations).set(tokenData).where(eq10(shopIntegrations.id, existing[0].id));
+        await db.update(shopIntegrations).set(tokenData).where(eq11(shopIntegrations.id, existing[0].id));
       } else {
         await db.insert(shopIntegrations).values({
           shopId: parseInt(shopId),
@@ -4011,10 +4259,10 @@ async function getGoogleClient(shopId, provider) {
   const db = await getDb();
   if (!db) return null;
   const results = await db.select().from(shopIntegrations).where(
-    and7(
-      eq10(shopIntegrations.shopId, shopId),
-      eq10(shopIntegrations.provider, provider),
-      eq10(shopIntegrations.isActive, true)
+    and8(
+      eq11(shopIntegrations.shopId, shopId),
+      eq11(shopIntegrations.provider, provider),
+      eq11(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (results.length === 0) return null;
@@ -4032,7 +4280,7 @@ async function getGoogleClient(shopId, provider) {
       await db.update(shopIntegrations).set({
         accessToken: credentials.access_token || integration.accessToken,
         tokenExpiresAt: credentials.expiry_date ? new Date(credentials.expiry_date) : null
-      }).where(eq10(shopIntegrations.id, integration.id));
+      }).where(eq11(shopIntegrations.id, integration.id));
       oauth2Client.setCredentials(credentials);
     } catch (err) {
       console.error("[GOOGLE-AUTH] Token refresh failed:", err);
@@ -4043,7 +4291,7 @@ async function getGoogleClient(shopId, provider) {
 }
 
 // server/services/calendarService.ts
-import { eq as eq11, and as and8 } from "drizzle-orm";
+import { eq as eq12, and as and9 } from "drizzle-orm";
 async function createAppointment(shopId, params) {
   try {
     const auth = await getGoogleClient(shopId, "google_calendar");
@@ -4054,9 +4302,9 @@ async function createAppointment(shopId, params) {
     const db = await getDb();
     if (!db) return { success: false, error: "Database unavailable" };
     const integration = await db.select().from(shopIntegrations).where(
-      and8(
-        eq11(shopIntegrations.shopId, shopId),
-        eq11(shopIntegrations.provider, "google_calendar")
+      and9(
+        eq12(shopIntegrations.shopId, shopId),
+        eq12(shopIntegrations.provider, "google_calendar")
       )
     ).limit(1);
     const calendarId = integration[0]?.settings?.calendarId || "primary";
@@ -4110,7 +4358,7 @@ async function createAppointment(shopId, params) {
 
 // server/services/sheetsService.ts
 import { google as google3 } from "googleapis";
-import { eq as eq12, and as and9 } from "drizzle-orm";
+import { eq as eq13, and as and10 } from "drizzle-orm";
 var HEADER_ROW = [
   "Date",
   "Time",
@@ -4132,9 +4380,9 @@ async function syncCallToSheet(shopId, callLog) {
     const db = await getDb();
     if (!db) return { success: false, error: "Database unavailable" };
     const integration = await db.select().from(shopIntegrations).where(
-      and9(
-        eq12(shopIntegrations.shopId, shopId),
-        eq12(shopIntegrations.provider, "google_sheets")
+      and10(
+        eq13(shopIntegrations.shopId, shopId),
+        eq13(shopIntegrations.provider, "google_sheets")
       )
     ).limit(1);
     const sheetId = integration[0]?.settings?.sheetId;
@@ -4201,7 +4449,7 @@ async function syncCallToSheet(shopId, callLog) {
 
 // server/services/hubspotService.ts
 import { Client } from "@hubspot/api-client";
-import { eq as eq13, and as and10 } from "drizzle-orm";
+import { eq as eq14, and as and11 } from "drizzle-orm";
 function getHubspotClient(apiKey) {
   return new Client({ accessToken: apiKey });
 }
@@ -4209,10 +4457,10 @@ async function getShopHubspotKey(shopId) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(shopIntegrations).where(
-    and10(
-      eq13(shopIntegrations.shopId, shopId),
-      eq13(shopIntegrations.provider, "hubspot"),
-      eq13(shopIntegrations.isActive, true)
+    and11(
+      eq14(shopIntegrations.shopId, shopId),
+      eq14(shopIntegrations.provider, "hubspot"),
+      eq14(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (result.length > 0 && result[0].accessToken) {
@@ -4334,15 +4582,15 @@ Duration: ${caller.duration || 0}s`,
 }
 
 // server/services/shopmonkeyService.ts
-import { eq as eq14, and as and11 } from "drizzle-orm";
+import { eq as eq15, and as and12 } from "drizzle-orm";
 async function getShopmonkeyKeys(shopId) {
   const db = await getDb();
   if (!db) return null;
   const result = await db.select().from(shopIntegrations).where(
-    and11(
-      eq14(shopIntegrations.shopId, shopId),
-      eq14(shopIntegrations.provider, "shopmonkey"),
-      eq14(shopIntegrations.isActive, true)
+    and12(
+      eq15(shopIntegrations.shopId, shopId),
+      eq15(shopIntegrations.provider, "shopmonkey"),
+      eq15(shopIntegrations.isActive, true)
     )
   ).limit(1);
   if (result.length === 0) return null;
@@ -4593,11 +4841,11 @@ async function processCompletedCall(callLogId) {
   try {
     const db = await getDb();
     if (!db) return;
-    const callResults = await db.select().from(callLogs).where(eq15(callLogs.id, callLogId)).limit(1);
+    const callResults = await db.select().from(callLogs).where(eq16(callLogs.id, callLogId)).limit(1);
     if (callResults.length === 0) return;
     const call = callResults[0];
     if (call.transcription) {
-      const shopResults = await db.select().from(shops).where(eq15(shops.id, call.shopId)).limit(1);
+      const shopResults = await db.select().from(shops).where(eq16(shops.id, call.shopId)).limit(1);
       const shop = shopResults[0];
       const catalog = (shop?.serviceCatalog || []).map((s) => s.name);
       const analysis = await analyzeTranscription(
@@ -4616,7 +4864,7 @@ async function processCompletedCall(callLogId) {
         upsellAttempted: analysis.upsellAttempted,
         upsellAccepted: analysis.upsellAccepted,
         estimatedRevenue: analysis.estimatedRevenue.toFixed(2)
-      }).where(eq15(callLogs.id, callLogId));
+      }).where(eq16(callLogs.id, callLogId));
       try {
         await runPostCallIntegrations(call.shopId, call, analysis);
       } catch (err) {
@@ -4630,9 +4878,9 @@ async function processCompletedCall(callLogId) {
     const minutesUsed = Math.ceil(duration / 60);
     if (minutesUsed > 0) {
       const subResults = await db.select().from(subscriptions).where(
-        and12(
-          eq15(subscriptions.shopId, call.shopId),
-          eq15(subscriptions.status, "active")
+        and13(
+          eq16(subscriptions.shopId, call.shopId),
+          eq16(subscriptions.status, "active")
         )
       ).limit(1);
       if (subResults.length > 0) {
@@ -4651,7 +4899,7 @@ async function processCompletedCall(callLogId) {
         });
         await db.update(subscriptions).set({
           usedMinutes: sql6`${subscriptions.usedMinutes} + ${minutesUsed}`
-        }).where(eq15(subscriptions.id, sub.id));
+        }).where(eq16(subscriptions.id, sub.id));
       }
     }
     if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
@@ -4729,13 +4977,13 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
       const profile = await db.select({
         smsOptOut: callerProfiles.smsOptOut,
         doNotSell: callerProfiles.doNotSell
-      }).from(callerProfiles).where(eq15(callerProfiles.phone, callLog.callerPhone)).limit(1);
+      }).from(callerProfiles).where(eq16(callerProfiles.phone, callLog.callerPhone)).limit(1);
       const optedOut = profile[0]?.smsOptOut || profile[0]?.doNotSell;
       const shopResult = await db.select({
         smsFollowUpEnabled: shops.smsFollowUpEnabled,
         name: shops.name,
         phone: shops.phone
-      }).from(shops).where(eq15(shops.id, shopId)).limit(1);
+      }).from(shops).where(eq16(shops.id, shopId)).limit(1);
       const shop = shopResult[0];
       if (!optedOut && shop?.smsFollowUpEnabled) {
         const smsBody = analysis.appointmentBooked ? `Hi! Your appointment for ${analysis.serviceRequested} at ${shop.name} has been noted. We'll confirm the details shortly. Reply STOP to opt out.` : `Thanks for calling ${shop.name}! If you need anything, call us at ${shop.phone || "our shop"}. Reply STOP to opt out.`;
@@ -4831,7 +5079,7 @@ async function storeCallMemory(phone, transcript) {
 }
 
 // server/services/twilioWebhooks.ts
-import { eq as eq16, sql as sql7 } from "drizzle-orm";
+import { eq as eq17, sql as sql7 } from "drizzle-orm";
 var twilioRouter = Router2();
 function generateVoicemailTwiML(shopName) {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -4847,6 +5095,23 @@ function generateVoicemailTwiML(shopName) {
     maxLength="120" 
     action="/api/twilio/recording-complete" 
     transcribe="true" 
+    transcribeCallback="/api/twilio/transcription-complete"
+  />
+  <Say voice="Polly.Joanna">We didn't receive a recording. Goodbye.</Say>
+</Response>`;
+}
+function generateTrialExpiredTwiML() {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna">
+    We're sorry, the automated assistant is currently unavailable.
+    Please leave a message after the tone with your name, phone number,
+    and a brief description of what you need, and we'll get back to you.
+  </Say>
+  <Record
+    maxLength="120"
+    action="/api/twilio/recording-complete"
+    transcribe="true"
     transcribeCallback="/api/twilio/transcription-complete"
   />
   <Say voice="Polly.Joanna">We didn't receive a recording. Goodbye.</Say>
@@ -4893,7 +5158,7 @@ async function resolveShopContext(calledNumber) {
   if (shopId === null) {
     const db = await getDb();
     if (!db) return null;
-    const results = await db.select().from(shops).where(eq16(shops.twilioPhoneNumber, calledNumber)).limit(1);
+    const results = await db.select().from(shops).where(eq17(shops.twilioPhoneNumber, calledNumber)).limit(1);
     if (results.length === 0) return null;
     shopId = results[0].id;
     contextCache.setPhoneToShopId(calledNumber, shopId);
@@ -4903,10 +5168,10 @@ async function resolveShopContext(calledNumber) {
   if (!context) {
     const db = await getDb();
     if (!db) return null;
-    const shopResults = await db.select().from(shops).where(eq16(shops.id, shopId)).limit(1);
+    const shopResults = await db.select().from(shops).where(eq17(shops.id, shopId)).limit(1);
     if (shopResults.length === 0) return null;
     const shop = shopResults[0];
-    const agentResults = await db.select().from(agentConfigs).where(eq16(agentConfigs.shopId, shopId)).limit(1);
+    const agentResults = await db.select().from(agentConfigs).where(eq17(agentConfigs.shopId, shopId)).limit(1);
     const agent = agentResults[0];
     elevenLabsAgentId = agent?.elevenLabsAgentId || "";
     context = {
@@ -4938,7 +5203,7 @@ async function resolveShopContext(calledNumber) {
   if (!elevenLabsAgentId) {
     const db = await getDb();
     if (db) {
-      const agentResults = await db.select({ elevenLabsAgentId: agentConfigs.elevenLabsAgentId }).from(agentConfigs).where(eq16(agentConfigs.shopId, shopId)).limit(1);
+      const agentResults = await db.select({ elevenLabsAgentId: agentConfigs.elevenLabsAgentId }).from(agentConfigs).where(eq17(agentConfigs.shopId, shopId)).limit(1);
       elevenLabsAgentId = agentResults[0]?.elevenLabsAgentId || "";
     }
   }
@@ -4951,7 +5216,7 @@ async function lookupCallerProfile(phone) {
     const results = await db.select({
       name: callerProfiles.name,
       callerRole: callerProfiles.callerRole
-    }).from(callerProfiles).where(eq16(callerProfiles.phone, phone)).limit(1);
+    }).from(callerProfiles).where(eq17(callerProfiles.phone, phone)).limit(1);
     return results[0] || null;
   } catch {
     return null;
@@ -4983,7 +5248,7 @@ async function getShopRingConfig(shopId) {
   const rows = await db.select({
     ringShopFirstEnabled: shops.ringShopFirstEnabled,
     ringTimeoutSec: shops.ringTimeoutSec
-  }).from(shops).where(eq16(shops.id, shopId)).limit(1);
+  }).from(shops).where(eq17(shops.id, shopId)).limit(1);
   return rows[0] ?? null;
 }
 function buildRingShopFirstTwiML(shopPhone, baylioNumber, timeoutSec) {
@@ -5065,6 +5330,14 @@ ${callerMemory}` : "This appears to be a first-time caller. No prior history.";
     console.log(
       `[CALL] Step 2: Shop resolved \u2014 id=${shopId}, name="${context.shopName}", agentId=${resolved.elevenLabsAgentId || "(none)"}`
     );
+    const access = await getShopAccessStatus(shopId);
+    if (!access.hasAccess) {
+      console.log(
+        `[CALL] Access denied \u2014 shopId=${shopId}, reason=${access.reason}, trialEndsAt=${access.trialEndsAt?.toISOString() ?? "none"}`
+      );
+      res.type("text/xml");
+      return res.send(generateTrialExpiredTwiML());
+    }
     const ringConfig = await getShopRingConfig(shopId);
     if (ringConfig?.ringShopFirstEnabled && context.phone) {
       const timeout = ringConfig.ringTimeoutSec ?? 12;
@@ -5078,7 +5351,7 @@ ${callerMemory}` : "This appears to be a first-time caller. No prior history.";
       try {
         const db = await getDb();
         if (!db) return;
-        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq16(shops.id, resolved.shopId)).limit(1);
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq17(shops.id, resolved.shopId)).limit(1);
         if (!shopRow[0]) return;
         await db.insert(callLogs).values({
           shopId: resolved.shopId,
@@ -5131,11 +5404,19 @@ twilioRouter.post("/no-answer", async (req, res) => {
       res.type("text/xml");
       return res.send(generateVoicemailTwiML("this business"));
     }
+    const noAnswerAccess = await getShopAccessStatus(resolved.shopId);
+    if (!noAnswerAccess.hasAccess) {
+      console.log(
+        `[CALL] /no-answer access denied \u2014 shopId=${resolved.shopId}, reason=${noAnswerAccess.reason}`
+      );
+      res.type("text/xml");
+      return res.send(generateTrialExpiredTwiML());
+    }
     setImmediate(async () => {
       try {
         const db = await getDb();
         if (!db) return;
-        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq16(shops.id, resolved.shopId)).limit(1);
+        const shopRow = await db.select({ ownerId: shops.ownerId }).from(shops).where(eq17(shops.id, resolved.shopId)).limit(1);
         if (!shopRow[0]) return;
         await db.insert(callLogs).values({
           shopId: resolved.shopId,
@@ -5178,7 +5459,7 @@ twilioRouter.post("/status", async (req, res) => {
         const db = await getDb();
         if (!db) return;
         if (CallStatus === "completed" || CallStatus === "no-answer" || CallStatus === "busy" || CallStatus === "failed") {
-          const shopResult = await db.select({ id: shops.id, ownerId: shops.ownerId }).from(shops).where(eq16(shops.twilioPhoneNumber, To)).limit(1);
+          const shopResult = await db.select({ id: shops.id, ownerId: shops.ownerId }).from(shops).where(eq17(shops.twilioPhoneNumber, To)).limit(1);
           if (shopResult.length > 0) {
             const shop = shopResult[0];
             const callerProfile = await lookupCallerProfile(From);
@@ -5206,7 +5487,7 @@ twilioRouter.post("/status", async (req, res) => {
             });
             if (CallStatus === "completed") {
               try {
-                const callLogResult = await db.select({ id: callLogs.id }).from(callLogs).where(eq16(callLogs.twilioCallSid, CallSid)).limit(1);
+                const callLogResult = await db.select({ id: callLogs.id }).from(callLogs).where(eq17(callLogs.twilioCallSid, CallSid)).limit(1);
                 if (callLogResult.length > 0) {
                   await processCompletedCall(callLogResult[0].id);
                 }
@@ -5241,7 +5522,7 @@ twilioRouter.post(
         try {
           const db = await getDb();
           if (!db) return;
-          await db.update(callLogs).set({ recordingUrl: RecordingUrl }).where(eq16(callLogs.twilioCallSid, CallSid));
+          await db.update(callLogs).set({ recordingUrl: RecordingUrl }).where(eq17(callLogs.twilioCallSid, CallSid));
         } catch (err) {
           console.error("[RECORDING] Error updating call log:", err);
         }
@@ -5266,7 +5547,7 @@ twilioRouter.post(
           try {
             const db = await getDb();
             if (!db) return;
-            await db.update(callLogs).set({ transcription: TranscriptionText }).where(eq16(callLogs.twilioCallSid, CallSid));
+            await db.update(callLogs).set({ transcription: TranscriptionText }).where(eq17(callLogs.twilioCallSid, CallSid));
           } catch (err) {
             console.error("[TRANSCRIPTION] Error updating call log:", err);
           }
@@ -5337,7 +5618,7 @@ import { z as z14 } from "zod";
 // server/services/samToolsService.ts
 import { Client as Client2 } from "@hubspot/api-client";
 import { Resend as Resend3 } from "resend";
-import { eq as eq17 } from "drizzle-orm";
+import { eq as eq18 } from "drizzle-orm";
 var HUBSPOT_KEY = process.env.HUBSPOT_API_KEY || "";
 var RESEND_KEY = process.env.RESEND_API_KEY || "";
 async function captureLead(input) {
@@ -5345,7 +5626,7 @@ async function captureLead(input) {
   if (!db) return null;
   const phone = input.callerPhone.replace(/[^\d+]/g, "");
   if (!phone) return null;
-  const existing = await db.select().from(samLeads).where(eq17(samLeads.callerPhone, phone)).limit(1);
+  const existing = await db.select().from(samLeads).where(eq18(samLeads.callerPhone, phone)).limit(1);
   let leadId;
   const isReturningCaller = existing.length > 0;
   if (isReturningCaller) {
@@ -5364,7 +5645,7 @@ async function captureLead(input) {
       lastCalledAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
     };
-    await db.update(samLeads).set(merged).where(eq17(samLeads.id, prior.id));
+    await db.update(samLeads).set(merged).where(eq18(samLeads.id, prior.id));
     leadId = prior.id;
   } else {
     const inserted = await db.insert(samLeads).values({
@@ -5386,7 +5667,7 @@ async function captureLead(input) {
     try {
       hubspotContactId = await pushLeadToHubspot({ ...input, callerPhone: phone });
       if (hubspotContactId) {
-        await db.update(samLeads).set({ hubspotContactId, updatedAt: /* @__PURE__ */ new Date() }).where(eq17(samLeads.id, leadId));
+        await db.update(samLeads).set({ hubspotContactId, updatedAt: /* @__PURE__ */ new Date() }).where(eq18(samLeads.id, leadId));
       }
     } catch (err) {
       console.error("[SAM-TOOLS] HubSpot push failed:", err);
@@ -5491,7 +5772,7 @@ More info: baylio.io` + consentSuffix;
     try {
       const db = await getDb();
       if (db) {
-        await db.update(samLeads).set({ smsSent: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq17(samLeads.callerPhone, phone));
+        await db.update(samLeads).set({ smsSent: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq18(samLeads.callerPhone, phone));
       }
     } catch {
     }
@@ -5541,7 +5822,7 @@ Reply anytime to talk to a human.
           email: input.email,
           emailSent: true,
           updatedAt: /* @__PURE__ */ new Date()
-        }).where(eq17(samLeads.callerPhone, input.callerPhone.replace(/[^\d+]/g, "")));
+        }).where(eq18(samLeads.callerPhone, input.callerPhone.replace(/[^\d+]/g, "")));
       }
     } catch {
     }
@@ -5557,7 +5838,7 @@ async function markTransferred(callerPhone) {
     const db = await getDb();
     if (!db) return;
     const phone = callerPhone.replace(/[^\d+]/g, "");
-    await db.update(samLeads).set({ transferredToHuman: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq17(samLeads.callerPhone, phone));
+    await db.update(samLeads).set({ transferredToHuman: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq18(samLeads.callerPhone, phone));
   } catch (err) {
     console.error("[SAM-TOOLS] markTransferred failed:", err);
   }
@@ -5891,7 +6172,7 @@ function rateLimit(opts) {
 // server/stripe/stripeRoutes.ts
 import express from "express";
 import Stripe2 from "stripe";
-import { eq as eq18 } from "drizzle-orm";
+import { eq as eq19 } from "drizzle-orm";
 import { drizzle as drizzle2 } from "drizzle-orm/postgres-js";
 import postgres2 from "postgres";
 import { PostHog } from "posthog-node";
@@ -5987,19 +6268,19 @@ async function handleCheckoutCompleted(session) {
   const tier = session.metadata?.tier;
   const isSetupFee = session.metadata?.type === "setup_fee";
   if (isSetupFee && shopId) {
-    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq18(subscriptions.shopId, parseInt(shopId)));
+    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq19(subscriptions.shopId, parseInt(shopId)));
     console.log(`[Stripe] Setup fee paid for shop ${shopId}`);
     return;
   }
   const isAdditionalShop = session.metadata?.type === "additional_shop";
   if (isAdditionalShop && shopId && userId) {
-    const existingSubs2 = await db.select().from(subscriptions).where(eq18(subscriptions.shopId, parseInt(shopId))).limit(1);
+    const existingSubs2 = await db.select().from(subscriptions).where(eq19(subscriptions.shopId, parseInt(shopId))).limit(1);
     if (existingSubs2.length > 0) {
       await db.update(subscriptions).set({
         status: "active",
         stripeCustomerId: session.customer,
         stripeSubscriptionId: session.subscription
-      }).where(eq18(subscriptions.shopId, parseInt(shopId)));
+      }).where(eq19(subscriptions.shopId, parseInt(shopId)));
     } else {
       await db.insert(subscriptions).values({
         shopId: parseInt(shopId),
@@ -6021,7 +6302,7 @@ async function handleCheckoutCompleted(session) {
   }
   const tierConfig = getTierConfig(tier);
   if (!tierConfig) return;
-  const existingSubs = await db.select().from(subscriptions).where(eq18(subscriptions.shopId, parseInt(shopId))).limit(1);
+  const existingSubs = await db.select().from(subscriptions).where(eq19(subscriptions.shopId, parseInt(shopId))).limit(1);
   if (existingSubs.length > 0) {
     await db.update(subscriptions).set({
       tier: tierConfig.id,
@@ -6029,7 +6310,7 @@ async function handleCheckoutCompleted(session) {
       stripeCustomerId: session.customer,
       stripeSubscriptionId: session.subscription,
       includedMinutes: tierConfig.includedMinutes
-    }).where(eq18(subscriptions.shopId, parseInt(shopId)));
+    }).where(eq19(subscriptions.shopId, parseInt(shopId)));
   } else {
     await db.insert(subscriptions).values({
       shopId: parseInt(shopId),
@@ -6064,7 +6345,7 @@ async function handleInvoicePaid(invoice) {
   const invoiceAny = invoice;
   const subscriptionId = invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  const subs = await db.select().from(subscriptions).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const periodStart = invoiceAny.period_start ?? invoiceAny.period?.start;
     const periodEnd = invoiceAny.period_end ?? invoiceAny.period?.end;
@@ -6073,7 +6354,7 @@ async function handleInvoicePaid(invoice) {
       usedMinutes: 0,
       currentPeriodStart: periodStart ? new Date(periodStart * 1e3) : void 0,
       currentPeriodEnd: periodEnd ? new Date(periodEnd * 1e3) : void 0
-    }).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId));
+    }).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId));
   }
   console.log(`[Stripe] Invoice paid for subscription: ${subscriptionId}`);
 }
@@ -6083,9 +6364,9 @@ async function handlePaymentFailed(invoice) {
   const invoiceAny2 = invoice;
   const subscriptionId = invoiceAny2.subscription ?? invoiceAny2.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  await db.update(subscriptions).set({ status: "past_due" }).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId));
+  await db.update(subscriptions).set({ status: "past_due" }).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId));
   console.log(`[Stripe] Payment failed for subscription: ${subscriptionId}`);
-  const subs = await db.select().from(subscriptions).where(eq18(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const ph = getPostHog();
     ph.capture({
@@ -6113,17 +6394,17 @@ async function handleSubscriptionUpdated(sub) {
       (sub.current_period_start ?? 0) * 1e3
     ),
     currentPeriodEnd: new Date((sub.current_period_end ?? 0) * 1e3)
-  }).where(eq18(subscriptions.stripeSubscriptionId, sub.id));
+  }).where(eq19(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription updated: ${sub.id} \u2192 ${status}`);
 }
 async function handleSubscriptionDeleted(sub) {
   const db = await getDb2();
   if (!db) return;
-  await db.update(subscriptions).set({ status: "canceled" }).where(eq18(subscriptions.stripeSubscriptionId, sub.id));
+  await db.update(subscriptions).set({ status: "canceled" }).where(eq19(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription canceled: ${sub.id}`);
   const db2 = await getDb2();
   if (db2) {
-    const canceledSubs = await db2.select().from(subscriptions).where(eq18(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
+    const canceledSubs = await db2.select().from(subscriptions).where(eq19(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
     if (canceledSubs.length > 0) {
       const ph = getPostHog();
       ph.capture({
@@ -6323,6 +6604,140 @@ function stripHtml(html) {
   return html.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
 }
 
+// server/services/cronRouter.ts
+import { Router as Router6 } from "express";
+
+// server/services/trialReminders.ts
+import { and as and14, eq as eq20, isNotNull, lte as lte3 } from "drizzle-orm";
+var MS_PER_DAY = 24 * 60 * 60 * 1e3;
+async function runTrialReminders(now = /* @__PURE__ */ new Date()) {
+  const result = {
+    scanned: 0,
+    sent: { day7: 0, day12: 0, day13: 0, day14: 0 },
+    skipped: 0,
+    errors: 0
+  };
+  const db = await getDb();
+  if (!db) {
+    console.error("[TrialReminders] DB unavailable \u2014 skipping run");
+    return result;
+  }
+  const horizonEnd = new Date(now.getTime() + 8 * MS_PER_DAY);
+  const lookbackStart = new Date(now.getTime() - 3 * MS_PER_DAY);
+  const rows = await db.select({
+    shopId: shops.id,
+    shopName: shops.name,
+    ownerId: shops.ownerId,
+    trialEndsAt: shops.trialEndsAt,
+    trialDay7EmailSentAt: shops.trialDay7EmailSentAt,
+    trialDay12EmailSentAt: shops.trialDay12EmailSentAt,
+    trialDay13EmailSentAt: shops.trialDay13EmailSentAt,
+    trialDay14EmailSentAt: shops.trialDay14EmailSentAt,
+    ownerEmail: users.email,
+    ownerName: users.name
+  }).from(shops).innerJoin(users, eq20(users.id, shops.ownerId)).where(
+    and14(
+      isNotNull(shops.trialEndsAt),
+      lte3(shops.trialEndsAt, horizonEnd)
+    )
+  );
+  result.scanned = rows.length;
+  for (const row of rows) {
+    if (!row.trialEndsAt || !row.ownerEmail) {
+      result.skipped++;
+      continue;
+    }
+    const paidSubRow = await db.select({ id: subscriptions.id }).from(subscriptions).where(
+      and14(
+        eq20(subscriptions.shopId, row.shopId),
+        eq20(subscriptions.status, "active")
+      )
+    ).limit(1);
+    if (paidSubRow.length > 0) {
+      result.skipped++;
+      continue;
+    }
+    const msRemaining = row.trialEndsAt.getTime() - now.getTime();
+    const daysRemaining = Math.ceil(msRemaining / MS_PER_DAY);
+    let milestone = null;
+    if (row.trialEndsAt.getTime() <= now.getTime()) {
+      if (!row.trialDay14EmailSentAt && row.trialEndsAt.getTime() >= lookbackStart.getTime()) {
+        milestone = 14;
+      }
+    } else if (daysRemaining <= 1 && !row.trialDay13EmailSentAt) {
+      milestone = 13;
+    } else if (daysRemaining <= 2 && !row.trialDay12EmailSentAt) {
+      milestone = 12;
+    } else if (daysRemaining <= 7 && !row.trialDay7EmailSentAt) {
+      milestone = 7;
+    }
+    if (milestone === null) {
+      result.skipped++;
+      continue;
+    }
+    const payload = {
+      toEmail: row.ownerEmail,
+      toName: row.ownerName,
+      shopName: row.shopName,
+      trialEndsAt: row.trialEndsAt
+    };
+    try {
+      let sent = false;
+      switch (milestone) {
+        case 7:
+          sent = await sendTrialDay7Email(payload);
+          break;
+        case 12:
+          sent = await sendTrialDay12Email(payload);
+          break;
+        case 13:
+          sent = await sendTrialDay13Email(payload);
+          break;
+        case 14:
+          sent = await sendTrialDay14Email(payload);
+          break;
+      }
+      if (!sent) {
+        result.errors++;
+        continue;
+      }
+      const column = milestone === 7 ? { trialDay7EmailSentAt: now } : milestone === 12 ? { trialDay12EmailSentAt: now } : milestone === 13 ? { trialDay13EmailSentAt: now } : { trialDay14EmailSentAt: now };
+      await db.update(shops).set(column).where(eq20(shops.id, row.shopId));
+      result.sent[`day${milestone}`]++;
+    } catch (err) {
+      console.error(
+        `[TrialReminders] Failed for shop ${row.shopId} milestone day${milestone}:`,
+        err
+      );
+      result.errors++;
+    }
+  }
+  console.log("[TrialReminders] Run complete:", result);
+  return result;
+}
+
+// server/services/cronRouter.ts
+var cronRouter = Router6();
+function isAuthorized(headerValue) {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) return false;
+  if (!headerValue) return false;
+  const expected = `Bearer ${secret}`;
+  return headerValue === expected;
+}
+cronRouter.get("/trial-check", async (req, res) => {
+  if (!isAuthorized(req.headers.authorization)) {
+    return res.status(401).json({ error: "unauthorized" });
+  }
+  try {
+    const result = await runTrialReminders();
+    res.json({ ok: true, result });
+  } catch (err) {
+    console.error("[Cron] trial-check failed:", err);
+    res.status(500).json({ ok: false, error: "internal" });
+  }
+});
+
 // server/vercel-entry.ts
 var contactLimiter = rateLimit({ name: "contact", windowSec: 60, max: 5 });
 var webhookLimiter = rateLimit({ name: "webhook", windowSec: 10, max: 50 });
@@ -6342,6 +6757,7 @@ app.use("/api/sam", samToolsRouter);
 app.use("/api/sam-twiml", webhookLimiter, samTwimlRouter);
 app.use("/api/integrations/google", googleAuthRouter);
 app.use("/api/support", webhookLimiter, supportInboundRouter);
+app.use("/api/cron", cronRouter);
 app.use("/api/trpc/contact.submit", contactLimiter);
 app.use(
   "/api/trpc",
