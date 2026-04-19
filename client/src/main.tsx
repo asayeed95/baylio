@@ -22,6 +22,27 @@ if (posthogKey && posthogKey.startsWith("phc_")) {
   }
 }
 
+window.addEventListener("error", (event) => {
+  posthog.capture("frontend_error", {
+    message: event.message,
+    source: "window.onerror",
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    path: window.location.pathname + window.location.search,
+  });
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  const reason = event.reason;
+  posthog.capture("frontend_unhandled_rejection", {
+    message: reason?.message || String(reason),
+    name: reason?.name,
+    stack: reason?.stack?.split("\n").slice(0, 20).join("\n"),
+    path: window.location.pathname + window.location.search,
+  });
+});
+
 const queryClient = new QueryClient();
 
 const redirectToLoginIfUnauthorized = (error: unknown) => {

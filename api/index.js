@@ -2699,7 +2699,7 @@ var stripeRouter = router({
           }
         ],
         success_url: `${origin}/shops/${input.shopId}?payment=success`,
-        cancel_url: `${origin}/shops/${input.shopId}/subscriptions?payment=canceled`
+        cancel_url: `${origin}/subscriptions?shopId=${input.shopId}&payment=canceled`
       });
       return { checkoutUrl: session.url };
     } catch (err) {
@@ -2754,7 +2754,7 @@ var stripeRouter = router({
           }
         ],
         success_url: `${origin}/shops/${input.shopId}?setup=success`,
-        cancel_url: `${origin}/shops/${input.shopId}/subscriptions?setup=canceled`
+        cancel_url: `${origin}/subscriptions?shopId=${input.shopId}&setup=canceled`
       });
       return { checkoutUrl: session.url };
     } catch (err) {
@@ -2783,7 +2783,7 @@ var stripeRouter = router({
     try {
       const session = await stripe.billingPortal.sessions.create({
         customer: sub.stripeCustomerId,
-        return_url: `${origin}/shops/${input.shopId}/subscriptions`
+        return_url: `${origin}/subscriptions?shopId=${input.shopId}`
       });
       return { portalUrl: session.url };
     } catch (err) {

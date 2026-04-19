@@ -1,6 +1,7 @@
 import { cn } from "@/lib/utils";
 import { AlertTriangle, RotateCcw } from "lucide-react";
-import { Component, ReactNode } from "react";
+import { Component, ErrorInfo, ReactNode } from "react";
+import posthog from "posthog-js";
 
 interface Props {
   children: ReactNode;
@@ -19,6 +20,16 @@ class ErrorBoundary extends Component<Props, State> {
 
   static getDerivedStateFromError(error: Error): State {
     return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, info: ErrorInfo) {
+    posthog.capture("frontend_error", {
+      message: error.message,
+      name: error.name,
+      stack: error.stack?.split("\n").slice(0, 20).join("\n"),
+      component_stack: info.componentStack?.split("\n").slice(0, 10).join("\n"),
+      path: window.location.pathname + window.location.search,
+    });
   }
 
   render() {
