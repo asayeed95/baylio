@@ -39,13 +39,14 @@ export default function PartnersOnboardingGuide() {
   );
 }
 
+type Objection = { q: string; a: string };
 type Step = {
   n: string;
   title: string;
   Visual: () => ReactElement;
   pitch: string;
   talkingPoints: string[];
-  objection?: { q: string; a: string };
+  objections?: Objection[];
 };
 
 const STEPS: Step[] = [
@@ -60,10 +61,12 @@ const STEPS: Step[] = [
       "Each missed call is roughly $280 in lost revenue (avg ticket).",
       "Shops without a receptionist lose 8–20 hours of phone time per week.",
     ],
-    objection: {
-      q: "\"I already have voicemail\"",
-      a: "Only 1 in 4 callers leave a voicemail. The other 3 call a competitor. Voicemail doesn't book appointments — Baylio does.",
-    },
+    objections: [
+      {
+        q: "\"I already have voicemail\"",
+        a: "Only 1 in 4 callers leave a voicemail. The other 3 call a competitor. Voicemail doesn't book appointments — Baylio does.",
+      },
+    ],
   },
   {
     n: "02",
@@ -73,14 +76,20 @@ const STEPS: Step[] = [
       "Baylio picks up in one ring. It sounds like a real receptionist — because customers can't tell the difference. 24/7, 5 languages, no sick days.",
     talkingPoints: [
       "AI voice trained specifically on auto repair terminology.",
-      "Speaks English, Spanish, Arabic, Portuguese, Hindi & more.",
+      "Speaks English, Spanish, Arabic, Portuguese, Hindi, Bangla, Italian, Turkish — auto-detects the caller's language.",
       "Rings your cell first — only answers if you don't pick up in 12 seconds.",
       "You keep your existing number. We forward it.",
     ],
-    objection: {
-      q: "\"Will customers know it's a robot?\"",
-      a: "ElevenLabs voices sound indistinguishable from human. Most shops report callers don't realize until they're told.",
-    },
+    objections: [
+      {
+        q: "\"Will customers know it's a robot?\"",
+        a: "ElevenLabs voices sound indistinguishable from human. Most shops report callers don't realize until they're told.",
+      },
+      {
+        q: "\"My customers speak Spanish and I don't.\"",
+        a: "Baylio does — fluently. If a caller starts in Spanish, Baylio answers in Spanish, books the appointment, and sends you the transcript translated to English. You never lose a Spanish-speaking customer again because of language.",
+      },
+    ],
   },
   {
     n: "03",
@@ -95,10 +104,12 @@ const STEPS: Step[] = [
       "Subtle upsells (cabin filter with oil change) — three confidence levels.",
       "Never says 'your car has X problem' — that's the mechanic's job.",
     ],
-    objection: {
-      q: "\"What if it says the wrong price?\"",
-      a: "It only quotes from services YOU configure. No hallucination. If a caller asks for something not in your catalog, it collects the info and tells you.",
-    },
+    objections: [
+      {
+        q: "\"What if it says the wrong price?\"",
+        a: "It only quotes from services YOU configure. No hallucination. If a caller asks for something not in your catalog, it collects the info and tells you.",
+      },
+    ],
   },
   {
     n: "04",
@@ -126,10 +137,16 @@ const STEPS: Step[] = [
       "Elite: $599/mo · 1,500 minutes · multi-bay & multi-location.",
       "No contract. Cancel anytime. 14-day setup, we handle everything.",
     ],
-    objection: {
-      q: "\"$149 sounds like a lot.\"",
-      a: "One booked oil change per month covers it. One brake job pays for 2 months. If it doesn't pay for itself in 30 days, cancel — we'll refund you.",
-    },
+    objections: [
+      {
+        q: "\"$149 sounds like a lot.\"",
+        a: "One booked oil change per month covers it. One brake job pays for 2 months. If it doesn't pay for itself in 30 days, cancel — we'll refund you.",
+      },
+      {
+        q: "\"My customers speak Spanish / Portuguese / Arabic and I don't.\"",
+        a: "Baylio speaks 8 languages fluently and auto-detects the caller's. Every transcript comes to you translated to English with the customer's details and the appointment booked. You capture revenue from callers you'd otherwise hang up on.",
+      },
+    ],
   },
 ];
 
@@ -280,22 +297,22 @@ function OnboardingGuideContent() {
                 </ul>
               </div>
 
-              {/* Objection handler */}
-              {step.objection && (
-                <Card className="border-copper/30 bg-copper/5">
+              {/* Objection handlers */}
+              {step.objections?.map((obj, i) => (
+                <Card key={i} className="border-copper/30 bg-copper/5">
                   <CardContent className="p-4">
                     <p className="text-xs font-mono uppercase tracking-widest text-copper mb-2">
                       If they say…
                     </p>
                     <p className="text-sm font-medium text-foreground/90 mb-2">
-                      {step.objection.q}
+                      {obj.q}
                     </p>
                     <p className="text-sm text-foreground/75">
-                      →&nbsp;{step.objection.a}
+                      →&nbsp;{obj.a}
                     </p>
                   </CardContent>
                 </Card>
-              )}
+              ))}
             </div>
           </div>
         ))}
