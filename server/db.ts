@@ -22,6 +22,9 @@ import {
   InsertNotification,
   contactSubmissions,
   InsertContactSubmission,
+  supportTickets,
+  InsertSupportTicket,
+  SupportTicket,
 } from "../drizzle/schema";
 
 
@@ -428,4 +431,36 @@ export async function createContactSubmission(data: InsertContactSubmission) {
   if (!db) return undefined;
   const result = await db.insert(contactSubmissions).values(data).returning({ id: contactSubmissions.id });
   return result[0].id;
+}
+
+// ─── Support Tickets ─────────────────────────────────────────────────
+export async function createSupportTicket(data: InsertSupportTicket): Promise<number | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.insert(supportTickets).values(data).returning({ id: supportTickets.id });
+  return result[0]?.id;
+}
+
+export async function listSupportTickets(opts?: { status?: SupportTicket["status"]; limit?: number }): Promise<SupportTicket[]> {
+  const db = await getDb();
+  if (!db) return [];
+  const q = db.select().from(supportTickets);
+  const filtered = opts?.status ? q.where(eq(supportTickets.status, opts.status)) : q;
+  return filtered.orderBy(desc(supportTickets.createdAt)).limit(opts?.limit ?? 200);
+}
+
+export async function getSupportTicketById(id: number): Promise<SupportTicket | undefined> {
+  const db = await getDb();
+  if (!db) return undefined;
+  const result = await db.select().from(supportTickets).where(eq(supportTickets.id, id)).limit(1);
+  return result[0];
+}
+
+export async function updateSupportTicket(id: number, data: Partial<InsertSupportTicket>): Promise<void> {
+  const db = await getDb();
+  if (!db) return;
+  await db
+    .update(supportTickets)
+    .set({ ...data, updatedAt: new Date() })
+    .where(eq(supportTickets.id, id));
 }

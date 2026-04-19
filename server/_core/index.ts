@@ -16,6 +16,7 @@ import { validateTwilioSignature } from "../middleware/twilioValidation";
 import { rateLimit } from "../middleware/rateLimiter";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
 import { googleAuthRouter } from "../services/googleAuth";
+import { supportInboundRouter } from "../services/supportInboundRouter";
 
 const contactLimiter = rateLimit({ name: "contact", windowSec: 60, max: 5 });
 const webhookLimiter = rateLimit({ name: "webhook", windowSec: 10, max: 50 });
@@ -48,6 +49,9 @@ app.use("/api/sam-twiml", webhookLimiter, samTwimlRouter);
 
 // Google OAuth integration routes
 app.use("/api/integrations/google", googleAuthRouter);
+
+// Support inbound email webhook (Resend)
+app.use("/api/support", webhookLimiter, supportInboundRouter);
 
 // Rate limit contact form submissions
 app.use("/api/trpc/contact.submit", contactLimiter);

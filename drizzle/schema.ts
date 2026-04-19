@@ -34,6 +34,9 @@ export const payoutStatusEnum = pgEnum("payout_status", ["pending", "processing"
 export const callerRoleEnum = pgEnum("caller_role", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]);
 export const integrationProviderEnum = pgEnum("integration_provider", ["google_calendar", "google_sheets", "shopmonkey", "tekmetric", "hubspot"]);
 export const syncStatusEnum = pgEnum("sync_status", ["success", "failed"]);
+export const supportStatusEnum = pgEnum("support_status", ["new", "triaged", "in_progress", "shipped", "declined", "spam"]);
+export const supportCategoryEnum = pgEnum("support_category", ["feature_request", "bug_report", "question", "billing", "language_request", "integration_request", "other"]);
+export const supportPriorityEnum = pgEnum("support_priority", ["low", "medium", "high", "urgent"]);
 
 // ─── Users ───────────────────────────────────────────────────────────
 export const users = pgTable("users", {
@@ -354,6 +357,31 @@ export const contactSubmissions = pgTable("contact_submissions", {
 
 export type ContactSubmission = typeof contactSubmissions.$inferSelect;
 export type InsertContactSubmission = typeof contactSubmissions.$inferInsert;
+
+// ─── Support Tickets ────────────────────────────────────────────────
+export const supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  fromEmail: varchar("fromEmail", { length: 320 }).notNull(),
+  fromName: varchar("fromName", { length: 255 }),
+  subject: varchar("subject", { length: 500 }),
+  body: text("body").notNull(),
+  bodyHtml: text("bodyHtml"),
+  messageId: varchar("messageId", { length: 500 }),
+  status: supportStatusEnum("status").default("new").notNull(),
+  category: supportCategoryEnum("category"),
+  priority: supportPriorityEnum("priority"),
+  summary: text("summary"),
+  adminNotes: text("adminNotes"),
+  autoAckSentAt: timestamp("autoAckSentAt"),
+  triagedAt: timestamp("triagedAt"),
+  shippedAt: timestamp("shippedAt"),
+  assignedToUserId: integer("assignedToUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull(),
+});
+
+export type SupportTicket = typeof supportTickets.$inferSelect;
+export type InsertSupportTicket = typeof supportTickets.$inferInsert;
 
 // ─── Shop Integrations ──────────────────────────────────────────────
 export const shopIntegrations = pgTable("shop_integrations", {

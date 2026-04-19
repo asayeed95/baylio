@@ -17,6 +17,8 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import AdminSamLeads from "./AdminSamLeads";
+import AdminRequests from "./AdminRequests";
+import { Inbox } from "lucide-react";
 
 function AdminSidebar() {
   const { user, logout } = useAuth();
@@ -24,6 +26,7 @@ function AdminSidebar() {
   const [location] = useLocation();
   const navItems = [
     { icon: BarChart3, label: "Overview", href: "/admin" },
+    { icon: Inbox, label: "Requests", href: "/admin/requests" },
     { icon: Sparkles, label: "Sam Leads", href: "/admin/sam-leads" },
     { icon: Building2, label: "Shops", href: "/admin/shops" },
     { icon: Users, label: "Partners", href: "/admin/partners-admin" },
@@ -286,6 +289,10 @@ function AdminContent() {
 
   if (location.startsWith("/admin/sam-leads") || location === "/sam-leads") {
     return <AdminSamLeads />;
+  }
+
+  if (location.startsWith("/admin/requests")) {
+    return <AdminRequests />;
   }
 
   return <AdminOverview />;

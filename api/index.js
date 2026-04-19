@@ -212,6 +212,9 @@ var payoutStatusEnum = pgEnum("payout_status", ["pending", "processing", "comple
 var callerRoleEnum = pgEnum("caller_role", ["prospect", "shop_owner", "founder", "tester", "vendor", "unknown"]);
 var integrationProviderEnum = pgEnum("integration_provider", ["google_calendar", "google_sheets", "shopmonkey", "tekmetric", "hubspot"]);
 var syncStatusEnum = pgEnum("sync_status", ["success", "failed"]);
+var supportStatusEnum = pgEnum("support_status", ["new", "triaged", "in_progress", "shipped", "declined", "spam"]);
+var supportCategoryEnum = pgEnum("support_category", ["feature_request", "bug_report", "question", "billing", "language_request", "integration_request", "other"]);
+var supportPriorityEnum = pgEnum("support_priority", ["low", "medium", "high", "urgent"]);
 var users = pgTable("users", {
   id: serial("id").primaryKey(),
   supabaseId: varchar("supabaseId", { length: 128 }).notNull().unique(),
@@ -448,6 +451,26 @@ var contactSubmissions = pgTable("contact_submissions", {
   message: text("message").notNull(),
   createdAt: timestamp("createdAt").defaultNow().notNull()
 });
+var supportTickets = pgTable("support_tickets", {
+  id: serial("id").primaryKey(),
+  fromEmail: varchar("fromEmail", { length: 320 }).notNull(),
+  fromName: varchar("fromName", { length: 255 }),
+  subject: varchar("subject", { length: 500 }),
+  body: text("body").notNull(),
+  bodyHtml: text("bodyHtml"),
+  messageId: varchar("messageId", { length: 500 }),
+  status: supportStatusEnum("status").default("new").notNull(),
+  category: supportCategoryEnum("category"),
+  priority: supportPriorityEnum("priority"),
+  summary: text("summary"),
+  adminNotes: text("adminNotes"),
+  autoAckSentAt: timestamp("autoAckSentAt"),
+  triagedAt: timestamp("triagedAt"),
+  shippedAt: timestamp("shippedAt"),
+  assignedToUserId: integer("assignedToUserId"),
+  createdAt: timestamp("createdAt").defaultNow().notNull(),
+  updatedAt: timestamp("updatedAt").defaultNow().notNull()
+});
 var shopIntegrations = pgTable("shop_integrations", {
   id: serial("id").primaryKey(),
   shopId: integer("shopId").notNull(),
@@ -681,6 +704,30 @@ async function createContactSubmission(data) {
   if (!db) return void 0;
   const result = await db.insert(contactSubmissions).values(data).returning({ id: contactSubmissions.id });
   return result[0].id;
+}
+async function createSupportTicket(data) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.insert(supportTickets).values(data).returning({ id: supportTickets.id });
+  return result[0]?.id;
+}
+async function listSupportTickets(opts) {
+  const db = await getDb();
+  if (!db) return [];
+  const q = db.select().from(supportTickets);
+  const filtered = opts?.status ? q.where(eq(supportTickets.status, opts.status)) : q;
+  return filtered.orderBy(desc(supportTickets.createdAt)).limit(opts?.limit ?? 200);
+}
+async function getSupportTicketById(id) {
+  const db = await getDb();
+  if (!db) return void 0;
+  const result = await db.select().from(supportTickets).where(eq(supportTickets.id, id)).limit(1);
+  return result[0];
+}
+async function updateSupportTicket(id, data) {
+  const db = await getDb();
+  if (!db) return;
+  await db.update(supportTickets).set({ ...data, updatedAt: /* @__PURE__ */ new Date() }).where(eq(supportTickets.id, id));
 }
 
 // server/services/demoService.ts
@@ -3270,6 +3317,76 @@ Message: ${data.message}`
 function escapeHtml(str) {
   return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
+async function sendSupportAutoAck(data) {
+  const displayName = data.toName || data.toEmail.split("@")[0];
+  const subject = data.originalSubject ? `Re: ${data.originalSubject}` : "We got your message \u2014 Baylio";
+  const htmlBody = `
+    <div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a">
+      <p>Hey ${escapeHtml(displayName)},</p>
+      <p>Thanks for reaching out to Baylio. We got your message and our team is on it.</p>
+      <p>Here's how it works:</p>
+      <ul style="line-height:1.7">
+        <li>Small requests (typos, copy changes, new languages) usually ship the same day.</li>
+        <li>Bigger features get a reply with a timeline within 24 hours.</li>
+        <li>Urgent production issues get paged immediately.</li>
+      </ul>
+      <p>We'll reply directly to this thread. Reference #${data.ticketId}.</p>
+      <p>\u2014 Baylio Support</p>
+      <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+      <p style="font-size:12px;color:#888">Baylio \xB7 AI phone receptionist for auto repair shops \xB7 baylio.io</p>
+    </div>
+  `;
+  const textBody = [
+    `Hey ${displayName},`,
+    "",
+    "Thanks for reaching out to Baylio. We got your message and our team is on it.",
+    "",
+    "Here's how it works:",
+    " - Small requests (typos, copy changes, new languages) usually ship the same day.",
+    " - Bigger features get a reply with a timeline within 24 hours.",
+    " - Urgent production issues get paged immediately.",
+    "",
+    `We'll reply directly to this thread. Reference #${data.ticketId}.`,
+    "",
+    "\u2014 Baylio Support"
+  ].join("\n");
+  if (!resend2) {
+    console.log("[EmailService] No RESEND_API_KEY \u2014 would send auto-ack to", data.toEmail, "ticket", data.ticketId);
+    return;
+  }
+  try {
+    await resend2.emails.send({
+      from: "Baylio Support <support@baylio.io>",
+      to: [data.toEmail],
+      replyTo: "support@baylio.io",
+      subject,
+      html: htmlBody,
+      text: textBody
+    });
+    console.log("[EmailService] Auto-ack sent to", data.toEmail, "ticket", data.ticketId);
+  } catch (err) {
+    console.error("[EmailService] Auto-ack send failed:", err);
+  }
+}
+async function sendSupportReply(data) {
+  const htmlBody = `
+    <div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a;white-space:pre-wrap">${escapeHtml(data.body)}</div>
+    <hr style="border:none;border-top:1px solid #eee;margin:24px 0" />
+    <p style="font-size:12px;color:#888">Baylio \xB7 Reference #${data.ticketId}</p>
+  `;
+  if (!resend2) {
+    console.log("[EmailService] No RESEND_API_KEY \u2014 would send reply to", data.toEmail);
+    return;
+  }
+  await resend2.emails.send({
+    from: "Baylio Support <support@baylio.io>",
+    to: [data.toEmail],
+    replyTo: "support@baylio.io",
+    subject: data.subject,
+    html: htmlBody,
+    text: data.body
+  });
+}
 
 // server/contactRouter.ts
 var contactRouter = router({
@@ -3487,6 +3604,77 @@ var samLeadsRouter = router({
   })
 });
 
+// server/supportRouter.ts
+import { z as z13 } from "zod";
+import { TRPCError as TRPCError10 } from "@trpc/server";
+var STATUS = z13.enum(["new", "triaged", "in_progress", "shipped", "declined", "spam"]);
+var CATEGORY = z13.enum([
+  "feature_request",
+  "bug_report",
+  "question",
+  "billing",
+  "language_request",
+  "integration_request",
+  "other"
+]);
+var PRIORITY = z13.enum(["low", "medium", "high", "urgent"]);
+var supportRouter = router({
+  list: adminProcedure.input(z13.object({ status: STATUS.optional(), limit: z13.number().min(1).max(500).default(200) }).optional()).query(async ({ input }) => {
+    return listSupportTickets({ status: input?.status, limit: input?.limit });
+  }),
+  get: adminProcedure.input(z13.object({ id: z13.number() })).query(async ({ input }) => {
+    const ticket = await getSupportTicketById(input.id);
+    if (!ticket) throw new TRPCError10({ code: "NOT_FOUND", message: "Ticket not found" });
+    return ticket;
+  }),
+  update: adminProcedure.input(
+    z13.object({
+      id: z13.number(),
+      status: STATUS.optional(),
+      category: CATEGORY.optional(),
+      priority: PRIORITY.optional(),
+      summary: z13.string().max(500).optional(),
+      adminNotes: z13.string().max(5e3).optional()
+    })
+  ).mutation(async ({ input }) => {
+    const { id, ...rest } = input;
+    const existing = await getSupportTicketById(id);
+    if (!existing) throw new TRPCError10({ code: "NOT_FOUND", message: "Ticket not found" });
+    const patch = { ...rest };
+    if (rest.status === "shipped" && !existing.shippedAt) {
+      patch.shippedAt = /* @__PURE__ */ new Date();
+    }
+    await updateSupportTicket(id, patch);
+    return { ok: true };
+  }),
+  reply: adminProcedure.input(
+    z13.object({
+      id: z13.number(),
+      subject: z13.string().min(1).max(500),
+      body: z13.string().min(1).max(1e4),
+      markStatus: STATUS.optional()
+    })
+  ).mutation(async ({ input }) => {
+    const ticket = await getSupportTicketById(input.id);
+    if (!ticket) throw new TRPCError10({ code: "NOT_FOUND", message: "Ticket not found" });
+    await sendSupportReply({
+      toEmail: ticket.fromEmail,
+      toName: ticket.fromName,
+      subject: input.subject,
+      body: input.body,
+      ticketId: ticket.id
+    });
+    const patch = {
+      status: input.markStatus ?? "in_progress"
+    };
+    if (input.markStatus === "shipped" && !ticket.shippedAt) {
+      patch.shippedAt = /* @__PURE__ */ new Date();
+    }
+    await updateSupportTicket(ticket.id, patch);
+    return { ok: true };
+  })
+});
+
 // server/routers.ts
 var appRouter = router({
   system: systemRouter,
@@ -3508,7 +3696,8 @@ var appRouter = router({
   analytics: analyticsRouter,
   contact: contactRouter,
   integration: integrationRouter,
-  samLeads: samLeadsRouter
+  samLeads: samLeadsRouter,
+  support: supportRouter
 });
 
 // server/lib/supabase.ts
@@ -5143,7 +5332,7 @@ elevenLabsWebhookRouter.post(
 
 // server/services/samToolsRouter.ts
 import { Router as Router4 } from "express";
-import { z as z13 } from "zod";
+import { z as z14 } from "zod";
 
 // server/services/samToolsService.ts
 import { Client as Client2 } from "@hubspot/api-client";
@@ -5400,7 +5589,7 @@ function authSamTool(req, res, next) {
   next();
 }
 samToolsRouter.use(authSamTool);
-var intentEnum = z13.enum([
+var intentEnum = z14.enum([
   "shop_owner_prospect",
   "curious_tester",
   "car_question",
@@ -5408,39 +5597,39 @@ var intentEnum = z13.enum([
   "onboarding_help",
   "other"
 ]);
-var leadSchema = z13.object({
-  caller_phone: z13.string().min(7),
-  name: z13.string().optional(),
-  email: z13.string().email().optional(),
-  shop_name: z13.string().optional(),
-  city: z13.string().optional(),
+var leadSchema = z14.object({
+  caller_phone: z14.string().min(7),
+  name: z14.string().optional(),
+  email: z14.string().email().optional(),
+  shop_name: z14.string().optional(),
+  city: z14.string().optional(),
   intent: intentEnum.optional(),
-  intent_summary: z13.string().optional(),
-  language: z13.string().optional(),
-  marketing_consent: z13.boolean().optional(),
-  conversation_id: z13.string().optional()
+  intent_summary: z14.string().optional(),
+  language: z14.string().optional(),
+  marketing_consent: z14.boolean().optional(),
+  conversation_id: z14.string().optional()
 });
-var smsSchema = z13.object({
-  caller_phone: z13.string().min(7),
-  content_summary: z13.string().min(1).max(800),
-  marketing_consent: z13.boolean().optional()
+var smsSchema = z14.object({
+  caller_phone: z14.string().min(7),
+  content_summary: z14.string().min(1).max(800),
+  marketing_consent: z14.boolean().optional()
 });
-var emailSchema = z13.object({
-  caller_phone: z13.string().min(7),
-  email: z13.string().email(),
-  content_summary: z13.string().min(1).max(2e3),
-  marketing_consent: z13.boolean().optional()
+var emailSchema = z14.object({
+  caller_phone: z14.string().min(7),
+  email: z14.string().email(),
+  content_summary: z14.string().min(1).max(2e3),
+  marketing_consent: z14.boolean().optional()
 });
-var onboardSchema = z13.object({
-  caller_phone: z13.string().min(7),
-  name: z13.string().optional(),
-  email: z13.string().email().optional(),
-  language: z13.string().optional(),
-  notes: z13.string().optional()
+var onboardSchema = z14.object({
+  caller_phone: z14.string().min(7),
+  name: z14.string().optional(),
+  email: z14.string().email().optional(),
+  language: z14.string().optional(),
+  notes: z14.string().optional()
 });
-var transferSchema = z13.object({
-  caller_phone: z13.string().min(7),
-  reason: z13.string().optional()
+var transferSchema = z14.object({
+  caller_phone: z14.string().min(7),
+  reason: z14.string().optional()
 });
 samToolsRouter.post("/lead", async (req, res) => {
   const parsed = leadSchema.safeParse(req.body);
@@ -5948,6 +6137,192 @@ async function handleSubscriptionDeleted(sub) {
   }
 }
 
+// server/services/supportInboundRouter.ts
+import { Router as Router5 } from "express";
+import crypto2 from "node:crypto";
+
+// server/services/supportTriageService.ts
+var CATEGORIES = [
+  "feature_request",
+  "bug_report",
+  "question",
+  "billing",
+  "language_request",
+  "integration_request",
+  "other"
+];
+var PRIORITIES = ["low", "medium", "high", "urgent"];
+var SYSTEM_PROMPT = `You are the triage layer for Baylio, an AI phone receptionist for auto repair shops.
+Incoming emails come to support@baylio.io from shop owners and prospects.
+Classify each email into one category, one priority, and a one-line summary.
+
+Categories:
+- feature_request: asks for new functionality (e.g. "add QuickBooks", "add Russian language")
+- bug_report: something broken or behaving wrong
+- question: general help, onboarding, how-to
+- billing: pricing, subscription, refund, payment
+- language_request: specifically asking Baylio to support a new language
+- integration_request: asking for a new integration (Shopmonkey, HubSpot, custom CRM, etc.)
+- other: doesn't fit above
+
+Priorities:
+- urgent: production is broken for a paying customer right now
+- high: paying customer blocked, or high-revenue prospect about to churn
+- medium: important but not blocking
+- low: nice-to-have, informational, thank-you notes, off-topic
+
+The summary must be ONE sentence under 140 characters, in the imperative voice where possible.
+Example good summary: "Add Russian language support for Brooklyn shop customers"
+Example bad summary: "The user is asking about Russian language"
+
+Return valid JSON only.`;
+var OUTPUT_SCHEMA = {
+  name: "support_triage",
+  strict: true,
+  schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["category", "priority", "summary"],
+    properties: {
+      category: { type: "string", enum: CATEGORIES },
+      priority: { type: "string", enum: PRIORITIES },
+      summary: { type: "string", maxLength: 200 }
+    }
+  }
+};
+async function triageSupportTicket(ticket) {
+  const userContent = [
+    `From: ${ticket.fromEmail}`,
+    `Subject: ${ticket.subject ?? "(no subject)"}`,
+    "",
+    "Body:",
+    ticket.body.slice(0, 4e3)
+  ].join("\n");
+  try {
+    const result = await invokeLLM({
+      messages: [
+        { role: "system", content: SYSTEM_PROMPT },
+        { role: "user", content: userContent }
+      ],
+      outputSchema: OUTPUT_SCHEMA,
+      maxTokens: 500
+    });
+    const raw = result.choices[0]?.message?.content;
+    const text2 = typeof raw === "string" ? raw : Array.isArray(raw) ? raw.map((p) => p.type === "text" ? p.text : "").join("") : "";
+    if (!text2) return null;
+    const parsed = JSON.parse(text2);
+    if (!CATEGORIES.includes(parsed.category)) return null;
+    if (!PRIORITIES.includes(parsed.priority)) return null;
+    if (!parsed.summary || typeof parsed.summary !== "string") return null;
+    return parsed;
+  } catch (err) {
+    console.error("[SUPPORT-TRIAGE] Failed:", err);
+    return null;
+  }
+}
+
+// server/services/supportInboundRouter.ts
+var supportInboundRouter = Router5();
+function verifySvixSignature(rawBody, headers) {
+  const secret = process.env.RESEND_WEBHOOK_SECRET;
+  if (!secret) {
+    console.warn("[SUPPORT-INBOUND] RESEND_WEBHOOK_SECRET not set \u2014 skipping signature verification");
+    return true;
+  }
+  const svixId = headers["svix-id"];
+  const svixTimestamp = headers["svix-timestamp"];
+  const svixSignature = headers["svix-signature"];
+  if (!svixId || !svixTimestamp || !svixSignature) {
+    console.warn("[SUPPORT-INBOUND] Missing Svix headers");
+    return false;
+  }
+  const id = Array.isArray(svixId) ? svixId[0] : svixId;
+  const ts = Array.isArray(svixTimestamp) ? svixTimestamp[0] : svixTimestamp;
+  const sig = Array.isArray(svixSignature) ? svixSignature[0] : svixSignature;
+  const signedContent = `${id}.${ts}.${rawBody}`;
+  const secretBytes = secret.startsWith("whsec_") ? Buffer.from(secret.slice(6), "base64") : Buffer.from(secret, "utf8");
+  const expected = crypto2.createHmac("sha256", secretBytes).update(signedContent).digest("base64");
+  const provided = sig.split(" ").map((part) => part.split(",")[1]).filter(Boolean);
+  return provided.some((candidate) => {
+    try {
+      return crypto2.timingSafeEqual(Buffer.from(candidate), Buffer.from(expected));
+    } catch {
+      return false;
+    }
+  });
+}
+supportInboundRouter.post("/inbound", async (req, res) => {
+  const rawBody = typeof req.body === "string" ? req.body : JSON.stringify(req.body);
+  if (!verifySvixSignature(rawBody, req.headers)) {
+    console.warn("[SUPPORT-INBOUND] Signature verification failed");
+    return res.status(401).json({ error: "invalid signature" });
+  }
+  let payload;
+  try {
+    payload = typeof req.body === "string" ? JSON.parse(req.body) : req.body;
+  } catch {
+    return res.status(400).json({ error: "invalid json" });
+  }
+  if (payload.type && payload.type !== "email.received" && payload.type !== "inbound_email.received") {
+    return res.status(200).json({ ignored: true, type: payload.type });
+  }
+  const data = payload.data;
+  const fromEmail = data?.from?.email;
+  if (!fromEmail) {
+    return res.status(400).json({ error: "missing from email" });
+  }
+  const subject = data?.subject ?? null;
+  const body = data?.text || stripHtml(data?.html ?? "") || "(empty body)";
+  const bodyHtml = data?.html ?? null;
+  const messageId = data?.message_id ?? null;
+  const fromName = data?.from?.name ?? null;
+  const ticketId = await createSupportTicket({
+    fromEmail,
+    fromName,
+    subject: subject ?? void 0,
+    body,
+    bodyHtml: bodyHtml ?? void 0,
+    messageId: messageId ?? void 0,
+    status: "new"
+  });
+  if (!ticketId) {
+    console.error("[SUPPORT-INBOUND] Failed to create ticket \u2014 DB unavailable");
+    return res.status(500).json({ error: "db unavailable" });
+  }
+  res.status(200).json({ ok: true, ticketId });
+  setImmediate(async () => {
+    try {
+      const triage = await triageSupportTicket({ subject, body, fromEmail });
+      if (triage) {
+        await updateSupportTicket(ticketId, {
+          category: triage.category,
+          priority: triage.priority,
+          summary: triage.summary,
+          status: "triaged",
+          triagedAt: /* @__PURE__ */ new Date()
+        });
+        console.log(`[SUPPORT-INBOUND] Triaged ticket ${ticketId}: ${triage.category}/${triage.priority}`);
+      }
+    } catch (err) {
+      console.error("[SUPPORT-INBOUND] Triage post-process failed:", err);
+    }
+    try {
+      await sendSupportAutoAck({
+        toEmail: fromEmail,
+        toName: fromName,
+        originalSubject: subject,
+        ticketId
+      });
+      await updateSupportTicket(ticketId, { autoAckSentAt: /* @__PURE__ */ new Date() });
+    } catch (err) {
+      console.error("[SUPPORT-INBOUND] Auto-ack failed:", err);
+    }
+  });
+});
+function stripHtml(html) {
+  return html.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<script[\s\S]*?<\/script>/gi, "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim();
+}
+
 // server/vercel-entry.ts
 var contactLimiter = rateLimit({ name: "contact", windowSec: 60, max: 5 });
 var webhookLimiter = rateLimit({ name: "webhook", windowSec: 10, max: 50 });
@@ -5966,6 +6341,7 @@ app.use("/api/elevenlabs", elevenLabsWebhookRouter);
 app.use("/api/sam", samToolsRouter);
 app.use("/api/sam-twiml", webhookLimiter, samTwimlRouter);
 app.use("/api/integrations/google", googleAuthRouter);
+app.use("/api/support", webhookLimiter, supportInboundRouter);
 app.use("/api/trpc/contact.submit", contactLimiter);
 app.use(
   "/api/trpc",

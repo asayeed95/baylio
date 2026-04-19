@@ -44,6 +44,8 @@ import {
   Wrench,
   FileText,
   Target,
+  Languages,
+  Globe,
 } from "lucide-react";
 
 /**
@@ -1049,6 +1051,89 @@ export default function Landing() {
               </div>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* ─── 9b. No Language Barriers ─── */}
+      <section id="languages" className="container py-12 md:py-20">
+        <div className="grid md:grid-cols-2 gap-10 md:gap-14 items-center max-w-6xl mx-auto">
+          <div>
+            <Badge
+              variant="outline"
+              className="mb-4 border-primary/30 text-primary bg-primary/5"
+            >
+              <Languages className="h-3.5 w-3.5 mr-1.5" />
+              No Language Barriers
+            </Badge>
+            <h2 className="text-3xl md:text-4xl font-bold tracking-tight mb-4">
+              Your customers speak 8 languages. So does Baylio.
+            </h2>
+            <p className="text-muted-foreground mb-6 leading-relaxed">
+              Never lose a customer because of a language barrier again. Baylio
+              auto-detects the caller's language, answers fluently, books the
+              appointment, and sends you a transcript translated to English.
+              You capture revenue you'd otherwise hang up on.
+            </p>
+            <ul className="space-y-3">
+              {[
+                "Auto-detects the caller's language from the first sentence",
+                "Books appointments and quotes prices in Spanish, Arabic, Portuguese, Hindi, Bangla, Italian, and Turkish",
+                "Every transcript translated to English with customer details + booking",
+                "Don't speak what your customers speak? Baylio does — fluently.",
+                "Missing a language you need? Email support@baylio.io — we ship new languages fast.",
+              ].map((pt) => (
+                <li key={pt} className="flex gap-3 text-sm text-foreground/85">
+                  <CheckCircle2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+                  <span>{pt}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+          <div className="relative">
+            <div className="rounded-2xl border bg-card p-6 md:p-8 shadow-sm">
+              <div className="flex items-center gap-2 mb-6 text-xs font-mono tracking-widest text-muted-foreground uppercase">
+                <Globe className="h-4 w-4 text-primary" />
+                Live call — auto-detected
+              </div>
+              <div className="space-y-4">
+                {[
+                  { lang: "English", flag: "US", example: "\"Hi, I need an oil change. How much?\"", reply: "\"Hey! Oil change runs $49–$79 depending on your vehicle. Want me to get you booked in?\"" },
+                  { lang: "Español", flag: "MX", example: "\"Hola, necesito cambio de aceite.\"", reply: "\"¡Claro! El cambio de aceite va de $49 a $79. ¿Le agendo una cita?\"" },
+                  { lang: "العربية", flag: "AR", example: "\"مرحبا، أحتاج تغيير زيت السيارة.\"", reply: "\"أهلاً! تغيير الزيت من 49 إلى 79 دولار. أحجز لك موعد؟\"" },
+                  { lang: "हिन्दी", flag: "IN", example: "\"Oil change kitna lagega?\"", reply: "\"Namaste! Oil change $49 se $79 tak. Appointment book kar dun?\"" },
+                ].map((row) => (
+                  <div
+                    key={row.lang}
+                    className="rounded-lg border bg-background p-3 text-xs"
+                  >
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="font-semibold text-foreground">
+                        {row.lang}
+                      </span>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        {row.flag}
+                      </span>
+                    </div>
+                    <p className="text-muted-foreground mb-1">
+                      <span className="font-mono text-[10px] text-primary mr-1">
+                        CALLER
+                      </span>
+                      {row.example}
+                    </p>
+                    <p className="text-foreground/80">
+                      <span className="font-mono text-[10px] text-primary mr-1">
+                        BAYLIO
+                      </span>
+                      {row.reply}
+                    </p>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-6 pt-4 border-t text-xs text-muted-foreground text-center">
+                Transcript always arrives translated to English.
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
