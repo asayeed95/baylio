@@ -31,6 +31,8 @@ const PartnersSettings = lazy(() => import("./pages/PartnersSettings"));
 const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const CostAnalytics = lazy(() => import("./pages/CostAnalytics"));
 const FAQ = lazy(() => import("./pages/FAQ"));
+const Blog = lazy(() => import("./pages/Blog"));
+const BlogPost = lazy(() => import("./pages/BlogPost"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Integrations = lazy(() => import("./pages/Integrations"));
 const CallScorecard = lazy(() => import("./pages/CallScorecard"));
@@ -127,6 +129,8 @@ function MainRouter() {
       <Route path="/faq" component={FAQ} />
       <Route path="/help" component={Help} />
       <Route path="/contact" component={Contact} />
+      <Route path="/blog" component={Blog} />
+      <Route path="/blog/:slug" component={BlogPost} />
       {/* Partners routes accessible from main domain too */}
       <Route path="/partners" component={PartnersLandingOrDashboard} />
       <Route path="/partners/referrals" component={PartnersReferrals} />
