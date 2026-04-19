@@ -118,16 +118,17 @@ const STEPS: Step[] = [
     title: "Shops see +27% bookings in 90 days",
     Visual: Step5RevenueUp,
     pitch:
-      "Average shop on Baylio sees a 27% lift in booked appointments within the first 90 days — just from capturing calls they were already missing. At $199/month, one saved appointment pays for it.",
+      "Average shop on Baylio sees a 27% lift in booked appointments within the first 90 days — just from capturing calls they were already missing. Start at $149/month — one saved appointment pays for it.",
     talkingPoints: [
+      "Trial: $149/mo · 150 minutes · try it risk-free for 30 days.",
       "Starter: $199/mo · 300 minutes · solo shops.",
       "Pro: $349/mo · 750 minutes · busy shops (most popular).",
       "Elite: $599/mo · 1,500 minutes · multi-bay & multi-location.",
       "No contract. Cancel anytime. 14-day setup, we handle everything.",
     ],
     objection: {
-      q: "\"$199 sounds like a lot.\"",
-      a: "One booked oil change per month covers it. One brake job pays for 2 months. If it doesn't pay for itself in 30 days, cancel.",
+      q: "\"$149 sounds like a lot.\"",
+      a: "One booked oil change per month covers it. One brake job pays for 2 months. If it doesn't pay for itself in 30 days, cancel — we'll refund you.",
     },
   },
 ];
