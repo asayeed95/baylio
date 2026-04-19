@@ -25,6 +25,7 @@ const PartnersReferrals = lazy(() => import("./pages/PartnersReferrals"));
 const PartnersEarnings = lazy(() => import("./pages/PartnersEarnings"));
 const PartnersNetwork = lazy(() => import("./pages/PartnersNetwork"));
 const PartnersResources = lazy(() => import("./pages/PartnersResources"));
+const PartnersOnboardingGuide = lazy(() => import("./pages/PartnersOnboardingGuide"));
 const PartnersSettings = lazy(() => import("./pages/PartnersSettings"));
 const AdminPortal = lazy(() => import("./pages/AdminPortal"));
 const CostAnalytics = lazy(() => import("./pages/CostAnalytics"));
@@ -86,6 +87,7 @@ function PartnersRouter() {
       <Route path="/partners/earnings" component={PartnersEarnings} />
       <Route path="/partners/network" component={PartnersNetwork} />
       <Route path="/partners/resources" component={PartnersResources} />
+      <Route path="/partners/onboarding-guide" component={PartnersOnboardingGuide} />
       <Route path="/partners/settings" component={PartnersSettings} />
       <Route component={NotFound} />
     </Switch>
@@ -130,6 +132,7 @@ function MainRouter() {
       <Route path="/partners/earnings" component={PartnersEarnings} />
       <Route path="/partners/network" component={PartnersNetwork} />
       <Route path="/partners/resources" component={PartnersResources} />
+      <Route path="/partners/onboarding-guide" component={PartnersOnboardingGuide} />
       <Route path="/partners/settings" component={PartnersSettings} />
       <Route path="/404" component={NotFound} />
       <Route component={NotFound} />

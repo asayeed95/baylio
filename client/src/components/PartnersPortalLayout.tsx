@@ -28,6 +28,7 @@ import {
   DollarSign,
   Network,
   BookOpen,
+  GraduationCap,
   Settings,
   Handshake,
   ArrowLeft,
@@ -48,6 +49,7 @@ const menuItems = [
   { icon: DollarSign, label: "Earnings", path: "/partners/earnings" },
   { icon: Network, label: "Network", path: "/partners/network" },
   { icon: BookOpen, label: "Resources", path: "/partners/resources" },
+  { icon: GraduationCap, label: "Onboarding Guide", path: "/partners/onboarding-guide" },
   { icon: Settings, label: "Settings", path: "/partners/settings" },
 ];
 

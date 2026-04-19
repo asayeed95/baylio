@@ -34,6 +34,7 @@ import {
   DollarSign,
 } from "lucide-react";
 import { GarageDoorVisual } from "@/components/visuals/EmptyStateVisuals";
+import { ShopCardVisual } from "@/components/visuals/ShopCardVisual";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -167,27 +168,32 @@ function DashboardContent() {
           {shops.map(shop => (
             <Card
               key={shop.id}
-              className="cursor-pointer hover:border-primary/30 transition-colors border border-border rounded-sm"
+              className="cursor-pointer hover:border-primary/40 hover:shadow-sm transition-all border border-border rounded-sm overflow-hidden group"
               onClick={() => setLocation(`/shops/${shop.id}`)}
             >
-              <CardHeader className="pb-3">
+              <ShopCardVisual active={Boolean(shop.twilioPhoneNumber)} className="text-foreground" />
+              <CardHeader className="pb-3 pt-4">
                 <div className="flex items-start justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                  <div className="flex items-center gap-3 min-w-0">
+                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                       <Store className="h-5 w-5 text-primary" />
                     </div>
-                    <div>
-                      <CardTitle className="text-base">{shop.name}</CardTitle>
-                      {shop.phone && (
+                    <div className="min-w-0">
+                      <CardTitle className="text-base truncate">{shop.name}</CardTitle>
+                      {shop.twilioPhoneNumber ? (
+                        <p className="text-xs text-primary font-mono mt-0.5">
+                          {shop.twilioPhoneNumber}
+                        </p>
+                      ) : shop.phone ? (
                         <p className="text-xs text-muted-foreground font-mono mt-0.5">
                           {shop.phone}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   </div>
                   <Badge
                     variant={shop.twilioPhoneNumber ? "default" : "secondary"}
-                    className="text-xs"
+                    className="text-xs shrink-0"
                   >
                     {shop.twilioPhoneNumber ? "Active" : "Setup Needed"}
                   </Badge>
@@ -199,9 +205,9 @@ function DashboardContent() {
                     {shop.city}, {shop.state}
                   </p>
                 )}
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>Click to manage</span>
-                  <ArrowRight className="h-3 w-3" />
+                <div className="flex items-center gap-1 text-xs text-muted-foreground group-hover:text-primary transition-colors">
+                  <span>{shop.twilioPhoneNumber ? "Manage & view calls" : "Finish setup"}</span>
+                  <ArrowRight className="h-3 w-3 group-hover:translate-x-0.5 transition-transform" />
                 </div>
               </CardContent>
             </Card>

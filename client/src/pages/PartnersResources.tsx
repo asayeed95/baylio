@@ -15,8 +15,9 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { trpc } from "@/lib/trpc";
+import { useLocation } from "wouter";
 import { useState } from "react";
-import { Copy, Check } from "lucide-react";
+import { Copy, Check, GraduationCap, ArrowRight } from "lucide-react";
 
 const RESOURCES = [
   {
@@ -136,6 +137,7 @@ const TYPE_COLORS: Record<string, string> = {
 
 export default function PartnersResources() {
   const { data: profile } = trpc.partner.getProfile.useQuery();
+  const [, setLocation] = useLocation();
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const referralCode = profile?.referralCode || "YOUR_CODE";
@@ -159,6 +161,39 @@ export default function PartnersResources() {
             Everything you need to pitch, close, and onboard auto repair shops.
           </p>
         </div>
+
+        {/* Featured — Onboarding Guide */}
+        <Card
+          className="bg-gradient-to-r from-primary/10 via-card to-card border-primary/30 cursor-pointer hover:border-primary/50 transition-colors"
+          onClick={() => setLocation("/partners/onboarding-guide")}
+        >
+          <CardContent className="p-5">
+            <div className="flex items-start gap-4">
+              <div className="h-12 w-12 rounded-lg bg-primary/20 flex items-center justify-center shrink-0">
+                <GraduationCap className="h-6 w-6 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="text-sm font-semibold text-foreground">
+                    How Baylio Works — 5-Step Onboarding Guide
+                  </p>
+                  <Badge
+                    variant="outline"
+                    className="text-xs border-primary/30 text-primary bg-primary/5"
+                  >
+                    New
+                  </Badge>
+                </div>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Illustrated pitch deck you can walk a shop owner through in 5
+                  minutes. Visuals + scripts + objection handlers. Print it or
+                  show it on your laptop.
+                </p>
+              </div>
+              <ArrowRight className="h-4 w-4 text-primary shrink-0 mt-1" />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Quick Copy Section */}
         <Card className="bg-gradient-to-r from-emerald-950/50 to-zinc-900 border-emerald-800/30">
