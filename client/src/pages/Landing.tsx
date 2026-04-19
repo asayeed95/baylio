@@ -42,15 +42,10 @@ import {
 
 /**
  * Resolve the partners portal URL.
- * On production (baylio.io / www.baylio.io) → partners.baylio.io
- * On dev preview → same origin with ?portal=partners
+ * Routes within the same domain — the /partners path is handled by MainRouter.
  */
 function getPartnersUrl(): string {
-  const hostname = window.location.hostname;
-  if (hostname === "baylio.io" || hostname === "www.baylio.io") {
-    return "https://partners.baylio.io";
-  }
-  return `${window.location.origin}?portal=partners`;
+  return "/partners";
 }
 
 /**
