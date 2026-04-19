@@ -33,6 +33,7 @@ import {
   Calendar,
   DollarSign,
 } from "lucide-react";
+import { GarageDoorVisual } from "@/components/visuals/EmptyStateVisuals";
 import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
@@ -146,10 +147,10 @@ function DashboardContent() {
       {!shops || shops.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon" className="mb-4 bg-primary/10 text-primary">
-              <Store className="w-8 h-8" />
-            </EmptyMedia>
-            <EmptyTitle>Welcome to Baylio Dashboard</EmptyTitle>
+            <div className="mb-4 text-foreground">
+              <GarageDoorVisual />
+            </div>
+            <EmptyTitle>Your garage is ready to open</EmptyTitle>
             <EmptyDescription className="max-w-md mx-auto">
               Add your first auto repair shop to deploy your AI receptionist and start recovering missed revenue today.
             </EmptyDescription>

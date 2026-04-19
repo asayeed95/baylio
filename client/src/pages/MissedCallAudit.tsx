@@ -43,6 +43,7 @@ import {
   Calendar,
   ArrowRight,
 } from "lucide-react";
+import { GearRestVisual } from "@/components/visuals/EmptyStateVisuals";
 import { useState } from "react";
 import { toast } from "sonner";
 
@@ -249,9 +250,9 @@ function MissedCallAuditContent() {
       {!audits || audits.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <ClipboardCheck />
-            </EmptyMedia>
+            <div className="mb-4 text-foreground">
+              <GearRestVisual />
+            </div>
             <EmptyTitle>No audits yet</EmptyTitle>
             <EmptyDescription>
               Create your first missed call audit to start generating sales

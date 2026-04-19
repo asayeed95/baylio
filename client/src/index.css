@@ -40,6 +40,8 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-steel: var(--steel);
+  --color-copper: var(--copper);
   --font-sans: "Inter", system-ui, sans-serif;
   --font-heading: "Inter", system-ui, sans-serif;
   --font-mono: "JetBrains Mono", "Fira Code", monospace;
@@ -80,6 +82,10 @@
   --sidebar-accent-foreground: oklch(0.2 0.06 162);
   --sidebar-border: oklch(0.92 0.002 240);
   --sidebar-ring: oklch(0.45 0.18 162);
+
+  /* Auto-repair accent palette */
+  --steel: #6B7280;      /* Tailwind gray-500 — shop-floor neutral */
+  --copper: #D97706;     /* Tailwind amber-600 — warm accent (rust / tool highlight) */
 }
 
 .dark {
@@ -115,6 +121,10 @@
   --sidebar-accent-foreground: oklch(0.85 0.008 162);
   --sidebar-border: oklch(0.16 0.008 240);
   --sidebar-ring: oklch(0.68 0.2 162);
+
+  /* Auto-repair accent palette (dark) */
+  --steel: #9CA3AF;      /* gray-400 — lifted for dark bg */
+  --copper: #F59E0B;     /* amber-500 — warmer on dark */
 }
 
 @layer base {

@@ -27,6 +27,7 @@ import {
   CheckCircle2,
   AlertTriangle,
 } from "lucide-react";
+import { GearRestVisual } from "@/components/visuals/EmptyStateVisuals";
 import { useLocation } from "wouter";
 import { toast } from "sonner";
 import { usePostHog } from "@posthog/react";
@@ -115,10 +116,10 @@ function SubscriptionsContent() {
       {!allSubs || allSubs.length === 0 ? (
         <Empty>
           <EmptyHeader>
-            <EmptyMedia variant="icon">
-              <CreditCard />
-            </EmptyMedia>
-            <EmptyTitle>No subscriptions</EmptyTitle>
+            <div className="mb-4 text-foreground">
+              <GearRestVisual />
+            </div>
+            <EmptyTitle>No subscriptions yet</EmptyTitle>
             <EmptyDescription>
               Add a shop from the dashboard to set up a subscription plan.
             </EmptyDescription>
