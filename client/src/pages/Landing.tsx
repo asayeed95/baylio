@@ -30,6 +30,12 @@ import {
   BadgeDollarSign,
   Gift,
   Menu,
+  Sparkles,
+  Tag,
+  Workflow,
+  HelpCircle,
+  BookOpen,
+  Mail,
   PhoneIncoming,
   MessageSquare,
   ClipboardList,
@@ -549,52 +555,59 @@ export default function Landing() {
                   <span className="sr-only">Open menu</span>
                 </Button>
               </SheetTrigger>
-              <SheetContent side="right" className="w-72 pt-10">
-                <nav className="flex flex-col gap-4">
+              <SheetContent side="right" className="w-80 px-6 pt-12">
+                <nav className="flex flex-col gap-1">
                   <a
                     href="#features"
-                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors"
                   >
+                    <Sparkles className="h-4 w-4 text-muted-foreground" />
                     Features
                   </a>
                   <a
                     href="#pricing"
-                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors"
                   >
+                    <Tag className="h-4 w-4 text-muted-foreground" />
                     Pricing
                   </a>
                   <a
                     href="#how-it-works"
-                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors"
                   >
+                    <Workflow className="h-4 w-4 text-muted-foreground" />
                     How It Works
                   </a>
                   <Link
                     href="/faq"
-                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors"
                   >
+                    <HelpCircle className="h-4 w-4 text-muted-foreground" />
                     FAQ
                   </Link>
                   <Link
                     href="/blog"
-                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors"
                   >
+                    <BookOpen className="h-4 w-4 text-muted-foreground" />
                     Blog
                   </Link>
                   <Link
                     href="/contact"
-                    className="text-base font-medium text-foreground hover:text-primary transition-colors py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-foreground hover:bg-secondary hover:text-primary transition-colors"
                   >
+                    <Mail className="h-4 w-4 text-muted-foreground" />
                     Contact
                   </Link>
+                  <hr className="my-3 border-border" />
                   <a
                     href={getPartnersUrl()}
-                    className="text-base font-medium text-primary hover:text-primary/80 transition-colors flex items-center gap-2 py-2"
+                    className="flex items-center gap-3 rounded-lg px-3 py-3 text-base font-medium text-primary hover:bg-primary/5 transition-colors"
                   >
                     <Handshake className="h-4 w-4" />
                     Become a Partner
                   </a>
-                  <hr className="my-2" />
+                  <hr className="my-3 border-border" />
                   <Button
                     variant="outline"
                     className="w-full"
