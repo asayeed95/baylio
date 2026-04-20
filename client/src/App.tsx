@@ -39,6 +39,7 @@ const CallScorecard = lazy(() => import("./pages/CallScorecard"));
 const Help = lazy(() => import("./pages/Help"));
 const Onboarding = lazy(() => import("./pages/Onboarding"));
 const Login = lazy(() => import("./pages/Login"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 
 // ─── Loading fallback ───────────────────────────────────────────────
@@ -113,6 +114,7 @@ function MainRouter() {
     <Switch>
       <Route path="/" component={Landing} />
       <Route path="/login" component={Login} />
+      <Route path="/auth/callback" component={AuthCallback} />
       <Route path="/onboarding" component={Onboarding} />
       <Route path="/dashboard" component={Dashboard} />
       <Route path="/shops/:id" component={ShopDetail} />
