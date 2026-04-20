@@ -22,6 +22,7 @@ import { type ShopContext } from "./promptCompiler";
 import { processCompletedCall } from "./postCallPipeline";
 import { getCallerMemory } from "./mem0Service";
 import { getShopAccessStatus } from "./trialService";
+import { getMnemixCallerContext } from "./mnemixService";
 import { getDb } from "../db";
 import { eq, sql } from "drizzle-orm";
 import {
@@ -410,6 +411,13 @@ async function respondWithElevenLabsAgent(
     elevenLabsAgentId,
     fromNumber,
     toNumber,
+    {
+      dynamic_variables: {
+        shop_id: shopId.toString(),
+        shop_name: context.shopName,
+        caller_name: callerName,
+      },
+    }
   );
 
   const elapsed = Date.now() - startTime;
@@ -458,13 +466,13 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected — routing to Sam (${SAM_AGENT_ID})`);
       try {
-        // Fetch caller memory from Mem0 (non-blocking — falls back to "" on failure)
-        const callerMemory = await getCallerMemory(From);
-        const callerContext = callerMemory
-          ? `This caller has contacted Baylio before. Here's what you know about them:\n${callerMemory}`
+        // Mnemix-only context (Mem0 paused for isolated Mnemix testing)
+        const mnemixContext = await getMnemixCallerContext(From);
+        const callerContext = mnemixContext
+          ? `Caller context from Mnemix:\n${mnemixContext}`
           : "This appears to be a first-time caller. No prior history.";
 
-        console.log(`[CALL] Mem0 context for ${From}: ${callerMemory ? `${callerMemory.length} chars` : "none (new caller)"}`);
+        console.log(`[CALL] Mnemix context for ${From}: ${mnemixContext ? `${mnemixContext.length}chars` : "none (new caller)"}`);
 
         const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To, {
           dynamic_variables: {

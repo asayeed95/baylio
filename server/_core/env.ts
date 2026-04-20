@@ -42,6 +42,9 @@ export const ENV = {
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
   // Mem0
   mem0ApiKey: process.env.MEM0_API_KEY ?? "",
+  // Mnemix
+  mnemixApiKey: process.env.MNEMIX_API_KEY ?? "",
+  mnemixApiUrl: process.env.MNEMIX_API_URL ?? "https://mnemix-api.sayeed965.workers.dev",
   // Sam tool auth (shared secret ElevenLabs sends as x-sam-tool-secret)
   samToolSecret: process.env.SAM_TOOL_SECRET ?? "",
   // Founder phone for transfer_to_human

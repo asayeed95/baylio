@@ -34,10 +34,14 @@ export async function getCallerMemory(phone: string): Promise<string> {
   if (!client) return "";
 
   try {
-    const { results } = await client.search(
+    const searchPromise = client.search(
       "caller background, shop details, objections, interest level",
       { filters: { user_id: salesUserId(phone) }, topK: 8 }
     );
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error("Mem0 timeout")), 2000)
+    );
+    const { results } = await Promise.race([searchPromise, timeoutPromise]);
 
     if (!results.length) return "";
 
@@ -45,7 +49,11 @@ export async function getCallerMemory(phone: string): Promise<string> {
       .map((m) => `- ${m.memory}`)
       .join("\n");
   } catch (err) {
-    console.error("[MEM0] Error fetching caller memory:", err);
+    if (err instanceof Error && err.message === "Mem0 timeout") {
+      console.warn("[MEM0] Search timed out after 2s, skipping");
+    } else {
+      console.error("[MEM0] Error fetching caller memory:", err);
+    }
     return "";
   }
 }

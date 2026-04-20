@@ -23,7 +23,7 @@ export const tierEnum = pgEnum("tier", ["trial", "starter", "pro", "elite"]);
 export const subStatusEnum = pgEnum("sub_status", ["active", "past_due", "canceled", "trialing"]);
 export const billingCycleEnum = pgEnum("billing_cycle", ["monthly", "annual"]);
 export const notificationTypeEnum = pgEnum("notification_type", [
-  "new_call", "high_value_lead", "missed_call", "system_issue",
+  "new_call", "high_value_lead", "missed_call", "system_issue", "usage_alert",
   "weekly_summary", "usage_warning", "audit_complete", "payment_issue",
 ]);
 export const partnerTierEnum = pgEnum("partner_tier", ["bronze", "silver", "gold", "platinum"]);

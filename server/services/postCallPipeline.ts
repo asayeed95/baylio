@@ -287,6 +287,32 @@ export async function processCompletedCall(callLogId: number): Promise<void> {
             usedMinutes: sql`${subscriptions.usedMinutes} + ${minutesUsed}`,
           })
           .where(eq(subscriptions.id, sub.id));
+
+        // Warn shop owner when approaching or exceeding minute allotment
+        const newUsed = sub.usedMinutes + minutesUsed;
+        const pct = newUsed / sub.includedMinutes;
+        const prevPct = sub.usedMinutes / sub.includedMinutes;
+        if (pct >= 1.0 && prevPct < 1.0) {
+          // Just crossed 100% — overage charges begin
+          await db.insert(notifications).values({
+            userId: call.ownerId,
+            shopId: call.shopId,
+            type: "usage_alert",
+            title: "AI Minutes Exhausted — Overage Active",
+            message: `Your plan's ${sub.includedMinutes} included minutes have been used. Additional minutes are billed at $${parseFloat(sub.overageRate?.toString() || "0.15").toFixed(2)}/min.`,
+            metadata: { usedMinutes: newUsed, includedMinutes: sub.includedMinutes },
+          });
+        } else if (pct >= 0.8 && prevPct < 0.8) {
+          // Just crossed 80% — heads up
+          await db.insert(notifications).values({
+            userId: call.ownerId,
+            shopId: call.shopId,
+            type: "usage_alert",
+            title: "80% of AI Minutes Used",
+            message: `You've used ${newUsed} of your ${sub.includedMinutes} included minutes. Upgrade your plan to avoid overage charges.`,
+            metadata: { usedMinutes: newUsed, includedMinutes: sub.includedMinutes },
+          });
+        }
       }
     }
 
