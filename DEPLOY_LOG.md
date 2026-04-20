@@ -7,11 +7,53 @@
 
 ## Latest Deploy
 
-- **Date:** 2026-04-18
+- **Date:** 2026-04-20
 - **Branch:** main
-- **Commit:** `7e4e6a6`
+- **Commit:** `9413333` (squash-merge of PR #8)
+- **Prod URL:** https://baylio.io (alias of latest force-deploy)
 
 ### What Changed
+
+**feat: 14-day trial system + Supabase email auth callback (PR #8)**
+
+Merged `backend/trial-system` → main and force-deployed to prod. Closed stale PR #7 (old admin analytics, superseded).
+
+**Trial system**
+- `server/services/emailService.ts` — Day 7/12/13/14 lifecycle emails via Resend from `hello@baylio.io`
+- `server/services/trialReminders.ts` — scans shops within 8 days of trial end, picks highest-priority unsent milestone, idempotent via `trialDayXEmailSentAt` cols
+- `server/services/cronRouter.ts` — `GET /api/cron/trial-check` auth'd by `Authorization: Bearer $CRON_SECRET`
+- `server/services/trialService.ts` — trial state helpers
+- `server/services/twilioWebhooks.ts` — gated voicemail when trial expired
+- `vercel.json` — daily cron `0 14 * * *`
+- `server/subscriptionRouter.ts` — `getAccessStatus` procedure for banner
+- `client/src/components/TrialBanner.tsx` — yellow >2 days, red ≤2 or expired
+- `client/src/components/DashboardLayout.tsx` — renders banner above main
+- `drizzle/schema.ts` + `scripts/add-trial-fields.mjs` — new trial columns
+
+**Auth callback**
+- `client/src/pages/AuthCallback.tsx` — handles `?code=` exchange → `/onboarding`
+- `client/src/App.tsx` — lazy `/auth/callback` route
+- `client/src/contexts/AuthContext.tsx` — signUp sets `emailRedirectTo: ${origin}/auth/callback`
+
+**Env + infra**
+- `CRON_SECRET` provisioned in Vercel production (use `printf` not `echo` when piping — `echo` adds `\n` that breaks HTTP headers)
+- Force-deployed with `vercel --prod --force` to bypass a stale build cache that had been serving a pre-visual Landing chunk
+
+**Verified live on baylio.io 2026-04-20:**
+- `GET /api/cron/trial-check` with correct bearer → `{ok: true, result: {scanned: 0, sent: {...}, skipped: 0, errors: 0}}`
+- `GET /api/cron/trial-check` with wrong bearer → `401`
+- `GET /auth/callback` → `200`
+- `GET /api/health` → `{status: "ok"}`
+- Landing bundle contains HeroVisual/CarLineDraw/TreadDivider (77KB chunk, was 47KB stale)
+
+**Still pending before first paying customer:**
+1. Live E2E: signup → email confirm → /auth/callback → /onboarding → real phone call → ring-shop-first verify → dashboard call log
+2. Live Stripe test payment on real card
+3. Supabase dashboard SMTP sender confirmed as `hello@baylio.io`
+
+---
+
+### Previous Deploy (2026-04-18, commit `7e4e6a6`)
 
 **feat(mobile): optimize signup flow for mobile webapp**
 
