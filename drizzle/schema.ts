@@ -86,6 +86,13 @@ export const shops = pgTable("shops", {
   ringTimeoutSec: integer("ringTimeoutSec").default(12).notNull(),
   twilioPhoneNumber: varchar("twilioPhoneNumber", { length: 32 }),
   twilioPhoneSid: varchar("twilioPhoneSid", { length: 64 }),
+  // Trial lifecycle — NULL trialEndsAt means "no trial applies" (e.g., paying customer)
+  trialStartedAt: timestamp("trialStartedAt"),
+  trialEndsAt: timestamp("trialEndsAt"),
+  trialDay7EmailSentAt: timestamp("trialDay7EmailSentAt"),
+  trialDay12EmailSentAt: timestamp("trialDay12EmailSentAt"),
+  trialDay13EmailSentAt: timestamp("trialDay13EmailSentAt"),
+  trialDay14EmailSentAt: timestamp("trialDay14EmailSentAt"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().notNull(),
 });

@@ -39,6 +39,7 @@ import { CSSProperties, useEffect, useRef, useState } from "react";
 import { useLocation } from "wouter";
 import { DashboardLayoutSkeleton } from "./DashboardLayoutSkeleton";
 import { Button } from "./ui/button";
+import { TrialBanner } from "./TrialBanner";
 
 /**
  * Baylio Dashboard Navigation
@@ -301,7 +302,12 @@ function DashboardLayoutContent({
             </div>
           </div>
         )}
-        <main className="flex-1 p-4 md:p-6">{children}</main>
+        <main className="flex-1 p-4 md:p-6">
+          <div className="mb-4">
+            <TrialBanner />
+          </div>
+          {children}
+        </main>
       </SidebarInset>
     </>
   );

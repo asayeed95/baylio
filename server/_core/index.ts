@@ -17,6 +17,7 @@ import { rateLimit } from "../middleware/rateLimiter";
 import { stripeWebhookRouter } from "../stripe/stripeRoutes";
 import { googleAuthRouter } from "../services/googleAuth";
 import { supportInboundRouter } from "../services/supportInboundRouter";
+import { cronRouter } from "../services/cronRouter";
 
 const contactLimiter = rateLimit({ name: "contact", windowSec: 60, max: 5 });
 const webhookLimiter = rateLimit({ name: "webhook", windowSec: 10, max: 50 });
@@ -52,6 +53,9 @@ app.use("/api/integrations/google", googleAuthRouter);
 
 // Support inbound email webhook (Resend)
 app.use("/api/support", webhookLimiter, supportInboundRouter);
+
+// Vercel cron jobs (auth via CRON_SECRET)
+app.use("/api/cron", cronRouter);
 
 // Rate limit contact form submissions
 app.use("/api/trpc/contact.submit", contactLimiter);

@@ -21,6 +21,7 @@ import { contextCache } from "./contextCache";
 import { type ShopContext } from "./promptCompiler";
 import { processCompletedCall } from "./postCallPipeline";
 import { getCallerMemory } from "./mem0Service";
+import { getShopAccessStatus } from "./trialService";
 import { getDb } from "../db";
 import { eq, sql } from "drizzle-orm";
 import {
@@ -51,6 +52,31 @@ function generateVoicemailTwiML(shopName: string): string {
     maxLength="120" 
     action="/api/twilio/recording-complete" 
     transcribe="true" 
+    transcribeCallback="/api/twilio/transcription-complete"
+  />
+  <Say voice="Polly.Joanna">We didn't receive a recording. Goodbye.</Say>
+</Response>`;
+}
+
+/**
+ * Generate TwiML for trial-expired / no-subscription shops.
+ * Intentionally soft and non-branded: the caller is not a Baylio prospect —
+ * they're a customer of the shop, and mentioning "Baylio trial expired"
+ * would be confusing and make the shop look bad. Fall back to a generic
+ * "assistant temporarily unavailable" + voicemail so the lead isn't lost.
+ */
+function generateTrialExpiredTwiML(): string {
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="Polly.Joanna">
+    We're sorry, the automated assistant is currently unavailable.
+    Please leave a message after the tone with your name, phone number,
+    and a brief description of what you need, and we'll get back to you.
+  </Say>
+  <Record
+    maxLength="120"
+    action="/api/twilio/recording-complete"
+    transcribe="true"
     transcribeCallback="/api/twilio/transcription-complete"
   />
   <Say voice="Polly.Joanna">We didn't receive a recording. Goodbye.</Say>
@@ -472,6 +498,19 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
       `[CALL] Step 2: Shop resolved — id=${shopId}, name="${context.shopName}", agentId=${resolved.elevenLabsAgentId || "(none)"}`
     );
 
+    // Step 2.5: Trial / subscription gate. If the shop has no active
+    // subscription AND its trial has expired, return the soft voicemail.
+    // Once the ElevenLabs session starts, it runs to completion — this
+    // check is only at call-start, so no live call is ever interrupted.
+    const access = await getShopAccessStatus(shopId);
+    if (!access.hasAccess) {
+      console.log(
+        `[CALL] Access denied — shopId=${shopId}, reason=${access.reason}, trialEndsAt=${access.trialEndsAt?.toISOString() ?? "none"}`
+      );
+      res.type("text/xml");
+      return res.send(generateTrialExpiredTwiML());
+    }
+
     // Step 3: Check ring-shop-first config. If enabled and shop has a phone number,
     // ring the shop's existing phone first; AI takes over only on no-answer/busy/failed.
     const ringConfig = await getShopRingConfig(shopId);
@@ -556,6 +595,17 @@ twilioRouter.post("/no-answer", async (req: Request, res: Response) => {
       console.warn(`[CALL] /no-answer: no shop found for ${baylioNumber} (To=${To})`);
       res.type("text/xml");
       return res.send(generateVoicemailTwiML("this business"));
+    }
+
+    // Same trial gate as /voice — if the shop's access lapsed between
+    // the initial dial and this no-answer callback, don't fall through to AI.
+    const noAnswerAccess = await getShopAccessStatus(resolved.shopId);
+    if (!noAnswerAccess.hasAccess) {
+      console.log(
+        `[CALL] /no-answer access denied — shopId=${resolved.shopId}, reason=${noAnswerAccess.reason}`
+      );
+      res.type("text/xml");
+      return res.send(generateTrialExpiredTwiML());
     }
 
     // Pre-mark as AI-handled before routing to ElevenLabs

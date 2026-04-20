@@ -9,6 +9,7 @@ import {
   getShopById,
   getShopsByOwner,
 } from "./db";
+import { getShopAccessStatus } from "./services/trialService";
 
 /**
  * Subscription & Billing Router
@@ -182,5 +183,18 @@ export const subscriptionRouter = router({
    */
   getTierConfig: protectedProcedure.query(() => {
     return TIER_CONFIG;
+  }),
+
+  /**
+   * Access status for the signed-in user's first shop — powers the trial
+   * banner and the lock screen. Returns `null` when the user has no shop
+   * yet (pre-onboarding).
+   */
+  getAccessStatus: protectedProcedure.query(async ({ ctx }) => {
+    const userShops = await getShopsByOwner(ctx.user.id);
+    if (userShops.length === 0) return null;
+    const shop = userShops[0];
+    const access = await getShopAccessStatus(shop.id);
+    return { shopId: shop.id, shopName: shop.name, ...access };
   }),
 });

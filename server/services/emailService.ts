@@ -156,3 +156,195 @@ export async function sendSupportReply(data: {
     text: data.body,
   });
 }
+
+/**
+ * Trial lifecycle emails.
+ *
+ * Sent from hello@baylio.io (marketing/lifecycle origin) with replies routed
+ * to support@baylio.io so the team picks them up in the regular queue.
+ *
+ * Each helper is idempotent at the call site — the caller must guard against
+ * double-sending via the shops.trialDayXEmailSentAt columns before invoking.
+ */
+
+type TrialEmailInput = {
+  toEmail: string;
+  toName?: string | null;
+  shopName: string;
+  trialEndsAt: Date;
+};
+
+function formatTrialEndDate(trialEndsAt: Date): string {
+  return trialEndsAt.toLocaleDateString("en-US", {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    timeZone: "America/New_York",
+  });
+}
+
+function trialWrap(inner: string): string {
+  return `<div style="font-family:Inter,system-ui,sans-serif;max-width:560px;margin:0 auto;padding:24px;color:#1a1a1a;line-height:1.6">${inner}<hr style="border:none;border-top:1px solid #eee;margin:24px 0" /><p style="font-size:12px;color:#888">Baylio · AI phone receptionist for auto repair shops · <a href="https://baylio.io" style="color:#888">baylio.io</a></p></div>`;
+}
+
+async function sendTrialEmail(params: {
+  to: string;
+  subject: string;
+  html: string;
+  text: string;
+  tag: string;
+}): Promise<boolean> {
+  if (!resend) {
+    console.log(`[EmailService] No RESEND_API_KEY — would send ${params.tag} to ${params.to}`);
+    return false;
+  }
+  try {
+    const result = await resend.emails.send({
+      from: "Baylio <hello@baylio.io>",
+      to: [params.to],
+      replyTo: "support@baylio.io",
+      subject: params.subject,
+      html: params.html,
+      text: params.text,
+    });
+    console.log(`[EmailService] ${params.tag} sent to ${params.to}:`, result.data?.id);
+    return true;
+  } catch (err) {
+    console.error(`[EmailService] ${params.tag} send failed:`, err);
+    return false;
+  }
+}
+
+export async function sendTrialDay7Email(data: TrialEmailInput): Promise<boolean> {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const endsOn = formatTrialEndDate(data.trialEndsAt);
+  const subject = `You're halfway through your Baylio trial`;
+
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>You're 7 days into your Baylio trial at <strong>${escapeHtml(data.shopName)}</strong>. Your trial runs until <strong>${escapeHtml(endsOn)}</strong>.</p>
+    <p>A few things worth checking before your trial ends:</p>
+    <ul>
+      <li>Review your call logs — any callers you would have missed?</li>
+      <li>Listen to a transcript and check how Baylio handled the conversation.</li>
+      <li>Book an appointment through a test call to see the flow end-to-end.</li>
+    </ul>
+    <p>Questions or want a walkthrough? Just reply to this email — a real person reads every reply.</p>
+    <p>— The Baylio team</p>
+  `);
+
+  const text = [
+    `Hey ${name},`,
+    "",
+    `You're 7 days into your Baylio trial at ${data.shopName}. Your trial runs until ${endsOn}.`,
+    "",
+    "A few things worth checking before your trial ends:",
+    " - Review your call logs — any callers you would have missed?",
+    " - Listen to a transcript and check how Baylio handled the conversation.",
+    " - Book an appointment through a test call to see the flow end-to-end.",
+    "",
+    "Questions or want a walkthrough? Just reply to this email.",
+    "",
+    "— The Baylio team",
+  ].join("\n");
+
+  return sendTrialEmail({ to: data.toEmail, subject, html, text, tag: "Trial day 7" });
+}
+
+export async function sendTrialDay12Email(data: TrialEmailInput): Promise<boolean> {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const endsOn = formatTrialEndDate(data.trialEndsAt);
+  const subject = `2 days left on your Baylio trial`;
+
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>Heads up — your Baylio trial for <strong>${escapeHtml(data.shopName)}</strong> ends in <strong>2 days</strong> (on ${escapeHtml(endsOn)}).</p>
+    <p>When the trial ends, incoming callers will hear a voicemail instead of your AI receptionist. To keep Baylio answering your phone, pick a plan before ${escapeHtml(endsOn)}:</p>
+    <p style="margin:24px 0">
+      <a href="https://baylio.io/pricing" style="background:#0d9488;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Choose your plan</a>
+    </p>
+    <p>Want to talk through which plan fits your shop? Just reply — happy to help.</p>
+    <p>— The Baylio team</p>
+  `);
+
+  const text = [
+    `Hey ${name},`,
+    "",
+    `Heads up — your Baylio trial for ${data.shopName} ends in 2 days (on ${endsOn}).`,
+    "",
+    "When the trial ends, incoming callers will hear a voicemail instead of your AI receptionist. To keep Baylio answering your phone, pick a plan before the trial ends:",
+    "",
+    "https://baylio.io/pricing",
+    "",
+    "Want to talk through which plan fits your shop? Just reply.",
+    "",
+    "— The Baylio team",
+  ].join("\n");
+
+  return sendTrialEmail({ to: data.toEmail, subject, html, text, tag: "Trial day 12" });
+}
+
+export async function sendTrialDay13Email(data: TrialEmailInput): Promise<boolean> {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const endsOn = formatTrialEndDate(data.trialEndsAt);
+  const subject = `Your Baylio trial ends tomorrow`;
+
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>Your Baylio trial for <strong>${escapeHtml(data.shopName)}</strong> ends <strong>tomorrow</strong> (${escapeHtml(endsOn)}).</p>
+    <p>If you don't pick a plan by then, incoming callers will hit a voicemail instead of your AI receptionist — which means every missed call after that is a real missed opportunity.</p>
+    <p style="margin:24px 0">
+      <a href="https://baylio.io/pricing" style="background:#0d9488;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Choose your plan</a>
+    </p>
+    <p>Takes about a minute. If you need a hand or want to compare plans, reply to this email.</p>
+    <p>— The Baylio team</p>
+  `);
+
+  const text = [
+    `Hey ${name},`,
+    "",
+    `Your Baylio trial for ${data.shopName} ends tomorrow (${endsOn}).`,
+    "",
+    "If you don't pick a plan by then, incoming callers will hit a voicemail instead of your AI receptionist — which means every missed call after that is a real missed opportunity.",
+    "",
+    "Choose your plan: https://baylio.io/pricing",
+    "",
+    "Takes about a minute. If you need a hand, reply to this email.",
+    "",
+    "— The Baylio team",
+  ].join("\n");
+
+  return sendTrialEmail({ to: data.toEmail, subject, html, text, tag: "Trial day 13" });
+}
+
+export async function sendTrialDay14Email(data: TrialEmailInput): Promise<boolean> {
+  const name = data.toName || data.toEmail.split("@")[0];
+  const subject = `Your Baylio trial has ended`;
+
+  const html = trialWrap(`
+    <p>Hey ${escapeHtml(name)},</p>
+    <p>Your Baylio trial for <strong>${escapeHtml(data.shopName)}</strong> has ended. Right now, callers to your Baylio number are hearing a voicemail instead of your AI receptionist.</p>
+    <p>Your shop settings, agent configuration, and call history are all saved. Pick a plan and Baylio picks up the next call.</p>
+    <p style="margin:24px 0">
+      <a href="https://baylio.io/pricing" style="background:#0d9488;color:#fff;padding:12px 20px;border-radius:8px;text-decoration:none;font-weight:600">Reactivate Baylio</a>
+    </p>
+    <p>Not sure which plan, or want to extend your trial? Reply — we're happy to figure it out with you.</p>
+    <p>— The Baylio team</p>
+  `);
+
+  const text = [
+    `Hey ${name},`,
+    "",
+    `Your Baylio trial for ${data.shopName} has ended. Right now, callers to your Baylio number are hearing a voicemail instead of your AI receptionist.`,
+    "",
+    "Your shop settings, agent configuration, and call history are all saved. Pick a plan and Baylio picks up the next call.",
+    "",
+    "Reactivate: https://baylio.io/pricing",
+    "",
+    "Not sure which plan, or want to extend? Reply — happy to help.",
+    "",
+    "— The Baylio team",
+  ].join("\n");
+
+  return sendTrialEmail({ to: data.toEmail, subject, html, text, tag: "Trial day 14" });
+}
