@@ -9,10 +9,40 @@
 
 - **Date:** 2026-04-20
 - **Branch:** main
-- **Commit:** `9413333` (squash-merge of PR #8)
-- **Prod URL:** https://baylio.io (alias of latest force-deploy)
+- **Commit:** `620065e` (Mnemix + nightly QA + repo cleanup, atop `046c3db` PR #8)
+- **Prod URL:** https://baylio.io
 
-### What Changed
+### What Changed (2026-04-20, evening)
+
+**Repo cleanup + Mnemix integration + nightly QA pipeline**
+
+Pushed three commits after a repo cleanup — the working tree had drifted behind origin by 17 commits with two nested clones (`baylio/baylio` from VSCode, `baylio/baylio-1` from Antigravity). Nested folders deleted, outer repo rebased onto `origin/main`, three conflicts resolved cleanly (`.gitignore`, `DEPLOY_LOG.md`, `server/services/twilioWebhooks.ts` imports).
+
+**feat: Mnemix pre-call context injection (`b88154d`)**
+- `server/services/mnemixService.ts` — new: caller phone lookup against Mnemix API, formats context for dynamic_variables, fails open (empty string on error so Sam still connects)
+- `server/services/twilioWebhooks.ts` — pulls Mnemix context pre-call, injects alongside Mem0 memory
+- `server/services/elevenLabsWebhookService.ts` — +143 lines of pipeline wiring
+- `server/services/mem0Service.ts`, `postCallPipeline.ts` — updates for Mnemix side-channel
+- `server/_core/env.ts` — `MNEMIX_API_URL`, `MNEMIX_API_KEY` env vars
+- `drizzle/schema.ts` — schema bump
+
+**chore: nightly QA pipeline (`13d5c8b`)**
+- `.claude/commands/{backup,morning,qa}.md` + `.claude/routines/{morning-brief,nightly-qa}.md` — Claude Code routines
+- `scripts/qa/{backup,nightly-qa,run-morning-launchd,run-nightly-launchd}.sh` — launchd runners
+- `scripts/add-sam-leads.mjs` — Sam lead seeding
+- `docs/superpowers/specs/pi-monitor.md` — spec doc
+- `.gitignore` — `.claude/scheduled_tasks.json` + `.lock` now untracked (runtime state, not config)
+
+**build: api/index.js regenerated (`620065e`)** — +220/-89 lines, now 264.8kb.
+
+**Still pending before first paying customer:**
+1. Live E2E: signup → email confirm → /auth/callback → /onboarding → real phone call → ring-shop-first verify → dashboard call log
+2. Live Stripe test payment on real card
+3. Supabase dashboard SMTP sender confirmed as `hello@baylio.io`
+
+---
+
+### Previous Deploy (2026-04-20, commit `9413333`)
 
 **feat: 14-day trial system + Supabase email auth callback (PR #8)**
 
@@ -45,11 +75,6 @@ Merged `backend/trial-system` → main and force-deployed to prod. Closed stale 
 - `GET /auth/callback` → `200`
 - `GET /api/health` → `{status: "ok"}`
 - Landing bundle contains HeroVisual/CarLineDraw/TreadDivider (77KB chunk, was 47KB stale)
-
-**Still pending before first paying customer:**
-1. Live E2E: signup → email confirm → /auth/callback → /onboarding → real phone call → ring-shop-first verify → dashboard call log
-2. Live Stripe test payment on real card
-3. Supabase dashboard SMTP sender confirmed as `hello@baylio.io`
 
 ---
 
