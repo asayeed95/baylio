@@ -199,6 +199,7 @@ var notificationTypeEnum = pgEnum("notification_type", [
   "high_value_lead",
   "missed_call",
   "system_issue",
+  "usage_alert",
   "weekly_summary",
   "usage_warning",
   "audit_complete",
@@ -4900,6 +4901,28 @@ async function processCompletedCall(callLogId) {
         await db.update(subscriptions).set({
           usedMinutes: sql6`${subscriptions.usedMinutes} + ${minutesUsed}`
         }).where(eq16(subscriptions.id, sub.id));
+        const newUsed = sub.usedMinutes + minutesUsed;
+        const pct = newUsed / sub.includedMinutes;
+        const prevPct = sub.usedMinutes / sub.includedMinutes;
+        if (pct >= 1 && prevPct < 1) {
+          await db.insert(notifications).values({
+            userId: call.ownerId,
+            shopId: call.shopId,
+            type: "usage_alert",
+            title: "AI Minutes Exhausted \u2014 Overage Active",
+            message: `Your plan's ${sub.includedMinutes} included minutes have been used. Additional minutes are billed at $${parseFloat(sub.overageRate?.toString() || "0.15").toFixed(2)}/min.`,
+            metadata: { usedMinutes: newUsed, includedMinutes: sub.includedMinutes }
+          });
+        } else if (pct >= 0.8 && prevPct < 0.8) {
+          await db.insert(notifications).values({
+            userId: call.ownerId,
+            shopId: call.shopId,
+            type: "usage_alert",
+            title: "80% of AI Minutes Used",
+            message: `You've used ${newUsed} of your ${sub.includedMinutes} included minutes. Upgrade your plan to avoid overage charges.`,
+            metadata: { usedMinutes: newUsed, includedMinutes: sub.includedMinutes }
+          });
+        }
       }
     }
     if (call.estimatedRevenue && parseFloat(call.estimatedRevenue.toString()) > 200) {
@@ -4995,8 +5018,73 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
   }
 }
 
-// server/services/mem0Service.ts
-import MemoryClient from "mem0ai";
+// server/services/mnemixService.ts
+var MNEMIX_API_URL = process.env.MNEMIX_API_URL ?? "https://mnemix-api.sayeed965.workers.dev";
+var MNEMIX_API_KEY = process.env.MNEMIX_API_KEY ?? "";
+async function getMnemixCallerContext(phone) {
+  if (!MNEMIX_API_KEY) return "";
+  let data;
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3e3);
+    const res = await fetch(`${MNEMIX_API_URL}/v1/lookup/${encodeURIComponent(phone)}`, {
+      headers: { Authorization: `Bearer ${MNEMIX_API_KEY}` },
+      signal: controller.signal
+    });
+    clearTimeout(timeout);
+    if (!res.ok) {
+      console.warn(`[MNEMIX] Lookup returned ${res.status} for ${phone}`);
+      return "";
+    }
+    data = await res.json();
+  } catch (err) {
+    if (err instanceof Error && err.name === "AbortError") {
+      console.warn("[MNEMIX] Lookup timed out after 3s, falling back");
+    } else {
+      console.error("[MNEMIX] Lookup failed:", err);
+    }
+    return "";
+  }
+  if (!data.known) {
+    return "";
+  }
+  const lines = [];
+  const { contact, enrichment, recent_interactions } = data;
+  if (contact.name) lines.push(`Name: ${contact.name}`);
+  if (contact.company) lines.push(`Company: ${contact.company}`);
+  if (contact.role) lines.push(`Role: ${contact.role}`);
+  if (contact.relationship_status && contact.relationship_status !== "new") {
+    lines.push(`Relationship: ${contact.relationship_status}`);
+  }
+  if (contact.sentiment && contact.sentiment !== "unknown") {
+    lines.push(`Sentiment: ${contact.sentiment}`);
+  }
+  const trestle = enrichment.trestle;
+  const twilio2 = enrichment.twilio;
+  const lineType = trestle?.line_type ?? twilio2?.line_type;
+  const carrier = trestle?.carrier ?? twilio2?.carrier_name;
+  if (lineType) lines.push(`Line type: ${lineType}`);
+  if (carrier) lines.push(`Carrier: ${carrier}`);
+  if (trestle?.is_commercial) lines.push("Business phone: yes");
+  if (contact.summary) {
+    lines.unshift(`Summary: ${contact.summary}`);
+  }
+  if (recent_interactions.length > 0) {
+    lines.push("\nRecent interactions:");
+    for (const interaction of recent_interactions) {
+      const date = new Date(interaction.created_at).toLocaleDateString("en-US", {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+      });
+      lines.push(`- ${date} (${interaction.channel}): ${interaction.summary}`);
+    }
+  }
+  return lines.join("\n");
+}
+
+// server/services/twilioWebhooks.ts
+import { eq as eq17, sql as sql7 } from "drizzle-orm";
 
 // server/_core/env.ts
 var isProduction = process.env.NODE_ENV === "production";
@@ -5034,52 +5122,16 @@ var ENV = {
   anthropicApiKey: required("ANTHROPIC_API_KEY"),
   // Mem0
   mem0ApiKey: process.env.MEM0_API_KEY ?? "",
+  // Mnemix
+  mnemixApiKey: process.env.MNEMIX_API_KEY ?? "",
+  mnemixApiUrl: process.env.MNEMIX_API_URL ?? "https://mnemix-api.sayeed965.workers.dev",
   // Sam tool auth (shared secret ElevenLabs sends as x-sam-tool-secret)
   samToolSecret: process.env.SAM_TOOL_SECRET ?? "",
   // Founder phone for transfer_to_human
   founderPhone: process.env.FOUNDER_PHONE ?? "+12013212235"
 };
 
-// server/services/mem0Service.ts
-var _client2 = null;
-function getClient() {
-  if (!ENV.mem0ApiKey) return null;
-  if (!_client2) {
-    _client2 = new MemoryClient({ apiKey: ENV.mem0ApiKey });
-  }
-  return _client2;
-}
-function salesUserId(phone) {
-  return `sales_${phone.replace(/[^\d+]/g, "")}`;
-}
-async function getCallerMemory(phone) {
-  const client = getClient();
-  if (!client) return "";
-  try {
-    const { results } = await client.search(
-      "caller background, shop details, objections, interest level",
-      { filters: { user_id: salesUserId(phone) }, topK: 8 }
-    );
-    if (!results.length) return "";
-    return results.map((m) => `- ${m.memory}`).join("\n");
-  } catch (err) {
-    console.error("[MEM0] Error fetching caller memory:", err);
-    return "";
-  }
-}
-async function storeCallMemory(phone, transcript) {
-  const client = getClient();
-  if (!client || !transcript.length) return;
-  try {
-    await client.add(transcript, { userId: salesUserId(phone) });
-    console.log(`[MEM0] Stored ${transcript.length} turns for ${salesUserId(phone)}`);
-  } catch (err) {
-    console.error("[MEM0] Error storing call memory:", err);
-  }
-}
-
 // server/services/twilioWebhooks.ts
-import { eq as eq17, sql as sql7 } from "drizzle-orm";
 var twilioRouter = Router2();
 function generateVoicemailTwiML(shopName) {
   return `<?xml version="1.0" encoding="UTF-8"?>
@@ -5274,7 +5326,14 @@ async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, c
   const twiml = await registerElevenLabsCall(
     elevenLabsAgentId,
     fromNumber,
-    toNumber
+    toNumber,
+    {
+      dynamic_variables: {
+        shop_id: shopId.toString(),
+        shop_name: context.shopName,
+        caller_name: callerName
+      }
+    }
   );
   const elapsed = Date.now() - startTime;
   console.log(
@@ -5300,10 +5359,10 @@ twilioRouter.post("/voice", async (req, res) => {
     if (normalizedTo === BAYLIO_SALES_NUMBER || normalizedTo === BAYLIO_SALES_NUMBER.replace("+1", "")) {
       console.log(`[CALL] Sales line detected \u2014 routing to Sam (${SAM_AGENT_ID})`);
       try {
-        const callerMemory = await getCallerMemory(From);
-        const callerContext = callerMemory ? `This caller has contacted Baylio before. Here's what you know about them:
-${callerMemory}` : "This appears to be a first-time caller. No prior history.";
-        console.log(`[CALL] Mem0 context for ${From}: ${callerMemory ? `${callerMemory.length} chars` : "none (new caller)"}`);
+        const mnemixContext = await getMnemixCallerContext(From);
+        const callerContext = mnemixContext ? `Caller context from Mnemix:
+${mnemixContext}` : "This appears to be a first-time caller. No prior history.";
+        console.log(`[CALL] Mnemix context for ${From}: ${mnemixContext ? `${mnemixContext.length}chars` : "none (new caller)"}`);
         const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To, {
           dynamic_variables: {
             caller_context: callerContext,
@@ -5578,6 +5637,33 @@ twilioRouter.get("/health", (_req, res) => {
 
 // server/services/elevenLabsWebhookService.ts
 import { Router as Router3 } from "express";
+import { eq as eq18, and as and14, sql as sql8 } from "drizzle-orm";
+
+// server/services/mem0Service.ts
+import MemoryClient from "mem0ai";
+var _client2 = null;
+function getClient() {
+  if (!ENV.mem0ApiKey) return null;
+  if (!_client2) {
+    _client2 = new MemoryClient({ apiKey: ENV.mem0ApiKey });
+  }
+  return _client2;
+}
+function salesUserId(phone) {
+  return `sales_${phone.replace(/[^\d+]/g, "")}`;
+}
+async function storeCallMemory(phone, transcript) {
+  const client = getClient();
+  if (!client || !transcript.length) return;
+  try {
+    await client.add(transcript, { userId: salesUserId(phone) });
+    console.log(`[MEM0] Stored ${transcript.length} turns for ${salesUserId(phone)}`);
+  } catch (err) {
+    console.error("[MEM0] Error storing call memory:", err);
+  }
+}
+
+// server/services/elevenLabsWebhookService.ts
 var elevenLabsWebhookRouter = Router3();
 elevenLabsWebhookRouter.post(
   "/conversation",
@@ -5588,23 +5674,68 @@ elevenLabsWebhookRouter.post(
       if (payload.type !== "post_call_transcription") return;
       const data = payload.data;
       if (!data) return;
-      const callerPhone = data.conversation_initiation_client_data?.dynamic_variables?.caller_phone;
-      if (!callerPhone) {
-        console.warn(
-          "[ELEVENLABS-WEBHOOK] No caller_phone in dynamic_variables \u2014 skipping Mem0 storage"
-        );
-        return;
+      const dynVars = data.conversation_initiation_client_data?.dynamic_variables ?? {};
+      const callerPhone = dynVars.caller_phone;
+      const shopIdStr = dynVars.shop_id;
+      const callDurationSecs = data.metadata?.call_duration_secs;
+      if (callerPhone) {
+        const transcript = data.transcript;
+        if (transcript?.length) {
+          const messages = transcript.filter((t2) => t2.message?.trim()).map((t2) => ({
+            role: t2.role === "user" ? "user" : "assistant",
+            content: t2.message.trim()
+          }));
+          await storeCallMemory(callerPhone, messages);
+          console.log(
+            `[ELEVENLABS-WEBHOOK] Stored memory for ${callerPhone} \u2014 conv ${data.conversation_id}`
+          );
+        }
       }
-      const transcript = data.transcript;
-      if (!transcript?.length) return;
-      const messages = transcript.filter((t2) => t2.message?.trim()).map((t2) => ({
-        role: t2.role === "user" ? "user" : "assistant",
-        content: t2.message.trim()
-      }));
-      await storeCallMemory(callerPhone, messages);
-      console.log(
-        `[ELEVENLABS-WEBHOOK] Stored memory for ${callerPhone} \u2014 conv ${data.conversation_id}`
-      );
+      if (!shopIdStr || !callDurationSecs) return;
+      const shopId = parseInt(shopIdStr, 10);
+      if (isNaN(shopId)) return;
+      const minutesUsed = Math.ceil(callDurationSecs / 60);
+      if (minutesUsed <= 0) return;
+      const db = await getDb();
+      if (!db) return;
+      const subResults = await db.select().from(subscriptions).where(and14(eq18(subscriptions.shopId, shopId), eq18(subscriptions.status, "active"))).limit(1);
+      if (!subResults.length) return;
+      const sub = subResults[0];
+      const recentUsage = await db.select().from(usageRecords).where(eq18(usageRecords.shopId, shopId)).orderBy(sql8`${usageRecords.recordedAt} DESC`).limit(1);
+      if (recentUsage.length > 0) {
+        const prev = recentUsage[0];
+        const prevMinutes = parseFloat(prev.minutesUsed?.toString() ?? "0");
+        const delta = minutesUsed - prevMinutes;
+        if (delta !== 0) {
+          await db.update(usageRecords).set({ minutesUsed: minutesUsed.toFixed(2) }).where(eq18(usageRecords.id, prev.id));
+          await db.update(subscriptions).set({ usedMinutes: sql8`${subscriptions.usedMinutes} + ${delta}` }).where(eq18(subscriptions.id, sub.id));
+          console.log(
+            `[ELEVENLABS-WEBHOOK] Corrected usage for shop ${shopId}: ${prevMinutes} \u2192 ${minutesUsed} min (delta ${delta > 0 ? "+" : ""}${delta})`
+          );
+        }
+      }
+      const newUsed = sub.usedMinutes + minutesUsed;
+      const pct = newUsed / sub.includedMinutes;
+      const prevPct = sub.usedMinutes / sub.includedMinutes;
+      if (pct >= 1 && prevPct < 1) {
+        await db.insert(notifications).values({
+          userId: sub.ownerId,
+          shopId: sub.shopId,
+          type: "usage_alert",
+          title: "AI Minutes Exhausted \u2014 Overage Active",
+          message: `Your plan's ${sub.includedMinutes} included minutes have been used. Additional minutes are billed at $${parseFloat(sub.overageRate?.toString() ?? "0.15").toFixed(2)}/min.`,
+          metadata: { usedMinutes: newUsed, includedMinutes: sub.includedMinutes }
+        });
+      } else if (pct >= 0.8 && prevPct < 0.8) {
+        await db.insert(notifications).values({
+          userId: sub.ownerId,
+          shopId: sub.shopId,
+          type: "usage_alert",
+          title: "80% of AI Minutes Used",
+          message: `You've used ${newUsed} of your ${sub.includedMinutes} included minutes this period. Upgrade to avoid overage charges.`,
+          metadata: { usedMinutes: newUsed, includedMinutes: sub.includedMinutes }
+        });
+      }
     } catch (err) {
       console.error("[ELEVENLABS-WEBHOOK] Error processing webhook:", err);
     }
@@ -5618,7 +5749,7 @@ import { z as z14 } from "zod";
 // server/services/samToolsService.ts
 import { Client as Client2 } from "@hubspot/api-client";
 import { Resend as Resend3 } from "resend";
-import { eq as eq18 } from "drizzle-orm";
+import { eq as eq19 } from "drizzle-orm";
 var HUBSPOT_KEY = process.env.HUBSPOT_API_KEY || "";
 var RESEND_KEY = process.env.RESEND_API_KEY || "";
 async function captureLead(input) {
@@ -5626,7 +5757,7 @@ async function captureLead(input) {
   if (!db) return null;
   const phone = input.callerPhone.replace(/[^\d+]/g, "");
   if (!phone) return null;
-  const existing = await db.select().from(samLeads).where(eq18(samLeads.callerPhone, phone)).limit(1);
+  const existing = await db.select().from(samLeads).where(eq19(samLeads.callerPhone, phone)).limit(1);
   let leadId;
   const isReturningCaller = existing.length > 0;
   if (isReturningCaller) {
@@ -5645,7 +5776,7 @@ async function captureLead(input) {
       lastCalledAt: /* @__PURE__ */ new Date(),
       updatedAt: /* @__PURE__ */ new Date()
     };
-    await db.update(samLeads).set(merged).where(eq18(samLeads.id, prior.id));
+    await db.update(samLeads).set(merged).where(eq19(samLeads.id, prior.id));
     leadId = prior.id;
   } else {
     const inserted = await db.insert(samLeads).values({
@@ -5667,7 +5798,7 @@ async function captureLead(input) {
     try {
       hubspotContactId = await pushLeadToHubspot({ ...input, callerPhone: phone });
       if (hubspotContactId) {
-        await db.update(samLeads).set({ hubspotContactId, updatedAt: /* @__PURE__ */ new Date() }).where(eq18(samLeads.id, leadId));
+        await db.update(samLeads).set({ hubspotContactId, updatedAt: /* @__PURE__ */ new Date() }).where(eq19(samLeads.id, leadId));
       }
     } catch (err) {
       console.error("[SAM-TOOLS] HubSpot push failed:", err);
@@ -5772,7 +5903,7 @@ More info: baylio.io` + consentSuffix;
     try {
       const db = await getDb();
       if (db) {
-        await db.update(samLeads).set({ smsSent: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq18(samLeads.callerPhone, phone));
+        await db.update(samLeads).set({ smsSent: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq19(samLeads.callerPhone, phone));
       }
     } catch {
     }
@@ -5822,7 +5953,7 @@ Reply anytime to talk to a human.
           email: input.email,
           emailSent: true,
           updatedAt: /* @__PURE__ */ new Date()
-        }).where(eq18(samLeads.callerPhone, input.callerPhone.replace(/[^\d+]/g, "")));
+        }).where(eq19(samLeads.callerPhone, input.callerPhone.replace(/[^\d+]/g, "")));
       }
     } catch {
     }
@@ -5838,7 +5969,7 @@ async function markTransferred(callerPhone) {
     const db = await getDb();
     if (!db) return;
     const phone = callerPhone.replace(/[^\d+]/g, "");
-    await db.update(samLeads).set({ transferredToHuman: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq18(samLeads.callerPhone, phone));
+    await db.update(samLeads).set({ transferredToHuman: true, updatedAt: /* @__PURE__ */ new Date() }).where(eq19(samLeads.callerPhone, phone));
   } catch (err) {
     console.error("[SAM-TOOLS] markTransferred failed:", err);
   }
@@ -6172,7 +6303,7 @@ function rateLimit(opts) {
 // server/stripe/stripeRoutes.ts
 import express from "express";
 import Stripe2 from "stripe";
-import { eq as eq19 } from "drizzle-orm";
+import { eq as eq20 } from "drizzle-orm";
 import { drizzle as drizzle2 } from "drizzle-orm/postgres-js";
 import postgres2 from "postgres";
 import { PostHog } from "posthog-node";
@@ -6268,19 +6399,19 @@ async function handleCheckoutCompleted(session) {
   const tier = session.metadata?.tier;
   const isSetupFee = session.metadata?.type === "setup_fee";
   if (isSetupFee && shopId) {
-    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq19(subscriptions.shopId, parseInt(shopId)));
+    await db.update(subscriptions).set({ setupFeePaid: true }).where(eq20(subscriptions.shopId, parseInt(shopId)));
     console.log(`[Stripe] Setup fee paid for shop ${shopId}`);
     return;
   }
   const isAdditionalShop = session.metadata?.type === "additional_shop";
   if (isAdditionalShop && shopId && userId) {
-    const existingSubs2 = await db.select().from(subscriptions).where(eq19(subscriptions.shopId, parseInt(shopId))).limit(1);
+    const existingSubs2 = await db.select().from(subscriptions).where(eq20(subscriptions.shopId, parseInt(shopId))).limit(1);
     if (existingSubs2.length > 0) {
       await db.update(subscriptions).set({
         status: "active",
         stripeCustomerId: session.customer,
         stripeSubscriptionId: session.subscription
-      }).where(eq19(subscriptions.shopId, parseInt(shopId)));
+      }).where(eq20(subscriptions.shopId, parseInt(shopId)));
     } else {
       await db.insert(subscriptions).values({
         shopId: parseInt(shopId),
@@ -6302,7 +6433,7 @@ async function handleCheckoutCompleted(session) {
   }
   const tierConfig = getTierConfig(tier);
   if (!tierConfig) return;
-  const existingSubs = await db.select().from(subscriptions).where(eq19(subscriptions.shopId, parseInt(shopId))).limit(1);
+  const existingSubs = await db.select().from(subscriptions).where(eq20(subscriptions.shopId, parseInt(shopId))).limit(1);
   if (existingSubs.length > 0) {
     await db.update(subscriptions).set({
       tier: tierConfig.id,
@@ -6310,7 +6441,7 @@ async function handleCheckoutCompleted(session) {
       stripeCustomerId: session.customer,
       stripeSubscriptionId: session.subscription,
       includedMinutes: tierConfig.includedMinutes
-    }).where(eq19(subscriptions.shopId, parseInt(shopId)));
+    }).where(eq20(subscriptions.shopId, parseInt(shopId)));
   } else {
     await db.insert(subscriptions).values({
       shopId: parseInt(shopId),
@@ -6345,7 +6476,7 @@ async function handleInvoicePaid(invoice) {
   const invoiceAny = invoice;
   const subscriptionId = invoiceAny.subscription ?? invoiceAny.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  const subs = await db.select().from(subscriptions).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq20(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const periodStart = invoiceAny.period_start ?? invoiceAny.period?.start;
     const periodEnd = invoiceAny.period_end ?? invoiceAny.period?.end;
@@ -6354,7 +6485,7 @@ async function handleInvoicePaid(invoice) {
       usedMinutes: 0,
       currentPeriodStart: periodStart ? new Date(periodStart * 1e3) : void 0,
       currentPeriodEnd: periodEnd ? new Date(periodEnd * 1e3) : void 0
-    }).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId));
+    }).where(eq20(subscriptions.stripeSubscriptionId, subscriptionId));
   }
   console.log(`[Stripe] Invoice paid for subscription: ${subscriptionId}`);
 }
@@ -6364,9 +6495,9 @@ async function handlePaymentFailed(invoice) {
   const invoiceAny2 = invoice;
   const subscriptionId = invoiceAny2.subscription ?? invoiceAny2.parent?.subscription_details?.subscription;
   if (!subscriptionId) return;
-  await db.update(subscriptions).set({ status: "past_due" }).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId));
+  await db.update(subscriptions).set({ status: "past_due" }).where(eq20(subscriptions.stripeSubscriptionId, subscriptionId));
   console.log(`[Stripe] Payment failed for subscription: ${subscriptionId}`);
-  const subs = await db.select().from(subscriptions).where(eq19(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
+  const subs = await db.select().from(subscriptions).where(eq20(subscriptions.stripeSubscriptionId, subscriptionId)).limit(1);
   if (subs.length > 0) {
     const ph = getPostHog();
     ph.capture({
@@ -6394,17 +6525,17 @@ async function handleSubscriptionUpdated(sub) {
       (sub.current_period_start ?? 0) * 1e3
     ),
     currentPeriodEnd: new Date((sub.current_period_end ?? 0) * 1e3)
-  }).where(eq19(subscriptions.stripeSubscriptionId, sub.id));
+  }).where(eq20(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription updated: ${sub.id} \u2192 ${status}`);
 }
 async function handleSubscriptionDeleted(sub) {
   const db = await getDb2();
   if (!db) return;
-  await db.update(subscriptions).set({ status: "canceled" }).where(eq19(subscriptions.stripeSubscriptionId, sub.id));
+  await db.update(subscriptions).set({ status: "canceled" }).where(eq20(subscriptions.stripeSubscriptionId, sub.id));
   console.log(`[Stripe] Subscription canceled: ${sub.id}`);
   const db2 = await getDb2();
   if (db2) {
-    const canceledSubs = await db2.select().from(subscriptions).where(eq19(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
+    const canceledSubs = await db2.select().from(subscriptions).where(eq20(subscriptions.stripeSubscriptionId, sub.id)).limit(1);
     if (canceledSubs.length > 0) {
       const ph = getPostHog();
       ph.capture({
@@ -6608,7 +6739,7 @@ function stripHtml(html) {
 import { Router as Router6 } from "express";
 
 // server/services/trialReminders.ts
-import { and as and14, eq as eq20, isNotNull, lte as lte3 } from "drizzle-orm";
+import { and as and15, eq as eq21, isNotNull, lte as lte3 } from "drizzle-orm";
 var MS_PER_DAY = 24 * 60 * 60 * 1e3;
 async function runTrialReminders(now = /* @__PURE__ */ new Date()) {
   const result = {
@@ -6635,8 +6766,8 @@ async function runTrialReminders(now = /* @__PURE__ */ new Date()) {
     trialDay14EmailSentAt: shops.trialDay14EmailSentAt,
     ownerEmail: users.email,
     ownerName: users.name
-  }).from(shops).innerJoin(users, eq20(users.id, shops.ownerId)).where(
-    and14(
+  }).from(shops).innerJoin(users, eq21(users.id, shops.ownerId)).where(
+    and15(
       isNotNull(shops.trialEndsAt),
       lte3(shops.trialEndsAt, horizonEnd)
     )
@@ -6648,9 +6779,9 @@ async function runTrialReminders(now = /* @__PURE__ */ new Date()) {
       continue;
     }
     const paidSubRow = await db.select({ id: subscriptions.id }).from(subscriptions).where(
-      and14(
-        eq20(subscriptions.shopId, row.shopId),
-        eq20(subscriptions.status, "active")
+      and15(
+        eq21(subscriptions.shopId, row.shopId),
+        eq21(subscriptions.status, "active")
       )
     ).limit(1);
     if (paidSubRow.length > 0) {
@@ -6702,7 +6833,7 @@ async function runTrialReminders(now = /* @__PURE__ */ new Date()) {
         continue;
       }
       const column = milestone === 7 ? { trialDay7EmailSentAt: now } : milestone === 12 ? { trialDay12EmailSentAt: now } : milestone === 13 ? { trialDay13EmailSentAt: now } : { trialDay14EmailSentAt: now };
-      await db.update(shops).set(column).where(eq20(shops.id, row.shopId));
+      await db.update(shops).set(column).where(eq21(shops.id, row.shopId));
       result.sent[`day${milestone}`]++;
     } catch (err) {
       console.error(
