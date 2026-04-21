@@ -7,17 +7,16 @@ Update when loops close. Add new ones as they surface.
 
 ## MEDIUM RISK / NOT BLOCKING
 
-### [LOOP-014] Test Coverage Gaps — Money-Path + Tenant Isolation
-- **loop:** Five critical code paths have zero or near-zero test coverage.
-- **risk_level:** MEDIUM
-- **blocking:** NO — tests pass, but gaps mean regressions could ship silently.
-- **gaps:**
-  1. `twilioWebhooks.ts` — `/voice` and `/no-answer` request handlers are untested (core money path)
-  2. Stripe layer (`stripeRouter.ts`, `stripeRoutes.ts`, `products.ts`) — tracks to LOOP-002; no webhook handler tests
-  3. `shopRouter.ts` `completeOnboarding` — 586-line critical path, not fully covered
-  4. `elevenLabsService.ts` `registerElevenLabsCall` — the call registration function is untested
-  5. `tenantScope.ts` — zero tests for the multi-tenant isolation middleware
-- **next_action:** Write integration tests for `/voice` + `/no-answer` first (highest risk). Then stripe webhook handlers.
+### [LOOP-014] Test Coverage Gaps — Money-Path + Tenant Isolation (MOSTLY CLOSED 2026-04-20)
+- **loop:** Five critical code paths had zero or near-zero test coverage. Four closed 2026-04-20 (46 new tests, 23 files, 234 passing + 2 skipped).
+- **risk_level:** LOW (remaining gap only)
+- **blocking:** NO
+- **closed:**
+  1. ~~`twilioWebhooks.ts` `/voice` + `/no-answer` branches~~ → `server/services/twilioWebhooksBranches.test.ts` (11 tests covering sales-line bypass, Mnemix context, no-shop voicemail, trial-expired, ring-first, direct-to-AI, /no-answer completed/answered/trial-expired/no-shop).
+  2. ~~Stripe webhook handlers~~ → `server/stripe/stripeWebhooks.test.ts` (16 tests covering all 5 handlers incl. tier insert/update, setup_fee, additional_shop, past_due, status map, nested v2025 API shape).
+  3. ~~`registerElevenLabsCall`~~ → `server/services/registerElevenLabsCall.test.ts` (11 tests: endpoint, headers, body, TwiML return, error paths, AbortSignal, 3s timeout).
+  4. ~~`tenantScope.ts`~~ → `server/middleware/tenantScope.test.ts` (8 tests: tenantProcedure injection, UNAUTHORIZED, cross-user isolation, verifyShopOwnership FORBIDDEN paths + .limit(1) + TRPCError instance).
+- **still_open:** `shopRouter.ts::completeOnboarding` — 586-line path still only indirectly covered via `signupFlow.test.ts`. Lower priority because covered by LOOP-001 (live E2E). Revisit if regressions surface.
 
 ---
 
@@ -77,17 +76,8 @@ Update when loops close. Add new ones as they surface.
 - **blocking:** NO
 - **note:** These are reference docs, not runtime. Low priority. CLAUDE.md is the authoritative source.
 
-### [LOOP-014] Test Coverage Gaps — Money Path + Tenant Isolation
-- **loop:** Nightly QA (`qwen2.5-coder:32b`, tests area, 2026-04-17) flagged 5 highest-risk untested paths. These are not new bugs — they are coverage gaps on critical code:
-  - **`server/services/twilioWebhooks.ts`** — the `/voice` and `/no-answer` handler branches (sales-line bypass, ring-first `<Dial>`, after-hours, no-answer → ElevenLabs fallback) have no unit tests. `twilio.test.ts` covers signature + schema only; `twilioRingFirst.test.ts` covers TwiML structure, not the branch routing.
-  - **Stripe layer** — `server/stripe/products.ts`, `stripeRouter.ts`, `stripeRoutes.ts` have ZERO tests. Webhook handlers for `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.updated`, `customer.subscription.deleted` are all untested. This is LOOP-002's shape expressed in unit-test form.
-  - **`server/shopRouter.ts::completeOnboarding`** — the 586-line onboarding endpoint (shop create + agent config + Twilio number provisioning) is only indirectly tested via `signupFlow.test.ts` (9 tests, auth/signup side only).
-  - **`server/services/elevenLabsService.ts::registerElevenLabsCall`** — core of the live call flow (Register Call API → TwiML). `elevenLabsRetry.test.ts` only exercises the retry wrapper around it.
-  - **`server/middleware/tenantScope.ts`** — multi-tenant row isolation helper. No tests. Regressions here = cross-shop data leaks.
-- **risk_level:** MEDIUM
-- **blocking:** NO — but these are LOOP-001 and LOOP-002 shaped in test form. First paying-customer bug most likely originates here.
-- **next_action:** One PR per gap. Start with `registerElevenLabsCall` (smallest, highest-leverage) and `tenantScope.ts` (security-critical, small surface).
-- **surfaced_by:** `logs/qa-2026-04-17.md` nightly QA tests area, confirmed by file-presence audit.
+### [LOOP-014] Test Coverage Gaps — duplicate (see top of file)
+- Superseded by the consolidated entry under MEDIUM RISK above. Closed 2026-04-20.
 
 ---
 

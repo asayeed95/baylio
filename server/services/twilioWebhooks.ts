@@ -123,7 +123,7 @@ function generateAfterHoursTwiML(shopName: string, openTime: string): string {
  * (start/media messages), which is only supported via the pre-registered
  * conversation_id path.
  */
-async function registerElevenLabsCall(
+export async function registerElevenLabsCall(
   elevenLabsAgentId: string,
   fromNumber: string,
   toNumber: string,

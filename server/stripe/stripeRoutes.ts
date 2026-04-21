@@ -124,7 +124,7 @@ router.post(
 
 // ─── Webhook Event Handlers ─────────────────────────────────────────
 
-async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
+export async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   const db = await getDb();
   if (!db) return;
 
@@ -232,7 +232,7 @@ async function handleCheckoutCompleted(session: Stripe.Checkout.Session) {
   await ph.shutdown().catch(() => {});
 }
 
-async function handleInvoicePaid(invoice: Stripe.Invoice) {
+export async function handleInvoicePaid(invoice: Stripe.Invoice) {
   const db = await getDb();
   if (!db) return;
 
@@ -268,7 +268,7 @@ async function handleInvoicePaid(invoice: Stripe.Invoice) {
   console.log(`[Stripe] Invoice paid for subscription: ${subscriptionId}`);
 }
 
-async function handlePaymentFailed(invoice: Stripe.Invoice) {
+export async function handlePaymentFailed(invoice: Stripe.Invoice) {
   const db = await getDb();
   if (!db) return;
 
@@ -301,7 +301,7 @@ async function handlePaymentFailed(invoice: Stripe.Invoice) {
   }
 }
 
-async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
+export async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   const db = await getDb();
   if (!db) return;
 
@@ -331,7 +331,7 @@ async function handleSubscriptionUpdated(sub: Stripe.Subscription) {
   console.log(`[Stripe] Subscription updated: ${sub.id} → ${status}`);
 }
 
-async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
+export async function handleSubscriptionDeleted(sub: Stripe.Subscription) {
   const db = await getDb();
   if (!db) return;
 

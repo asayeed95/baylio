@@ -8,11 +8,30 @@
 ## Latest Deploy
 
 - **Date:** 2026-04-20
-- **Branch:** main
-- **Commit:** `620065e` (Mnemix + nightly QA + repo cleanup, atop `046c3db` PR #8)
+- **Branch:** claude/romantic-elbakyan-a37ee4 (LOOP-014 test coverage)
+- **Commit:** pending (LOOP-014 — 46 new tests across 4 files)
 - **Prod URL:** https://baylio.io
 
-### What Changed (2026-04-20, evening)
+### What Changed (2026-04-20, late)
+
+**test: LOOP-014 — close money-path + tenant isolation coverage gaps**
+
+Added 46 tests (23 files, 234 passing + 2 skipped total, up from 171). All four coverage gaps called out in `docs/memory/open-loops.md` LOOP-014 are now closed. `pnpm run check` clean; `api/index.js` unchanged (exports are bundle-neutral).
+
+- `server/middleware/tenantScope.test.ts` — 8 tests: `tenantProcedure` injects `ctx.tenantId = ctx.user.id`, rejects unauthed with UNAUTHORIZED, no cross-user bleed; `verifyShopOwnership` resolves silently on match, throws FORBIDDEN on not-found/wrong-owner, uses `.limit(1)`, throws real `TRPCError` so tRPC maps it correctly.
+- `server/services/registerElevenLabsCall.test.ts` — 11 tests: POSTs to `/v1/convai/twilio/register-call`, sends `xi-api-key` header, body carries `{agent_id, from_number, to_number, direction: "inbound"}`, `conversation_initiation_client_data` pass-through for dynamic_variables, verbatim TwiML return on 200, error with status + body on 4xx/5xx, AbortSignal wired, 3s timeout fires abort. Required `export` on the private function (smallest viable change).
+- `server/services/twilioWebhooksBranches.test.ts` — 11 tests: `/voice` routes — sales line → Sam agent `agent_8401kkzx0edafhbb0c56a04d1kmb`, Mnemix context lands in Sam's `dynamic_variables`, Sam registration failure falls back to voicemail, no-shop-found → generic voicemail, trial expired → trial-expired TwiML (no ElevenLabs call), ring-first + `shop.phone` → `buildRingShopFirstTwiML` (no ElevenLabs call), ring-first disabled → direct-to-AI path. `/no-answer` routes — `DialCallStatus=completed|answered` → empty Response, no-shop → voicemail, trial-expired during no-answer → trial-expired TwiML. Handlers plucked from `twilioRouter.stack` with fake Express req/res.
+- `server/stripe/stripeWebhooks.test.ts` — 16 tests: `handleCheckoutCompleted` — setup_fee marks `setupFeePaid=true`, missing metadata short-circuits, new Pro subscription insert with `includedMinutes=750`, existing subscription Elite tier upgrade (no insert), additional_shop path inserts with `includedMinutes=300`. `handleInvoicePaid` — resets `usedMinutes=0` + period dates, no-op without subscription id, reads nested `parent.subscription_details.subscription` (Stripe v2025). `handlePaymentFailed` — `status=past_due`, no-op without subscription id. `handleSubscriptionUpdated` — status map for active/past_due/canceled/trialing plus 'active' fallback on unknown status. `handleSubscriptionDeleted` — `status=canceled`. Mocks `postgres`, `drizzle-orm/postgres-js`, `posthog-node` via `vi.hoisted()` with a fluent call-recording fake db.
+
+**Handler exports (surgical):**
+- `server/services/twilioWebhooks.ts` — `registerElevenLabsCall` now exported.
+- `server/stripe/stripeRoutes.ts` — `handleCheckoutCompleted`, `handleInvoicePaid`, `handlePaymentFailed`, `handleSubscriptionUpdated`, `handleSubscriptionDeleted` now exported.
+
+---
+
+### Previous Deploy (2026-04-20, commit `620065e`)
+
+**Repo cleanup + Mnemix integration + nightly QA pipeline**
 
 **Repo cleanup + Mnemix integration + nightly QA pipeline**
 
@@ -34,6 +53,8 @@ Pushed three commits after a repo cleanup — the working tree had drifted behin
 - `.gitignore` — `.claude/scheduled_tasks.json` + `.lock` now untracked (runtime state, not config)
 
 **build: api/index.js regenerated (`620065e`)** — +220/-89 lines, now 264.8kb.
+
+---
 
 **Still pending before first paying customer:**
 1. Live E2E: signup → email confirm → /auth/callback → /onboarding → real phone call → ring-shop-first verify → dashboard call log
