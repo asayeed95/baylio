@@ -989,23 +989,69 @@ export default function Onboarding() {
             )}
 
             {/* Success */}
-            {provisioningStatus === "done" && result && (
-              <Card className={result.requiresAddon ? "border-amber-300 bg-amber-50" : "border-primary/30 bg-primary/5"}>
+            {provisioningStatus === "done" && result && (() => {
+              // Three terminal states, in priority order:
+              //   1. requiresAddon      → "Shop Ready — Activate AI" (amber)
+              //   2. !twilioNumber      → "Almost there — phone needs attention" (amber)
+              //   3. fully live         → "You're Live!" (primary/teal)
+              const isFullyLive = !result.requiresAddon && !!result.twilioNumber;
+              const phoneNeedsAttention = !result.requiresAddon && !result.twilioNumber;
+
+              const headline = result.requiresAddon
+                ? "Shop Ready — Activate AI"
+                : phoneNeedsAttention
+                ? "Almost There — Phone Setup Needs Attention"
+                : "You're Live!";
+
+              const accentClass = isFullyLive
+                ? "border-primary/30 bg-primary/5"
+                : "border-amber-300 bg-amber-50";
+              const iconBgClass = isFullyLive ? "bg-primary/10" : "bg-amber-100";
+              const iconColorClass = isFullyLive ? "text-primary" : "text-amber-600";
+              const IconCmp = phoneNeedsAttention ? AlertCircle : CheckCircle2;
+
+              return (
+              <Card className={accentClass}>
                 <CardContent className="py-8 space-y-6">
                   <div className="flex flex-col items-center gap-4">
-                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${result.requiresAddon ? "bg-amber-100" : "bg-primary/10"}`}>
-                      <CheckCircle2 className={`h-8 w-8 ${result.requiresAddon ? "text-amber-600" : "text-primary"}`} />
+                    <div className={`w-16 h-16 rounded-full flex items-center justify-center ${iconBgClass}`}>
+                      <IconCmp className={`h-8 w-8 ${iconColorClass}`} />
                     </div>
                     <div className="text-center">
-                      <h3 className="text-xl font-semibold">{result.requiresAddon ? "Shop Ready — Activate AI" : "You're Live!"}</h3>
+                      <h3 className="text-xl font-semibold">{headline}</h3>
                       <p className="text-sm text-muted-foreground mt-2 max-w-md">
                         {result.requiresAddon
                           ? <>Your shop <strong>{shopName}</strong> is set up. Activate your AI receptionist for an additional <strong>$99/mo</strong> — includes 300 min/mo, same AI quality.</>
+                          : phoneNeedsAttention
+                          ? <>Your AI receptionist <strong>{agentName}</strong> is ready for <strong>{shopName}</strong>, but we couldn't automatically provision a {result.phoneOption === "forward" ? "forwarding" : "new"} number. Finish phone setup from the dashboard.</>
                           : <>Your AI receptionist <strong>{agentName}</strong> is now ready to handle calls for <strong>{shopName}</strong>.</>
                         }
                       </p>
                     </div>
                   </div>
+
+                  {/* Phone-setup-needed retry block */}
+                  {phoneNeedsAttention && (
+                    <Card className="bg-white border-amber-200">
+                      <CardContent className="pt-5 pb-5 space-y-3">
+                        <h4 className="font-semibold text-sm flex items-center gap-2">
+                          <PhoneCall className="h-4 w-4 text-amber-600" />
+                          Next: Assign a Phone Number
+                        </h4>
+                        <p className="text-sm text-muted-foreground">
+                          Your shop and AI agent are saved. Head to the AI Agent Configuration page to pick a number. The agent won't answer calls until a number is assigned.
+                        </p>
+                        <Button
+                          size="sm"
+                          className="w-full"
+                          onClick={() => setLocation(`/shops/${result.shopId}/agent`)}
+                        >
+                          Assign Phone Number
+                          <ArrowRight className="h-4 w-4 ml-2" />
+                        </Button>
+                      </CardContent>
+                    </Card>
+                  )}
 
                   {/* Additional shop payment prompt */}
                   {result.requiresAddon && (
@@ -1092,7 +1138,7 @@ export default function Onboarding() {
                     </Card>
                   )}
 
-                  {!result.requiresAddon && (
+                  {!result.requiresAddon && !phoneNeedsAttention && (
                     <Button
                       size="lg"
                       className="w-full"
@@ -1104,7 +1150,8 @@ export default function Onboarding() {
                   )}
                 </CardContent>
               </Card>
-            )}
+              );
+            })()}
           </div>
         )}
 

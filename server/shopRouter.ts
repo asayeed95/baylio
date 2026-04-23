@@ -22,6 +22,7 @@ import {
   releasePhoneNumber,
   getAccountBalance,
 } from "./services/twilioProvisioning";
+import { resolveWebhookBaseUrl, isValidWebhookBaseUrl } from "./lib/webhookUrl";
 import {
   createConversationalAgent,
   updateConversationalAgent,
@@ -219,7 +220,9 @@ export const shopRouter = router({
       z.object({
         shopId: z.number(),
         phoneNumber: z.string(),
-        webhookBaseUrl: z.string().url(),
+        // Optional — server resolves via resolveWebhookBaseUrl if omitted.
+        // Kept for backwards compatibility with callers that want to override.
+        webhookBaseUrl: z.string().url().optional(),
       })
     )
     .mutation(async ({ ctx, input }) => {
@@ -231,12 +234,22 @@ export const shopRouter = router({
         });
       }
 
+      const webhookBaseUrl = input.webhookBaseUrl ?? resolveWebhookBaseUrl(ctx.req);
+      if (!isValidWebhookBaseUrl(webhookBaseUrl)) {
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message:
+            `Could not resolve a valid public webhook URL (got "${webhookBaseUrl}"). ` +
+            `Set WEBHOOK_BASE_URL env var to your production origin (e.g. https://baylio.io).`,
+        });
+      }
+
       let provisioned;
       try {
         provisioned = await purchasePhoneNumber(
           input.phoneNumber,
           input.shopId,
-          input.webhookBaseUrl,
+          webhookBaseUrl,
           `Baylio — ${shop.name}`
         );
       } catch (err: any) {
@@ -255,6 +268,9 @@ export const shopRouter = router({
         twilioPhoneNumber: provisioned.phoneNumber,
         twilioPhoneSid: provisioned.sid,
       } as any);
+
+      // Invalidate context cache so next call picks up the new phone → shop mapping
+      contextCache.invalidateShop(input.shopId);
 
       return provisioned;
     }),
@@ -549,10 +565,22 @@ export const shopRouter = router({
 
       // Step 4: Phone provisioning
       let twilioNumber: string | null = null;
-      const webhookBaseUrl = process.env.WEBHOOK_BASE_URL || ctx.req.headers.origin || "";
+      const webhookBaseUrl = resolveWebhookBaseUrl(ctx.req);
+
+      if (!isValidWebhookBaseUrl(webhookBaseUrl)) {
+        // This should never happen — the resolver always returns a valid URL
+        // or the hardcoded baylio.io fallback. If we hit this, something is
+        // deeply wrong. Fail loud, don't silently skip phone purchase.
+        throw new TRPCError({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Webhook URL resolver produced invalid URL: ${webhookBaseUrl}. Set WEBHOOK_BASE_URL env var.`,
+        });
+      }
 
       if (input.phoneOption === "new" && input.selectedNewNumber) {
-        // Purchase the selected number
+        // Purchase the selected number. FATAL on failure — the user explicitly
+        // picked a number and any silent skip means the dashboard will later
+        // show "no phone" with no explanation.
         try {
           const provisioned = await purchasePhoneNumber(
             input.selectedNewNumber,
@@ -568,8 +596,11 @@ export const shopRouter = router({
           steps.push("new_number_purchased");
         } catch (err: any) {
           console.error("[Onboarding] Failed to purchase number:", err);
-          // Non-fatal — shop is still live, just without a dedicated number
-          steps.push("phone_purchase_failed");
+          const twilioMsg = err?.message || "Unknown Twilio error";
+          throw new TRPCError({
+            code: "INTERNAL_SERVER_ERROR",
+            message: `Could not purchase ${input.selectedNewNumber}: ${twilioMsg}. Your shop and AI agent were saved — please retry phone setup from the dashboard.`,
+          });
         }
       } else if (input.phoneOption === "forward") {
         // For call forwarding: provision a hidden Baylio number in the shop's area code

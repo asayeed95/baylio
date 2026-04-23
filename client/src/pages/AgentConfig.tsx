@@ -20,6 +20,7 @@ import {
 import {
   ArrowLeft, Bot, Save, Volume2, MessageSquare, TrendingUp, Zap,
   CheckCircle2, AlertCircle, Loader2, ChevronDown, Globe,
+  PhoneCall, Search, ShoppingCart,
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useLocation, useParams } from "wouter";
@@ -129,6 +130,38 @@ function AgentConfigContent() {
     onError: err => { toast.error(err.message || "Failed to provision AI agent"); },
   });
 
+  // ─── Phone Number Provisioning (shown when shop has no number) ──────────
+  const [areaCode, setAreaCode] = useState("");
+  const [searchedAreaCode, setSearchedAreaCode] = useState<string | null>(null);
+
+  const searchNumbers = trpc.shop.searchPhoneNumbers.useQuery(
+    { areaCode: searchedAreaCode ?? "" },
+    { enabled: !!searchedAreaCode && searchedAreaCode.length === 3, retry: false },
+  );
+
+  const purchaseNumber = trpc.shop.purchasePhoneNumber.useMutation({
+    onSuccess: data => {
+      posthog?.capture("phone_number_purchased", {
+        shop_id: shopId, phone_number: data.phoneNumber, source: "agent_config",
+      });
+      toast.success(`Purchased ${data.phoneNumber}. Your shop is one step away from live.`);
+      setSearchedAreaCode(null);
+      setAreaCode("");
+      refetchStatus();
+      utils.shop.getById.invalidate({ id: shopId });
+    },
+    onError: err => { toast.error(err.message || "Failed to purchase number"); },
+  });
+
+  const handleSearchNumbers = () => {
+    const trimmed = areaCode.trim();
+    if (!/^\d{3}$/.test(trimmed)) {
+      toast.error("Enter a 3-digit US area code (e.g. 415).");
+      return;
+    }
+    setSearchedAreaCode(trimmed);
+  };
+
   const handleSave = () => {
     saveConfig.mutate({
       shopId, agentName,
@@ -182,8 +215,8 @@ function AgentConfigContent() {
                 <div>
                   <p className="text-sm font-medium">
                     {agentStatus.isLive ? "Agent is live and answering calls"
+                      : !agentStatus.hasPhone ? "No phone number assigned — pick one below to go live"
                       : !agentStatus.hasAgent ? "AI agent not provisioned yet"
-                      : !agentStatus.hasPhone ? "No phone number assigned"
                       : "Agent needs configuration"}
                   </p>
                   <div className="flex items-center gap-3 mt-1">
@@ -209,6 +242,93 @@ function AgentConfigContent() {
                 {provisionAgent.isPending ? "Provisioning..." : agentStatus.hasAgent ? "Update Agent" : "Go Live"}
               </Button>
             </div>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Phone Number Provisioning — only when shop has no number */}
+      {agentStatus && !agentStatus.hasPhone && (
+        <Card className="border-amber-200">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <PhoneCall className="h-5 w-5 text-amber-600" />
+              <CardTitle className="text-xs font-medium uppercase tracking-widest text-muted-foreground">
+                Phone Number
+              </CardTitle>
+            </div>
+            <CardDescription>
+              Your shop needs a dedicated Baylio number before the AI can answer calls. Search by area
+              code — we'll buy the number and configure Twilio automatically.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex items-end gap-3">
+              <div className="space-y-2 flex-1 max-w-[180px]">
+                <Label htmlFor="area-code">Area code</Label>
+                <Input
+                  id="area-code"
+                  value={areaCode}
+                  onChange={e => setAreaCode(e.target.value.replace(/\D/g, "").slice(0, 3))}
+                  placeholder="415"
+                  inputMode="numeric"
+                  maxLength={3}
+                />
+              </div>
+              <Button
+                type="button"
+                onClick={handleSearchNumbers}
+                disabled={areaCode.length !== 3 || searchNumbers.isFetching}
+                variant="outline"
+              >
+                {searchNumbers.isFetching
+                  ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  : <Search className="h-4 w-4 mr-2" />}
+                {searchNumbers.isFetching ? "Searching..." : "Search"}
+              </Button>
+            </div>
+
+            {searchNumbers.isError && (
+              <p className="text-sm text-red-600">
+                {searchNumbers.error?.message || "Couldn't search that area code. Try a different one."}
+              </p>
+            )}
+
+            {searchNumbers.data && searchNumbers.data.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                No numbers available in area code {searchedAreaCode}. Try a nearby area code.
+              </p>
+            )}
+
+            {searchNumbers.data && searchNumbers.data.length > 0 && (
+              <div className="border rounded-md divide-y">
+                {searchNumbers.data.slice(0, 10).map(n => {
+                  const isPurchasing = purchaseNumber.isPending && purchaseNumber.variables?.phoneNumber === n.phoneNumber;
+                  return (
+                    <div
+                      key={n.phoneNumber}
+                      className="flex items-center justify-between p-3 gap-3"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <p className="font-mono text-sm font-medium">{n.friendlyName || n.phoneNumber}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          {[n.locality, n.region].filter(Boolean).join(", ") || "US"}
+                        </p>
+                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => purchaseNumber.mutate({ shopId, phoneNumber: n.phoneNumber })}
+                        disabled={purchaseNumber.isPending}
+                      >
+                        {isPurchasing
+                          ? <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          : <ShoppingCart className="h-4 w-4 mr-2" />}
+                        {isPurchasing ? "Buying..." : "Buy"}
+                      </Button>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       )}

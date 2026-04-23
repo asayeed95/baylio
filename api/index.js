@@ -978,6 +978,43 @@ async function getAccountBalance() {
   };
 }
 
+// server/lib/webhookUrl.ts
+function resolveWebhookBaseUrl(req) {
+  const envUrl = process.env.WEBHOOK_BASE_URL?.trim();
+  if (envUrl) return normalize(envUrl);
+  const vercelUrl = process.env.VERCEL_URL?.trim();
+  if (vercelUrl) return normalize(`https://${vercelUrl}`);
+  const origin = req?.headers?.origin;
+  if (origin && typeof origin === "string" && origin.startsWith("http")) {
+    return normalize(origin);
+  }
+  const host = req?.headers?.host;
+  if (host && typeof host === "string") {
+    const proto = req?.protocol || inferProtocolFromHost(host);
+    return normalize(`${proto}://${host}`);
+  }
+  return "https://baylio.io";
+}
+function isValidWebhookBaseUrl(url) {
+  try {
+    const u = new URL(url);
+    if (u.protocol !== "https:" && u.protocol !== "http:") return false;
+    if (u.protocol === "http:" && !/^(localhost|127\.0\.0\.1)/i.test(u.hostname)) {
+      return false;
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+function normalize(url) {
+  return url.replace(/\/+$/, "");
+}
+function inferProtocolFromHost(host) {
+  if (/^(localhost|127\.0\.0\.1|0\.0\.0\.0)/i.test(host)) return "http";
+  return "https";
+}
+
 // server/services/elevenLabsService.ts
 import axios from "axios";
 var ELEVENLABS_BASE_URL = "https://api.elevenlabs.io";
@@ -1768,7 +1805,9 @@ var shopRouter = router({
     z2.object({
       shopId: z2.number(),
       phoneNumber: z2.string(),
-      webhookBaseUrl: z2.string().url()
+      // Optional — server resolves via resolveWebhookBaseUrl if omitted.
+      // Kept for backwards compatibility with callers that want to override.
+      webhookBaseUrl: z2.string().url().optional()
     })
   ).mutation(async ({ ctx, input }) => {
     const shop = await getShopById(input.shopId);
@@ -1778,12 +1817,19 @@ var shopRouter = router({
         message: "Shop not found or unauthorized"
       });
     }
+    const webhookBaseUrl = input.webhookBaseUrl ?? resolveWebhookBaseUrl(ctx.req);
+    if (!isValidWebhookBaseUrl(webhookBaseUrl)) {
+      throw new TRPCError3({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Could not resolve a valid public webhook URL (got "${webhookBaseUrl}"). Set WEBHOOK_BASE_URL env var to your production origin (e.g. https://baylio.io).`
+      });
+    }
     let provisioned;
     try {
       provisioned = await purchasePhoneNumber(
         input.phoneNumber,
         input.shopId,
-        input.webhookBaseUrl,
+        webhookBaseUrl,
         `Baylio \u2014 ${shop.name}`
       );
     } catch (err) {
@@ -1797,6 +1843,7 @@ var shopRouter = router({
       twilioPhoneNumber: provisioned.phoneNumber,
       twilioPhoneSid: provisioned.sid
     });
+    contextCache.invalidateShop(input.shopId);
     return provisioned;
   }),
   /** Release a phone number from a shop */
@@ -2043,7 +2090,13 @@ var shopRouter = router({
       });
     }
     let twilioNumber = null;
-    const webhookBaseUrl = process.env.WEBHOOK_BASE_URL || ctx.req.headers.origin || "";
+    const webhookBaseUrl = resolveWebhookBaseUrl(ctx.req);
+    if (!isValidWebhookBaseUrl(webhookBaseUrl)) {
+      throw new TRPCError3({
+        code: "INTERNAL_SERVER_ERROR",
+        message: `Webhook URL resolver produced invalid URL: ${webhookBaseUrl}. Set WEBHOOK_BASE_URL env var.`
+      });
+    }
     if (input.phoneOption === "new" && input.selectedNewNumber) {
       try {
         const provisioned = await purchasePhoneNumber(
@@ -2060,7 +2113,11 @@ var shopRouter = router({
         steps.push("new_number_purchased");
       } catch (err) {
         console.error("[Onboarding] Failed to purchase number:", err);
-        steps.push("phone_purchase_failed");
+        const twilioMsg = err?.message || "Unknown Twilio error";
+        throw new TRPCError3({
+          code: "INTERNAL_SERVER_ERROR",
+          message: `Could not purchase ${input.selectedNewNumber}: ${twilioMsg}. Your shop and AI agent were saved \u2014 please retry phone setup from the dashboard.`
+        });
       }
     } else if (input.phoneOption === "forward") {
       try {
