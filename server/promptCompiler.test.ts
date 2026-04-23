@@ -71,8 +71,13 @@ describe("compileSystemPrompt — auto repair knowledge", () => {
   it("includes AUTO REPAIR KNOWLEDGE section", () => {
     const prompt = compileSystemPrompt(baseContext);
     expect(prompt).toContain("AUTO REPAIR KNOWLEDGE");
-    expect(prompt).toContain("Squealing/grinding brakes");
-    expect(prompt).toContain("Check engine light");
-    expect(prompt).toContain("Timing belt");
+    // ASE domain titles present
+    expect(prompt).toContain("Brakes (A5)");
+    expect(prompt).toContain("Engine Performance");
+    expect(prompt).toContain("Transmission");
+    // Structural rules present
+    expect(prompt).toContain("NEVER DIAGNOSE RULES");
+    expect(prompt).toContain("EMERGENCY ESCALATION");
+    expect(prompt).toContain("VEHICLE INTAKE");
   });
 });
