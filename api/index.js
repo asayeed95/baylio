@@ -1162,6 +1162,604 @@ async function updateConversationalAgent(agentId, params) {
   }
 }
 
+// server/services/automotiveKnowledge.ts
+var KNOWLEDGE_BY_DOMAIN = {
+  A1_engine_repair: {
+    domain: "A1_engine_repair",
+    title: "Engine Repair (A1)",
+    commonComplaints: [
+      "engine is making a ticking noise",
+      "there's a knocking sound under the hood",
+      "I smell burning oil",
+      "sweet smell and white smoke from the tailpipe",
+      "the oil light came on",
+      "engine is shaking at idle",
+      "I'm losing coolant but can't find a leak",
+      "car is burning through oil between changes",
+      "there's a puddle of oil under the car overnight",
+      "engine rattles on cold start then quiets down",
+      "check engine light is flashing",
+      "milky residue on the oil cap"
+    ],
+    likelyCauses: [
+      "Valve cover gasket weeping onto the exhaust manifold",
+      "Timing chain stretch or tensioner wear on higher-mileage engines",
+      "Rear main seal leak \u2014 labor-heavy because the transmission has to come out",
+      "Head gasket failure allowing coolant into the combustion chamber",
+      "Worn piston rings or valve seals causing oil consumption",
+      "Failing motor mounts transmitting vibration into the cabin",
+      "Oil pan gasket or oil filter housing gasket seepage",
+      "PCV system failure drawing oil into the intake"
+    ],
+    relatedServices: [
+      "valve cover gasket replacement",
+      "oil leak inspection and repair",
+      "timing chain or timing belt replacement",
+      "motor mount replacement",
+      "head gasket repair",
+      "engine oil and filter service",
+      "compression test and leak-down test",
+      "coolant system pressure test",
+      "PCV valve replacement",
+      "engine diagnostic"
+    ],
+    triageQuestions: [
+      "When did you first notice the noise or smell?",
+      "Does it happen on a cold start, after the engine warms up, or both?",
+      "Have you had to add oil or coolant recently, and how much?",
+      "Any warning lights on the dash right now?",
+      "Where under the car are you seeing the puddle \u2014 front, middle, or rear?",
+      "Is the smoke white, blue, or black, and does it linger or dissipate?",
+      "Roughly what's the mileage on the vehicle?",
+      "Has the engine ever overheated that you know of?"
+    ],
+    safetyEscalations: [
+      "Oil pressure light is on while driving \u2014 pull over, shut it off, and call a tow.",
+      "Temperature gauge is in the red or steam is coming from under the hood \u2014 do not keep driving.",
+      "Sweet coolant smell with white smoke from the tailpipe \u2014 stop driving before the head warps.",
+      "Loud knocking that tracks with engine RPM \u2014 risk of throwing a rod, needs a tow.",
+      "Sudden loss of oil onto the ground with the engine running \u2014 shut it off immediately."
+    ],
+    upsellAdjacencies: [
+      "oil and filter service while the engine's open",
+      "coolant flush if we're already in the cooling system",
+      "serpentine belt inspection \u2014 common to replace while the front cover is off",
+      "air filter and cabin filter check",
+      "spark plug replacement if mileage is due"
+    ]
+  },
+  A2_transmission: {
+    domain: "A2_transmission",
+    title: "Automatic Transmission / Transaxle (A2)",
+    commonComplaints: [
+      "transmission is slipping",
+      "RPM jumps but the car doesn't speed up",
+      "hard shift between gears",
+      "clunks when I put it in drive or reverse",
+      "shudder around 40 miles per hour",
+      "transmission won't shift into gear",
+      "burning smell after driving",
+      "car is stuck in limp mode",
+      "fluid leak, reddish color",
+      "delayed engagement when I shift",
+      "whining noise that changes with speed",
+      "check engine and transmission light are both on"
+    ],
+    likelyCauses: [
+      "Low or degraded transmission fluid",
+      "Worn clutch packs inside the transmission",
+      "Torque converter lockup clutch shudder",
+      "Valve body or shift solenoid failure",
+      "TCM fault triggering limp mode",
+      "CVT belt or pulley wear on CVT-equipped vehicles",
+      "External leak from the pan gasket, cooler lines, or axle seals",
+      "Internal pump failure on high-mileage units"
+    ],
+    relatedServices: [
+      "transmission fluid and filter service",
+      "transmission fluid level and condition check",
+      "transmission diagnostic scan",
+      "solenoid replacement",
+      "valve body replacement",
+      "torque converter replacement",
+      "transmission rebuild referral",
+      "remanufactured transmission installation",
+      "CVT fluid service with OEM-specified fluid"
+    ],
+    triageQuestions: [
+      "When did the slipping or shifting issue start?",
+      "Does it happen cold, warm, or all the time?",
+      "Any fluid spots under the car, and what color are they?",
+      "Is the check engine or transmission temperature light on?",
+      "Is it slipping in all gears or just one specific gear?",
+      "When was the transmission last serviced, if ever?",
+      "Is it a CVT, automatic, or manual?",
+      "Any burning smell while driving?"
+    ],
+    safetyEscalations: [
+      "Burning fluid smell with slipping \u2014 keep driving and you'll destroy the transmission, bring it in on a flatbed if possible.",
+      "No forward gears at all \u2014 that's a tow.",
+      "Transmission fluid puddle on the ground with the car running \u2014 shut it off.",
+      "Vehicle lurches or won't hold in park on an incline \u2014 safety risk, tow it."
+    ],
+    upsellAdjacencies: [
+      "transmission cooler flush if equipped",
+      "engine and transmission mount inspection",
+      "CV axle boot inspection since they share underbody access",
+      "differential fluid service on AWD vehicles"
+    ]
+  },
+  A3_drivetrain_axles: {
+    domain: "A3_drivetrain_axles",
+    title: "Manual Drivetrain and Axles (A3)",
+    commonComplaints: [
+      "clicking noise when I turn",
+      "vibration at highway speed",
+      "grinding when I shift gears",
+      "clutch feels mushy",
+      "clutch is slipping",
+      "clunk when I let off the gas",
+      "howling noise from the rear end",
+      "grease splattered on the inside of the wheel",
+      "car won't move when I put it in gear",
+      "4WD won't engage",
+      "manual transmission is hard to get into gear"
+    ],
+    likelyCauses: [
+      "Torn CV axle boot slinging grease, joint will be next",
+      "Worn outer CV joint causing the click on turns",
+      "U-joint wear on rear-wheel-drive driveshafts",
+      "Worn clutch friction disc, pressure plate, or throwout bearing",
+      "Hydraulic clutch master or slave cylinder leak",
+      "Worn synchros causing gear grind",
+      "Differential ring and pinion wear",
+      "Transfer case actuator or shift fork issue on 4WD systems"
+    ],
+    relatedServices: [
+      "CV axle replacement",
+      "CV boot replacement",
+      "clutch replacement",
+      "clutch hydraulic system repair",
+      "U-joint replacement",
+      "driveshaft balance and inspection",
+      "differential fluid service",
+      "transfer case service",
+      "four-wheel-drive actuator replacement"
+    ],
+    triageQuestions: [
+      "Is the clicking worse on left turns, right turns, or both?",
+      "Do you see any grease splattered on the inside of the wheel?",
+      "Is it front-wheel, rear-wheel, or all-wheel drive?",
+      "Does the clutch feel different than it did a month ago?",
+      "Does the noise track with engine speed or vehicle speed?",
+      "When did you last have the differential or transfer case serviced?"
+    ],
+    safetyEscalations: [
+      "CV axle visibly separated or boot completely ripped open with a loud clunk \u2014 tow it in.",
+      "Driveshaft makes a loud bang and vehicle won't hold drive \u2014 stop driving, risk of it dropping.",
+      "Clutch pedal goes to the floor and stays \u2014 not safe to drive."
+    ],
+    upsellAdjacencies: [
+      "wheel bearing inspection since we're at the hub",
+      "differential fluid service on the affected axle",
+      "brake inspection while wheels are off",
+      "alignment check after suspension work"
+    ]
+  },
+  A4_suspension_steering: {
+    domain: "A4_suspension_steering",
+    title: "Suspension and Steering (A4)",
+    commonComplaints: [
+      "car pulls to one side",
+      "steering wheel shakes at highway speed",
+      "clunking over bumps",
+      "squeaking over bumps",
+      "steering feels heavy",
+      "steering feels loose or wandering",
+      "ride feels bouncy",
+      "tires wearing unevenly",
+      "front end shakes violently after hitting a bump",
+      "whining noise when I turn the wheel",
+      "car sits low on one corner",
+      "feels like it floats on the highway"
+    ],
+    likelyCauses: [
+      "Worn tie rod ends or ball joints",
+      "Worn control arm bushings",
+      "Blown or leaking struts and shocks",
+      "Sway bar end links clunking",
+      "Out-of-spec alignment or bent wheel",
+      "Low power steering fluid or failing pump",
+      "Failing electric power steering module",
+      "Wheel imbalance or separated tire belt",
+      "Worn strut mount or bearing plate",
+      "On solid-axle Jeeps: track bar or steering damper (death wobble)"
+    ],
+    relatedServices: [
+      "four-wheel alignment",
+      "tie rod replacement",
+      "ball joint replacement",
+      "control arm replacement",
+      "strut or shock replacement",
+      "sway bar end link replacement",
+      "steering rack replacement",
+      "power steering fluid service",
+      "wheel balance",
+      "tire rotation and inspection",
+      "suspension inspection"
+    ],
+    triageQuestions: [
+      "Does the pull happen while driving straight or only when braking?",
+      "At what speed does the shake start and stop?",
+      "Have you hit a pothole or curb recently?",
+      "Is the noise from the front or rear of the vehicle?",
+      "Does it squeak when cold, warm, or all the time?",
+      "Any uneven tire wear you've noticed?",
+      "Have the tires been rotated or replaced recently?",
+      "When was the last alignment?"
+    ],
+    safetyEscalations: [
+      "Severe steering wheel shake after a bump that won't settle \u2014 that's classic death wobble, do not drive it.",
+      "Steering has gone vague or wanders badly \u2014 tie rod or ball joint could separate, tow it.",
+      "You hear a metallic clunk and the wheel feels off \u2014 pull over, could be a broken suspension component.",
+      "Car sitting dramatically lower on one corner after a noise \u2014 spring or strut may have failed, not safe."
+    ],
+    upsellAdjacencies: [
+      "alignment whenever suspension parts are replaced",
+      "tire rotation and balance if overdue",
+      "brake inspection while the wheels are off",
+      "new tires if tread is near the wear bars"
+    ]
+  },
+  A5_brakes: {
+    domain: "A5_brakes",
+    title: "Brakes (A5)",
+    commonComplaints: [
+      "grinding when I brake",
+      "squealing when I brake",
+      "brake pedal feels spongy",
+      "brake pedal goes to the floor",
+      "brakes pulsate when I stop",
+      "car pulls when I brake",
+      "burning smell after driving",
+      "ABS light is on",
+      "brake warning light is on",
+      "brakes squeak in the morning then stop",
+      "parking brake won't release",
+      "grinding only at low speed"
+    ],
+    likelyCauses: [
+      "Brake pads worn down to the backing plates",
+      "Warped or corroded rotors causing pedal pulsation",
+      "Stuck caliper or frozen slide pins dragging a pad",
+      "Air in the brake lines or low brake fluid",
+      "Master cylinder internal leak",
+      "Contaminated or overdue brake fluid",
+      "Failed wheel speed sensor or ABS module",
+      "Collapsed brake hose restricting flow to one wheel",
+      "Glazed pads from overheating"
+    ],
+    relatedServices: [
+      "brake pad replacement",
+      "rotor resurface or replacement",
+      "brake fluid flush",
+      "caliper replacement or rebuild",
+      "brake hose replacement",
+      "master cylinder replacement",
+      "ABS diagnostic",
+      "parking brake adjustment",
+      "brake inspection"
+    ],
+    triageQuestions: [
+      "When did the noise or pedal change start?",
+      "Does it happen every stop or just the first few stops of the day?",
+      "Is the pedal firm, or does it sink slowly when you hold it?",
+      "Any dashboard warning lights on?",
+      "Do you feel the pulsation in the pedal or the steering wheel?",
+      "Does it pull to one side when you brake?",
+      "When were the brakes last serviced?"
+    ],
+    safetyEscalations: [
+      "Brake pedal goes to the floor \u2014 do not drive it, we'll arrange a tow.",
+      "Spongy pedal that gets worse when pumped \u2014 hydraulic failure is possible, please don't drive.",
+      "Grinding on every stop with a long pedal \u2014 metal-on-metal, risk of brake failure, tow it.",
+      "Burning smell with smoke from a wheel \u2014 caliper is seized, pull over and let it cool before towing.",
+      "Both the red brake light and ABS light are on \u2014 stop driving, the hydraulic system may be compromised."
+    ],
+    upsellAdjacencies: [
+      "brake fluid flush if fluid is dark or over three years old",
+      "rotor resurface when replacing pads if rotors are within spec",
+      "caliper slide pin lube and hardware kit with pad replacement",
+      "parking brake inspection and adjustment"
+    ]
+  },
+  A6_electrical: {
+    domain: "A6_electrical",
+    title: "Electrical and Electronic Systems (A6)",
+    commonComplaints: [
+      "car won't start, just clicks",
+      "dashboard lights flicker",
+      "battery keeps dying overnight",
+      "alternator whine through the radio",
+      "headlights are dim",
+      "power windows don't work",
+      "key fob stopped working",
+      "dash goes dark while driving",
+      "radio lost its code",
+      "multiple warning lights came on at once",
+      "burning electrical smell",
+      "turn signal blinks too fast",
+      "horn doesn't work"
+    ],
+    likelyCauses: [
+      "Weak or failing battery, or corroded battery terminals",
+      "Failing alternator or loose drive belt",
+      "Bad starter motor or starter solenoid",
+      "Parasitic draw from an accessory, module, or aftermarket add-on",
+      "Blown fuse or fusible link",
+      "Failing ignition switch",
+      "CAN bus communication fault between modules",
+      "Bad ground strap causing intermittent gremlins",
+      "Burned-out bulb causing fast turn signal flash"
+    ],
+    relatedServices: [
+      "battery test and replacement",
+      "alternator replacement",
+      "starter replacement",
+      "charging system diagnostic",
+      "parasitic draw test",
+      "electrical diagnostic",
+      "fuse and relay inspection",
+      "module reprogramming",
+      "bulb replacement",
+      "ground strap and harness repair"
+    ],
+    triageQuestions: [
+      "Does the engine crank slowly, rapid-click, or stay silent when you turn the key?",
+      "Do the dashboard lights dim when you try to start it?",
+      "How old is the current battery?",
+      "Did this happen suddenly, or has it been getting worse?",
+      "Any aftermarket electronics installed recently?",
+      "Does the battery go dead overnight or over several days?",
+      "Have the battery terminals been cleaned lately?"
+    ],
+    safetyEscalations: [
+      "Burning electrical smell with smoke from under the dash \u2014 pull over and shut it off, fire risk.",
+      "Dashboard goes completely dark while driving \u2014 pull over safely, power steering and brake assist can fail.",
+      "Battery cables or terminals are hot to the touch \u2014 stop driving, short circuit risk."
+    ],
+    upsellAdjacencies: [
+      "battery terminal cleaning and protector kit with a new battery",
+      "charging system test with battery replacement",
+      "serpentine belt inspection with alternator work",
+      "cabin and trunk bulb check"
+    ]
+  },
+  A7_hvac: {
+    domain: "A7_hvac",
+    title: "Heating and Air Conditioning (A7)",
+    commonComplaints: [
+      "AC is blowing warm air",
+      "heater blows cold",
+      "AC smells like mildew",
+      "no air coming out of the vents",
+      "only cold air from the passenger side",
+      "defroster isn't clearing the windshield",
+      "water dripping on the passenger floor",
+      "hissing noise when AC runs",
+      "AC works on highway but not at idle",
+      "loud clicking from the dashboard",
+      "fan only works on high"
+    ],
+    likelyCauses: [
+      "Low refrigerant charge from a slow leak",
+      "Failed AC compressor or compressor clutch",
+      "Clogged or leaking evaporator core",
+      "Blend door actuator failure causing temperature split or stuck vents",
+      "Plugged cabin air filter restricting airflow",
+      "Clogged AC drain leaking water into the cabin",
+      "Blower motor resistor failure (fan only works on high)",
+      "Heater core leak allowing coolant into the cabin",
+      "Stuck thermostat causing no heat"
+    ],
+    relatedServices: [
+      "AC system performance check",
+      "AC leak test and dye",
+      "refrigerant recharge with leak detection",
+      "AC compressor replacement",
+      "evaporator core replacement",
+      "blend door actuator replacement",
+      "cabin air filter replacement",
+      "heater core replacement",
+      "blower motor replacement",
+      "blower motor resistor replacement",
+      "thermostat replacement"
+    ],
+    triageQuestions: [
+      "Does the AC blow warm all the time, or just at idle?",
+      "Is it blowing air at all, or is the fan weak or silent?",
+      "When was the cabin filter last replaced?",
+      "Any sweet smell or damp carpet on the passenger side?",
+      "Does the heat come up to temperature on the gauge?",
+      "Are both sides of the vehicle the same temperature?",
+      "Has the system ever been recharged?"
+    ],
+    safetyEscalations: [
+      "Coolant leaking into the cabin with fogged windows and a sweet smell \u2014 heater core is leaking, coolant loss can overheat the engine.",
+      "Windshield won't clear and visibility is bad \u2014 don't drive until we can pull it in."
+    ],
+    upsellAdjacencies: [
+      "cabin air filter replacement with any HVAC service",
+      "coolant flush when replacing the heater core",
+      "AC system evacuation and recharge when opening the system",
+      "serpentine belt inspection with compressor work"
+    ]
+  },
+  A8_engine_performance: {
+    domain: "A8_engine_performance",
+    title: "Engine Performance and Drivability (A8)",
+    commonComplaints: [
+      "check engine light is on",
+      "check engine light is flashing",
+      "car is running rough",
+      "stumbles when I accelerate",
+      "won't start in the morning",
+      "dies at stop signs",
+      "hard start when hot",
+      "surging RPM at idle",
+      "loss of power going uphill",
+      "getting worse gas mileage",
+      "failed emissions test",
+      "gasoline smell from outside the car",
+      "rotten egg smell from exhaust",
+      "bucks at highway speed"
+    ],
+    likelyCauses: [
+      "Misfire from worn spark plugs, coils, or injectors",
+      "Vacuum leak causing lean codes and rough idle",
+      "Failing mass airflow sensor or oxygen sensor",
+      "Clogged fuel filter or failing fuel pump",
+      "Plugged catalytic converter causing loss of power",
+      "EVAP system leak triggering a code",
+      "Dirty or stuck EGR valve",
+      "Carbon buildup on direct injection intake valves",
+      "Failing ignition coil or crank or cam sensor"
+    ],
+    relatedServices: [
+      "engine diagnostic with code scan",
+      "spark plug replacement",
+      "ignition coil replacement",
+      "fuel system service",
+      "fuel pump replacement",
+      "MAF sensor cleaning or replacement",
+      "oxygen sensor replacement",
+      "intake manifold cleaning",
+      "catalytic converter replacement",
+      "EVAP smoke test",
+      "induction service for carbon cleaning"
+    ],
+    triageQuestions: [
+      "Is the check engine light steady or flashing?",
+      "When did you notice it start running differently?",
+      "Does it happen cold, warm, or after driving a while?",
+      "Any loss of power, or just rough running?",
+      "Has the gas mileage dropped noticeably?",
+      "Did it start right after a fill-up?",
+      "Have you had any work done recently?"
+    ],
+    safetyEscalations: [
+      "Flashing check engine light means a misfire severe enough to damage the catalytic converter \u2014 avoid driving it hard, bring it in right away.",
+      "Strong gasoline smell with visible fuel drips \u2014 stop driving, fire risk.",
+      "Vehicle stalls in traffic and won't restart reliably \u2014 have it towed to avoid being stranded."
+    ],
+    upsellAdjacencies: [
+      "spark plug replacement with coil work if overdue",
+      "fuel filter replacement with a fuel pump job",
+      "throttle body cleaning with induction service",
+      "air filter replacement during any drivability diagnostic"
+    ]
+  },
+  A9_light_duty_diesel: {
+    domain: "A9_light_duty_diesel",
+    title: "Light-Duty Diesel Engines (A9)",
+    commonComplaints: [
+      "diesel won't start when cold",
+      "glow plug light stays on",
+      "DEF warning on the dash",
+      "regen cycle keeps running",
+      "diesel blowing black smoke",
+      "loss of power in limp mode",
+      "fuel in the oil",
+      "DPF clogged light",
+      "diesel knock is louder than usual",
+      "smells like raw diesel"
+    ],
+    likelyCauses: [
+      "Failed glow plugs or glow plug controller",
+      "Low diesel exhaust fluid or failed DEF injector",
+      "Clogged diesel particulate filter needing forced regen",
+      "Failing high-pressure fuel pump or injectors",
+      "Turbocharger wear or failed actuator",
+      "EGR cooler leak",
+      "Fuel contamination or water in the fuel",
+      "NOx sensor failure triggering limp mode"
+    ],
+    relatedServices: [
+      "diesel diagnostic scan",
+      "glow plug replacement",
+      "DEF system service",
+      "DPF forced regen or cleaning",
+      "fuel injector service or replacement",
+      "turbocharger inspection",
+      "EGR system cleaning",
+      "fuel filter replacement",
+      "water-in-fuel separator service"
+    ],
+    triageQuestions: [
+      "Is the glow plug or wait-to-start light behaving normally?",
+      "What does the dash say \u2014 DEF, DPF, or limp mode?",
+      "When was the last DEF fill and fuel filter change?",
+      "Is this a daily-driven truck or mostly short trips?",
+      "Any recent fuel that might have been bad?",
+      "Has it been in limp mode before?"
+    ],
+    safetyEscalations: [
+      "Heavy black smoke with loss of power \u2014 pull over, turbo or injector failure can escalate.",
+      "Diesel fuel leaking onto the ground or engine \u2014 stop driving, fire risk.",
+      "DPF temperatures can be extremely high during regen \u2014 don't park on dry grass or leaves."
+    ],
+    upsellAdjacencies: [
+      "fuel filter replacement with any fuel system work",
+      "DEF top-off during service",
+      "air filter inspection on trucks used in dusty conditions",
+      "coolant service when EGR cooler work is done"
+    ]
+  }
+};
+var UNIVERSAL_GUIDANCE = {
+  neverDiagnose: [
+    "You are not a diagnostician \u2014 never tell a caller what is wrong with their vehicle.",
+    "Always frame findings as things the shop will inspect, test, or verify in the bay.",
+    "Replace any 'your problem is X' phrasing with 'that sounds like something we'd put on the lift and check'.",
+    "If a caller insists on a diagnosis over the phone, politely explain that accurate diagnosis requires test equipment and a technician with eyes on the vehicle.",
+    "Never quote a repair price without the vehicle inspected \u2014 give a rough range only if the caller pushes, and caveat it clearly.",
+    "Use 'we' language about the shop, not 'I' language about yourself making technical calls."
+  ],
+  inspectionPolicy: [
+    "Every repair starts with a proper inspection on the lift, not a phone guess.",
+    "We run a complimentary multi-point digital inspection on most visits and text the customer photos before any work is approved.",
+    "Diagnostic time is sometimes charged when the issue requires extended electrical, drivability, or scan-tool work \u2014 the advisor will confirm the diagnostic fee up front.",
+    "For noises, we ask to ride with the customer or have them demonstrate the concern so we can reproduce it.",
+    "We road-test before and after every repair that affects drivability."
+  ],
+  emergencyEscalation: [
+    "If the caller describes a soft or sinking brake pedal, steering that has gone vague, or a steering wheel shaking violently after a bump, tell them not to drive the vehicle and offer to help arrange a tow.",
+    "If the caller describes an engine overheating, steam from under the hood, or an oil pressure warning on, tell them to pull over safely, shut the engine off, and call for a tow \u2014 driving further risks destroying the engine.",
+    "If the caller describes a burning smell with visible smoke from under the hood or dashboard, tell them to pull over, turn it off, and call a tow; do not drive due to fire risk.",
+    "If the caller describes a fuel smell with a visible leak, tell them to stop driving and arrange a tow due to fire risk.",
+    "If the caller describes sparks, smoke, or hissing from an EV's underside or orange high-voltage cables, warn them not to touch the vehicle and to call for a flatbed to a certified EV center.",
+    "When recommending a tow, keep it calm and practical: 'For your safety we don't want you driving it \u2014 let's get it here on a flatbed and take a proper look.'"
+  ],
+  pricingEtiquette: [
+    "When asked 'how much', acknowledge the question, explain that we need to see the vehicle to be accurate, and offer a ballpark only if pressed.",
+    "Never promise a final price on the phone \u2014 always caveat with 'once we confirm the cause on the lift'.",
+    "Emphasize that a proper inspection protects the customer from paying for the wrong repair.",
+    "Mention that we text photos and estimates before any work is approved so nothing is a surprise.",
+    "If the caller shares a quote from another shop, avoid trashing the competitor \u2014 focus on what we include: OEM-grade parts, warranty, and a thorough inspection.",
+    "If cost is a concern, offer to prioritize repairs into safety-critical, recommended, and monitor categories so they can budget."
+  ],
+  vehicleIntake: [
+    "Collect year, make, and model early \u2014 it's the single highest-leverage data point.",
+    "Ask for approximate mileage so the advisor can anticipate age-related services.",
+    "Get the customer's full name and best call-back number in case the line drops.",
+    "Note whether this is a first visit or a returning customer so the advisor can pull records.",
+    "If the caller knows the engine size (for example 2.0 turbo, 5.3 V8), capture it \u2014 many failures are engine-family specific.",
+    "Ask if any warning lights are on right now, and capture the exact wording if the caller can read the dash.",
+    "For diesel and EV vehicles, confirm powertrain type up front \u2014 diagnostic path and tow policy differ.",
+    "Capture a one-sentence description of the concern in the caller's own words \u2014 it helps the technician verify the complaint."
+  ]
+};
+
 // server/services/promptCompiler.ts
 var warmthDescriptions = {
   1: "Professional and efficient. Friendly but minimal small talk. Get to the point fast.",
@@ -1218,43 +1816,56 @@ var languageGuides = {
     instructions: `Do\u011Fal, g\xFCnl\xFCk T\xFCrk\xE7e konu\u015F \u2014 resmi ya da kitabi de\u011Fil. Do\u011Fal ifadeler kullan: "Tabii, bir bakay\u0131m", "Sorun de\u011Fil, hallederiz", "Araban\u0131zda ne sorunu var?" M\xFC\u015Fteriyle samimi ol ama sayg\u0131l\u0131. Ger\xE7ek bir oto servis resepsiyonisti gibi konu\u015F.`
   }
 };
-var AUTO_REPAIR_KNOWLEDGE = `\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
-AUTO REPAIR KNOWLEDGE (ALL AGENTS)
+function buildAutoRepairKnowledge() {
+  const domainLines = Object.values(KNOWLEDGE_BY_DOMAIN).map((k) => {
+    const complaints = k.commonComplaints.slice(0, 4).map((c) => `"${c}"`).join("; ");
+    const causes = k.likelyCauses.slice(0, 4).map((c) => `- ${c}`).join("\n");
+    const services = k.relatedServices.slice(0, 5).join(", ");
+    const triage = k.triageQuestions.slice(0, 3).map((q) => `- ${q}`).join("\n");
+    const upsell = k.upsellAdjacencies.slice(0, 3).join(", ");
+    return `
+\u25B8 ${k.title}
+  Callers say: ${complaints}
+  What we check (never say out loud):
+${causes}
+  Services: ${services}
+  Clarifiers:
+${triage}
+  Upsell fits: ${upsell}`;
+  }).join("\n");
+  const rules = (label, lines) => `${label}:
+${lines.map((l) => `  \u2022 ${l}`).join("\n")}`;
+  return `\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+AUTO REPAIR KNOWLEDGE (ASE A1\u2013A9 DOMAINS)
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-You know cars deeply \u2014 as a knowledgeable service advisor who has heard every car problem thousands of times. Use this to understand what customers describe (even when they don't know the right words), ask smart clarifying questions, and map their symptom to the likely service.
+You are a deeply experienced service advisor. You recognize every common complaint a caller describes, know what the shop typically finds, and speak the language of working mechanics without ever diagnosing over the phone. Use this knowledge to ask smart clarifying questions, map symptoms to services, and route safety-critical situations correctly.
 
-COMMON SYMPTOMS (for your internal reasoning \u2014 NEVER diagnose out loud):
-\u2022 "Squealing/grinding brakes" \u2192 brake pads worn, possible rotor damage
-\u2022 "Car pulls to one side" \u2192 alignment, tire pressure, or brake issue
-\u2022 "Check engine light" \u2192 could be anything \u2014 recommend diagnostic scan
-\u2022 "Won't start / clicking" \u2192 battery, alternator, or starter
-\u2022 "Overheating" \u2192 coolant, thermostat, water pump, or radiator
-\u2022 "Rough idle / shaking" \u2192 spark plugs, fuel injectors, or MAF sensor
-\u2022 "Vibration at highway speed" \u2192 tire balance, wheel bearings, or CV axle
-\u2022 "Smoke from hood" \u2192 oil leak on exhaust, coolant leak, or overheating
-\u2022 "AC not cold" \u2192 refrigerant recharge, compressor, or cabin filter
-\u2022 "Hard to steer" \u2192 power steering fluid, pump, or rack and pinion
-\u2022 "Knocking from engine" \u2192 oil level low, rod bearings \u2014 urgent
-\u2022 "Transmission slipping" \u2192 fluid level, filter, or transmission service
+${rules("NEVER DIAGNOSE RULES (hard)", UNIVERSAL_GUIDANCE.neverDiagnose)}
 
-STANDARD MAINTENANCE INTERVALS (general guidance only):
-\u2022 Oil change: every 3k\u20137.5k miles (depends on oil type)
-\u2022 Tire rotation: every 5k\u20137.5k miles
-\u2022 Brake inspection: every 12k miles
-\u2022 Air filter: every 15k\u201330k miles
-\u2022 Cabin filter: every 15k\u201325k miles
-\u2022 Spark plugs: every 30k\u2013100k miles (varies widely)
-\u2022 Coolant flush: every 30k miles / 2 years
-\u2022 Transmission fluid: every 30k\u201360k miles
-\u2022 Timing belt: every 60k\u2013100k miles (CRITICAL \u2014 failure = engine damage)
-\u2022 Battery: typically 3\u20135 years
+${rules("INSPECTION POLICY (how we handle every visit)", UNIVERSAL_GUIDANCE.inspectionPolicy)}
 
-HOW TO USE THIS KNOWLEDGE:
-\u2022 "Oh yeah, that squealing is usually the brake pads telling you it's time."
-\u2022 "The check engine light \u2014 honestly that could be a bunch of things. Best to bring it in so we can hook it up to the scanner."
-\u2022 NEVER say "Your [specific part] is failing" \u2014 you're front desk, not a mechanic.
-\u2022 NEVER give a cost estimate for anything not in the service catalog.`;
+${rules("EMERGENCY ESCALATION (stop-driving / tow triggers)", UNIVERSAL_GUIDANCE.emergencyEscalation)}
+
+${rules("PRICING ETIQUETTE (when they ask 'how much')", UNIVERSAL_GUIDANCE.pricingEtiquette)}
+
+${rules("VEHICLE INTAKE (always collect, conversationally)", UNIVERSAL_GUIDANCE.vehicleIntake)}
+
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
+PER-DOMAIN COMPLAINT & SERVICE MAP
+\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500${domainLines}
+
+SAFETY ESCALATIONS (if any of these are described, treat as stop-driving, offer a tow):
+${Object.values(KNOWLEDGE_BY_DOMAIN).flatMap((k) => k.safetyEscalations.slice(0, 2)).map((s) => `  \u2022 ${s}`).join("\n")}
+
+HOW TO USE THIS KNOWLEDGE ON A CALL:
+  \u2022 Listen for caller phrases \u2192 identify the likely domain \u2192 ask 1\u20132 clarifying questions \u2192 route to the matching service in the shop's catalog.
+  \u2022 Speak with technician vocabulary ("we'll put it on the lift", "scan the system", "check for play in the wheel bearing") \u2014 callers trust specificity.
+  \u2022 When the complaint crosses domains (e.g. "noise when I turn" could be CV axle or strut bearing), say "that could be a couple different things \u2014 we'd want to put it up and take a look" and book it.
+  \u2022 If symptoms match any EMERGENCY ESCALATION item, calmly recommend a tow and offer to help coordinate \u2014 do not encourage driving.
+  \u2022 Frame every finding as "what we'll check" not "what's wrong" \u2014 you are front desk, not the mechanic.`;
+}
+var AUTO_REPAIR_KNOWLEDGE = buildAutoRepairKnowledge();
 function formatBusinessHours(hours) {
   const days = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"];
   return days.map((day) => {

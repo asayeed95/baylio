@@ -5,6 +5,8 @@
  * AI voice agent. Built for ElevenLabs Conversational AI + Twilio bridge.
  */
 
+import { KNOWLEDGE_BY_DOMAIN, UNIVERSAL_GUIDANCE } from "./automotiveKnowledge";
+
 export interface ShopContext {
   shopName: string;
   agentName: string;
@@ -91,43 +93,65 @@ const languageGuides: Record<string, { name: string; instructions: string }> = {
   },
 };
 
-const AUTO_REPAIR_KNOWLEDGE = `═══════════════════════════════════════════════════
-AUTO REPAIR KNOWLEDGE (ALL AGENTS)
+// ─── Auto Repair Knowledge (compiled from automotiveKnowledge.ts) ──────────
+//
+// Every call gets the same baseline knowledge. The data is ASE-organized (A1–A9)
+// so the agent speaks with technician-grade vocabulary while following strict
+// "never diagnose on the phone" rules. Target footprint: ~2–3k tokens.
+
+function buildAutoRepairKnowledge(): string {
+  const domainLines = Object.values(KNOWLEDGE_BY_DOMAIN).map(k => {
+    const complaints = k.commonComplaints.slice(0, 4).map(c => `"${c}"`).join("; ");
+    const causes = k.likelyCauses.slice(0, 4).map(c => `- ${c}`).join("\n");
+    const services = k.relatedServices.slice(0, 5).join(", ");
+    const triage = k.triageQuestions.slice(0, 3).map(q => `- ${q}`).join("\n");
+    const upsell = k.upsellAdjacencies.slice(0, 3).join(", ");
+    return `
+▸ ${k.title}
+  Callers say: ${complaints}
+  What we check (never say out loud):
+${causes}
+  Services: ${services}
+  Clarifiers:
+${triage}
+  Upsell fits: ${upsell}`;
+  }).join("\n");
+
+  const rules = (label: string, lines: string[]) =>
+    `${label}:\n${lines.map(l => `  • ${l}`).join("\n")}`;
+
+  return `═══════════════════════════════════════════════════
+AUTO REPAIR KNOWLEDGE (ASE A1–A9 DOMAINS)
 ═══════════════════════════════════════════════════
 
-You know cars deeply — as a knowledgeable service advisor who has heard every car problem thousands of times. Use this to understand what customers describe (even when they don't know the right words), ask smart clarifying questions, and map their symptom to the likely service.
+You are a deeply experienced service advisor. You recognize every common complaint a caller describes, know what the shop typically finds, and speak the language of working mechanics without ever diagnosing over the phone. Use this knowledge to ask smart clarifying questions, map symptoms to services, and route safety-critical situations correctly.
 
-COMMON SYMPTOMS (for your internal reasoning — NEVER diagnose out loud):
-• "Squealing/grinding brakes" → brake pads worn, possible rotor damage
-• "Car pulls to one side" → alignment, tire pressure, or brake issue
-• "Check engine light" → could be anything — recommend diagnostic scan
-• "Won't start / clicking" → battery, alternator, or starter
-• "Overheating" → coolant, thermostat, water pump, or radiator
-• "Rough idle / shaking" → spark plugs, fuel injectors, or MAF sensor
-• "Vibration at highway speed" → tire balance, wheel bearings, or CV axle
-• "Smoke from hood" → oil leak on exhaust, coolant leak, or overheating
-• "AC not cold" → refrigerant recharge, compressor, or cabin filter
-• "Hard to steer" → power steering fluid, pump, or rack and pinion
-• "Knocking from engine" → oil level low, rod bearings — urgent
-• "Transmission slipping" → fluid level, filter, or transmission service
+${rules("NEVER DIAGNOSE RULES (hard)", UNIVERSAL_GUIDANCE.neverDiagnose)}
 
-STANDARD MAINTENANCE INTERVALS (general guidance only):
-• Oil change: every 3k–7.5k miles (depends on oil type)
-• Tire rotation: every 5k–7.5k miles
-• Brake inspection: every 12k miles
-• Air filter: every 15k–30k miles
-• Cabin filter: every 15k–25k miles
-• Spark plugs: every 30k–100k miles (varies widely)
-• Coolant flush: every 30k miles / 2 years
-• Transmission fluid: every 30k–60k miles
-• Timing belt: every 60k–100k miles (CRITICAL — failure = engine damage)
-• Battery: typically 3–5 years
+${rules("INSPECTION POLICY (how we handle every visit)", UNIVERSAL_GUIDANCE.inspectionPolicy)}
 
-HOW TO USE THIS KNOWLEDGE:
-• "Oh yeah, that squealing is usually the brake pads telling you it's time."
-• "The check engine light — honestly that could be a bunch of things. Best to bring it in so we can hook it up to the scanner."
-• NEVER say "Your [specific part] is failing" — you're front desk, not a mechanic.
-• NEVER give a cost estimate for anything not in the service catalog.`;
+${rules("EMERGENCY ESCALATION (stop-driving / tow triggers)", UNIVERSAL_GUIDANCE.emergencyEscalation)}
+
+${rules("PRICING ETIQUETTE (when they ask 'how much')", UNIVERSAL_GUIDANCE.pricingEtiquette)}
+
+${rules("VEHICLE INTAKE (always collect, conversationally)", UNIVERSAL_GUIDANCE.vehicleIntake)}
+
+───────────────────────────────────────────────────
+PER-DOMAIN COMPLAINT & SERVICE MAP
+───────────────────────────────────────────────────${domainLines}
+
+SAFETY ESCALATIONS (if any of these are described, treat as stop-driving, offer a tow):
+${Object.values(KNOWLEDGE_BY_DOMAIN).flatMap(k => k.safetyEscalations.slice(0, 2)).map(s => `  • ${s}`).join("\n")}
+
+HOW TO USE THIS KNOWLEDGE ON A CALL:
+  • Listen for caller phrases → identify the likely domain → ask 1–2 clarifying questions → route to the matching service in the shop's catalog.
+  • Speak with technician vocabulary ("we'll put it on the lift", "scan the system", "check for play in the wheel bearing") — callers trust specificity.
+  • When the complaint crosses domains (e.g. "noise when I turn" could be CV axle or strut bearing), say "that could be a couple different things — we'd want to put it up and take a look" and book it.
+  • If symptoms match any EMERGENCY ESCALATION item, calmly recommend a tow and offer to help coordinate — do not encourage driving.
+  • Frame every finding as "what we'll check" not "what's wrong" — you are front desk, not the mechanic.`;
+}
+
+const AUTO_REPAIR_KNOWLEDGE = buildAutoRepairKnowledge();
 
 // ─── Helper Functions ───────────────────────────────────────────────────────
 
