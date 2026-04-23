@@ -93,11 +93,13 @@ export async function searchAvailableNumbers(
 ): Promise<AvailableNumber[]> {
   const client = getTwilioClient();
 
+  // Only require voice capability — SMS capability requires A2P 10DLC registration
+  // anyway, and filtering on smsEnabled excludes 60-80% of inventory in major metros
+  // (e.g. 201, 415, 310). Voice is all we need for the receptionist product.
   const numbers = await client.availablePhoneNumbers(country).local.list({
     areaCode: parseInt(areaCode, 10),
     voiceEnabled: true,
-    smsEnabled: true,
-    limit: 10,
+    limit: 20,
   });
 
   return numbers.map(n => ({

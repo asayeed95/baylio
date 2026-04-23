@@ -926,8 +926,7 @@ async function searchAvailableNumbers(areaCode, country = "US") {
   const numbers = await client.availablePhoneNumbers(country).local.list({
     areaCode: parseInt(areaCode, 10),
     voiceEnabled: true,
-    smsEnabled: true,
-    limit: 10
+    limit: 20
   });
   return numbers.map((n) => ({
     phoneNumber: n.phoneNumber,
