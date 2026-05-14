@@ -188,7 +188,12 @@ export async function createConversationalAgent(
             agent_output_audio_format: "ulaw_8000",
           },
           conversation: {
-            client_events: ["agent_response", "user_transcript"],
+            client_events: [
+              "audio",
+              "interruption",
+              "agent_response",
+              "user_transcript",
+            ],
             max_duration_seconds: 900,
           },
           asr: {

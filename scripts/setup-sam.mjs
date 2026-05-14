@@ -258,7 +258,12 @@ const payload = {
     },
     conversation: {
       max_duration_seconds: 1800,
-      client_events: ["agent_response", "user_transcript"],
+      client_events: [
+        "audio",
+        "interruption",
+        "agent_response",
+        "user_transcript",
+      ],
     },
   },
   platform_settings: {
