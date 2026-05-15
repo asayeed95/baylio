@@ -203,6 +203,7 @@ export async function createConversationalAgent(
             dynamic_variables: {
               dynamic_variable_placeholders: {
                 current_time_context: "the current date and time",
+                caller_context: "This appears to be a first-time caller. No prior history.",
               },
             },
           },

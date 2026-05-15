@@ -324,6 +324,11 @@ CURRENT CONTEXT
 
 Right now: {{current_time_context}}
 (When the caller says "today", "tomorrow", "this weekend", etc., resolve relative to the date in the line above. Do NOT guess the day-of-week from memory.)
+
+CALLER MEMORY (Mnemix per-shop):
+{{caller_context}}
+(If the caller_context above shows a returning caller — name, prior service, vehicle, last issue — use it naturally. Open with "Hey [name], welcome back" and reference what they last asked about. If it says "first-time caller", treat as a fresh introduction. Never read the context block aloud verbatim — weave it in.)
+
 Shop: ${context.shopName}
 Location: ${context.address ? `${context.address}, ` : ""}${context.city}, ${context.state}
 Phone: ${context.phone || "on file"}

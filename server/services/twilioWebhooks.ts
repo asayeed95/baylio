@@ -407,6 +407,34 @@ async function respondWithElevenLabsAgent(
     `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
   );
 
+  // Mnemix per-shop caller memory (Starter+ feature per the tier doc).
+  // Looks up prior interactions by phone so the agent greets returning
+  // callers with continuity ("how did the brake job turn out?") instead
+  // of starting cold every time. Falls back gracefully on miss/timeout.
+  //
+  // TODO(mnemix-tenant-scope): the current /v1/lookup/:phone endpoint is
+  // phone-only — no tenant_id. That means per-shop agents could in theory
+  // surface data Mnemix accumulated from other shops or from Sam. Per the
+  // architecture decision (project_baylio_tiering_and_mnemix.md) Starter
+  // scope MUST be tenant-isolated. Follow-up: Mnemix needs a
+  // /v1/lookup/:phone?tenant_id=<shop_id> variant; until then this carries
+  // a known cross-shop bleed risk that's acceptable only because
+  // Mnemix's data corpus is still tiny.
+  let callerContext = "This appears to be a first-time caller. No prior history.";
+  try {
+    const mnemixContext = await getMnemixCallerContext(fromNumber);
+    if (mnemixContext) {
+      callerContext = `Returning caller context (from Mnemix):\n${mnemixContext}`;
+      console.log(
+        `[CALL] Mnemix hit for ${fromNumber} on shop ${shopId} (${mnemixContext.length} chars)`
+      );
+    } else {
+      console.log(`[CALL] Mnemix miss for ${fromNumber} on shop ${shopId} — first-time caller`);
+    }
+  } catch (err) {
+    console.warn(`[CALL] Mnemix lookup error for ${fromNumber}:`, err);
+  }
+
   // current_time_context is computed per-call so the agent always knows
   // today's actual day-of-week. Without this the prompt — frozen on the
   // ElevenLabs agent at provisioning time — drifts within 24h and causes
@@ -420,6 +448,7 @@ async function respondWithElevenLabsAgent(
         shop_id: shopId.toString(),
         shop_name: context.shopName,
         caller_name: callerName,
+        caller_context: callerContext,
         current_time_context: buildCurrentTimeContext(context.timezone),
       },
     }

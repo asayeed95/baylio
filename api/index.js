@@ -1118,7 +1118,8 @@ async function createConversationalAgent(params) {
             // call-time injection happens in twilioWebhooks.registerElevenLabsCall.
             dynamic_variables: {
               dynamic_variable_placeholders: {
-                current_time_context: "the current date and time"
+                current_time_context: "the current date and time",
+                caller_context: "This appears to be a first-time caller. No prior history."
               }
             }
           },
@@ -2063,6 +2064,11 @@ CURRENT CONTEXT
 
 Right now: {{current_time_context}}
 (When the caller says "today", "tomorrow", "this weekend", etc., resolve relative to the date in the line above. Do NOT guess the day-of-week from memory.)
+
+CALLER MEMORY (Mnemix per-shop):
+{{caller_context}}
+(If the caller_context above shows a returning caller \u2014 name, prior service, vehicle, last issue \u2014 use it naturally. Open with "Hey [name], welcome back" and reference what they last asked about. If it says "first-time caller", treat as a fresh introduction. Never read the context block aloud verbatim \u2014 weave it in.)
+
 Shop: ${context.shopName}
 Location: ${context.address ? `${context.address}, ` : ""}${context.city}, ${context.state}
 Phone: ${context.phone || "on file"}
@@ -6084,6 +6090,21 @@ async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, c
   console.log(
     `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
   );
+  let callerContext = "This appears to be a first-time caller. No prior history.";
+  try {
+    const mnemixContext = await getMnemixCallerContext(fromNumber);
+    if (mnemixContext) {
+      callerContext = `Returning caller context (from Mnemix):
+${mnemixContext}`;
+      console.log(
+        `[CALL] Mnemix hit for ${fromNumber} on shop ${shopId} (${mnemixContext.length} chars)`
+      );
+    } else {
+      console.log(`[CALL] Mnemix miss for ${fromNumber} on shop ${shopId} \u2014 first-time caller`);
+    }
+  } catch (err) {
+    console.warn(`[CALL] Mnemix lookup error for ${fromNumber}:`, err);
+  }
   const twiml = await registerElevenLabsCall(
     elevenLabsAgentId,
     fromNumber,
@@ -6093,6 +6114,7 @@ async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, c
         shop_id: shopId.toString(),
         shop_name: context.shopName,
         caller_name: callerName,
+        caller_context: callerContext,
         current_time_context: buildCurrentTimeContext(context.timezone)
       }
     }
