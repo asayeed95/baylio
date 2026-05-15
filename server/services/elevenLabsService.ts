@@ -173,9 +173,38 @@ export async function createConversationalAgent(
       const payload = {
         conversation_config: {
           agent: {
-            prompt: { prompt: params.systemPrompt },
+            prompt: {
+              prompt: params.systemPrompt,
+              // Enable end_call so per-shop agents can hang up cleanly when
+              // the caller signals they're done. Without this, agents loop
+              // "are you there?" because they have no mechanism to drop the
+              // line. (Sam was fine because setup-sam.mjs adds this directly;
+              // the per-shop createConversationalAgent path used to skip it.)
+              built_in_tools: {
+                end_call: {
+                  type: "system",
+                  name: "end_call",
+                  description:
+                    "End and disconnect the phone call when: the caller says they're done (bye, take care, that's all, drop the call, etc.), the conversation is naturally complete, or you've already said goodbye. Always say a brief warm goodbye BEFORE calling this tool. Do NOT keep asking 'are you there?' if the caller has already signaled close.",
+                  response_timeout_secs: 20,
+                  params: { system_tool_type: "end_call" },
+                },
+              },
+            },
             first_message: params.firstMessage,
             language: params.language || "en",
+            // Declare placeholders so values passed at call time via
+            // conversation_initiation_client_data.dynamic_variables get
+            // substituted into {{current_time_context}} in the prompt.
+            // The prompt is compiled once at provisioning and frozen on the
+            // ElevenLabs side; without runtime substitution the agent reports
+            // the day-of-week from whenever the shop signed up. The actual
+            // call-time injection happens in twilioWebhooks.registerElevenLabsCall.
+            dynamic_variables: {
+              dynamic_variable_placeholders: {
+                current_time_context: "the current date and time",
+              },
+            },
           },
           tts: {
             voice_id: params.voiceId,
@@ -232,9 +261,34 @@ export async function updateConversationalAgent(
 
       if (params.systemPrompt || params.firstMessage || params.language) {
         convConfig.agent = {
-          ...(params.systemPrompt ? { prompt: { prompt: params.systemPrompt } } : {}),
+          ...(params.systemPrompt
+            ? {
+                prompt: {
+                  prompt: params.systemPrompt,
+                  // Re-apply end_call on every update so this never silently
+                  // regresses if a future caller passes systemPrompt alone.
+                  built_in_tools: {
+                    end_call: {
+                      type: "system",
+                      name: "end_call",
+                      description:
+                        "End and disconnect the phone call when: the caller says they're done (bye, take care, that's all, drop the call, etc.), the conversation is naturally complete, or you've already said goodbye. Always say a brief warm goodbye BEFORE calling this tool. Do NOT keep asking 'are you there?' if the caller has already signaled close.",
+                      response_timeout_secs: 20,
+                      params: { system_tool_type: "end_call" },
+                    },
+                  },
+                },
+              }
+            : {}),
           ...(params.firstMessage ? { first_message: params.firstMessage } : {}),
           ...(params.language ? { language: params.language } : {}),
+          // Re-declare placeholders on every update — needed for
+          // {{current_time_context}} substitution to keep working.
+          dynamic_variables: {
+            dynamic_variable_placeholders: {
+              current_time_context: "the current date and time",
+            },
+          },
         };
       }
 

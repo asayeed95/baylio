@@ -18,7 +18,7 @@
  */
 import { Router, Request, Response } from "express";
 import { contextCache } from "./contextCache";
-import { type ShopContext } from "./promptCompiler";
+import { type ShopContext, buildCurrentTimeContext } from "./promptCompiler";
 import { processCompletedCall } from "./postCallPipeline";
 import { getCallerMemory } from "./mem0Service";
 import { getShopAccessStatus } from "./trialService";
@@ -407,6 +407,10 @@ async function respondWithElevenLabsAgent(
     `[CALL] Registering call with ElevenLabs agent ${elevenLabsAgentId} for shop ${shopId} (caller: ${callerName})...`
   );
 
+  // current_time_context is computed per-call so the agent always knows
+  // today's actual day-of-week. Without this the prompt — frozen on the
+  // ElevenLabs agent at provisioning time — drifts within 24h and causes
+  // misbooked appointments. See promptCompiler.buildCurrentTimeContext.
   const twiml = await registerElevenLabsCall(
     elevenLabsAgentId,
     fromNumber,
@@ -416,6 +420,7 @@ async function respondWithElevenLabsAgent(
         shop_id: shopId.toString(),
         shop_name: context.shopName,
         caller_name: callerName,
+        current_time_context: buildCurrentTimeContext(context.timezone),
       },
     }
   );
@@ -478,6 +483,9 @@ twilioRouter.post("/voice", async (req: Request, res: Response) => {
           dynamic_variables: {
             caller_context: callerContext,
             caller_phone: From,
+            // Sam runs in America/New_York (Baylio HQ); per-shop calls use the
+            // shop's configured timezone instead.
+            current_time_context: buildCurrentTimeContext("America/New_York"),
           },
         });
         const elapsed = Date.now() - startTime;

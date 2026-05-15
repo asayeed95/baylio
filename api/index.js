@@ -1090,9 +1090,37 @@ async function createConversationalAgent(params) {
       const payload = {
         conversation_config: {
           agent: {
-            prompt: { prompt: params.systemPrompt },
+            prompt: {
+              prompt: params.systemPrompt,
+              // Enable end_call so per-shop agents can hang up cleanly when
+              // the caller signals they're done. Without this, agents loop
+              // "are you there?" because they have no mechanism to drop the
+              // line. (Sam was fine because setup-sam.mjs adds this directly;
+              // the per-shop createConversationalAgent path used to skip it.)
+              built_in_tools: {
+                end_call: {
+                  type: "system",
+                  name: "end_call",
+                  description: "End and disconnect the phone call when: the caller says they're done (bye, take care, that's all, drop the call, etc.), the conversation is naturally complete, or you've already said goodbye. Always say a brief warm goodbye BEFORE calling this tool. Do NOT keep asking 'are you there?' if the caller has already signaled close.",
+                  response_timeout_secs: 20,
+                  params: { system_tool_type: "end_call" }
+                }
+              }
+            },
             first_message: params.firstMessage,
-            language: params.language || "en"
+            language: params.language || "en",
+            // Declare placeholders so values passed at call time via
+            // conversation_initiation_client_data.dynamic_variables get
+            // substituted into {{current_time_context}} in the prompt.
+            // The prompt is compiled once at provisioning and frozen on the
+            // ElevenLabs side; without runtime substitution the agent reports
+            // the day-of-week from whenever the shop signed up. The actual
+            // call-time injection happens in twilioWebhooks.registerElevenLabsCall.
+            dynamic_variables: {
+              dynamic_variable_placeholders: {
+                current_time_context: "the current date and time"
+              }
+            }
           },
           tts: {
             voice_id: params.voiceId,
@@ -1105,7 +1133,12 @@ async function createConversationalAgent(params) {
             agent_output_audio_format: "ulaw_8000"
           },
           conversation: {
-            client_events: ["agent_response", "user_transcript"],
+            client_events: [
+              "audio",
+              "interruption",
+              "agent_response",
+              "user_transcript"
+            ],
             max_duration_seconds: 900
           },
           asr: {
@@ -1135,9 +1168,31 @@ async function updateConversationalAgent(agentId, params) {
       const convConfig = {};
       if (params.systemPrompt || params.firstMessage || params.language) {
         convConfig.agent = {
-          ...params.systemPrompt ? { prompt: { prompt: params.systemPrompt } } : {},
+          ...params.systemPrompt ? {
+            prompt: {
+              prompt: params.systemPrompt,
+              // Re-apply end_call on every update so this never silently
+              // regresses if a future caller passes systemPrompt alone.
+              built_in_tools: {
+                end_call: {
+                  type: "system",
+                  name: "end_call",
+                  description: "End and disconnect the phone call when: the caller says they're done (bye, take care, that's all, drop the call, etc.), the conversation is naturally complete, or you've already said goodbye. Always say a brief warm goodbye BEFORE calling this tool. Do NOT keep asking 'are you there?' if the caller has already signaled close.",
+                  response_timeout_secs: 20,
+                  params: { system_tool_type: "end_call" }
+                }
+              }
+            }
+          } : {},
           ...params.firstMessage ? { first_message: params.firstMessage } : {},
-          ...params.language ? { language: params.language } : {}
+          ...params.language ? { language: params.language } : {},
+          // Re-declare placeholders on every update — needed for
+          // {{current_time_context}} substitution to keep working.
+          dynamic_variables: {
+            dynamic_variable_placeholders: {
+              current_time_context: "the current date and time"
+            }
+          }
         };
       }
       if (params.voiceId) {
@@ -1907,6 +1962,22 @@ function getTimeContext(timezone) {
     return (/* @__PURE__ */ new Date()).toLocaleString("en-US");
   }
 }
+function buildCurrentTimeContext(timezone) {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long",
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit",
+      hour12: true
+    }).format(/* @__PURE__ */ new Date());
+  } catch {
+    return (/* @__PURE__ */ new Date()).toLocaleString("en-US");
+  }
+}
 function compilePersonalitySection(ctx) {
   const w = Math.min(5, Math.max(1, ctx.warmth));
   const s = Math.min(5, Math.max(1, ctx.salesIntensity));
@@ -1935,7 +2006,7 @@ MULTILINGUAL CALLER DETECTION:
 - NEVER make anyone feel bad about their English. Accommodate, don't correct.`;
 }
 function compileSystemPrompt(context) {
-  const timeContext = getTimeContext(context.timezone);
+  void getTimeContext;
   const hoursFormatted = context.businessHours ? formatBusinessHours(context.businessHours) : "Hours not set \u2014 tell callers someone will confirm availability.";
   const catalogFormatted = formatServiceCatalog(context.serviceCatalog);
   const upsellFormatted = formatUpsellRules(context.upsellRules, context.maxUpsellsPerCall);
@@ -1990,7 +2061,8 @@ ${compileLanguageSection(context.language)}
 CURRENT CONTEXT
 \u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 
-Right now: ${timeContext}
+Right now: {{current_time_context}}
+(When the caller says "today", "tomorrow", "this weekend", etc., resolve relative to the date in the line above. Do NOT guess the day-of-week from memory.)
 Shop: ${context.shopName}
 Location: ${context.address ? `${context.address}, ` : ""}${context.city}, ${context.state}
 Phone: ${context.phone || "on file"}
@@ -2085,6 +2157,28 @@ NEVER DO THESE THINGS
 8. Never argue with a caller
 9. Never use formal corporate language \u2014 keep it real
 10. Never rush someone off the phone \u2014 let the conversation end naturally
+
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+ENDING THE CALL
+\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
+
+When the caller signals they're done, END the call. Don't keep talking, don't keep asking "are you there?", don't loop.
+
+CLOSE SIGNALS to recognize (English + casual variants):
+- "thanks, bye", "okay take care", "I'm good", "that's all I needed"
+- "talk to you later", "alright thanks", "have a good one", "later"
+- "no I'm good thanks", "we're done", "that works, thanks"
+- Direct: "drop the call", "hang up", "end the call"
+- Long pause after they confirm a booking and you've said back the details
+
+WHEN YOU HEAR A CLOSE SIGNAL:
+1. Say a brief warm goodbye matching their energy ("Awesome, talk soon!" / "You got it, have a great day!" / "Sounds good, see you Friday at 10!" \u2014 match the appointment they booked)
+2. Then call the end_call tool. Do NOT keep the line open.
+
+NEVER:
+- Ask "is there anything else?" more than once after they've already declined
+- Say goodbye and then ask another question \u2014 the goodbye IS the close
+- Stay silent waiting for them to hang up \u2014 you hang up
 
 ${context.customSystemPrompt ? `\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550\u2550
 SHOP-SPECIFIC INSTRUCTIONS
@@ -5998,7 +6092,8 @@ async function respondWithElevenLabsAgent(res, resolved, fromNumber, toNumber, c
       dynamic_variables: {
         shop_id: shopId.toString(),
         shop_name: context.shopName,
-        caller_name: callerName
+        caller_name: callerName,
+        current_time_context: buildCurrentTimeContext(context.timezone)
       }
     }
   );
@@ -6033,7 +6128,10 @@ ${mnemixContext}` : "This appears to be a first-time caller. No prior history.";
         const twiml = await registerElevenLabsCall(SAM_AGENT_ID, From, To, {
           dynamic_variables: {
             caller_context: callerContext,
-            caller_phone: From
+            caller_phone: From,
+            // Sam runs in America/New_York (Baylio HQ); per-shop calls use the
+            // shop's configured timezone instead.
+            current_time_context: buildCurrentTimeContext("America/New_York")
           }
         });
         const elapsed = Date.now() - startTime;

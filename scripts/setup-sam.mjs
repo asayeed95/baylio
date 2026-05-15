@@ -242,6 +242,15 @@ const payload = {
       first_message:
         "Hey! Thanks for calling Baylio — Sam here, what can I do for you?",
       language: "en",
+      // Declare current_time_context so the per-call value passed by
+      // twilioWebhooks.ts (buildCurrentTimeContext("America/New_York"))
+      // gets substituted into {{current_time_context}} if Sam's prompt
+      // references it. Harmless if the prompt doesn't reference it yet.
+      dynamic_variables: {
+        dynamic_variable_placeholders: {
+          current_time_context: "the current date and time",
+        },
+      },
     },
     tts: {
       // Multilingual model so non-English languages don't sound like a news anchor.

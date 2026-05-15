@@ -197,6 +197,31 @@ function getTimeContext(timezone: string): string {
   }
 }
 
+/**
+ * Build the live time-context string passed at call time as the
+ * {{current_time_context}} dynamic variable. Includes the absolute date so
+ * the agent can resolve "tomorrow" against today's actual day-of-week.
+ *
+ * The agent's system prompt is compiled ONCE at provisioning and frozen on
+ * the ElevenLabs side; without runtime substitution the agent confidently
+ * reports the day-of-week from whenever the shop signed up. This helper is
+ * called per-call from registerElevenLabsCall and passed in
+ * conversation_initiation_client_data.dynamic_variables.
+ *
+ * Example output: "Thursday, May 14, 2026 at 8:14 PM"
+ */
+export function buildCurrentTimeContext(timezone: string): string {
+  try {
+    return new Intl.DateTimeFormat("en-US", {
+      timeZone: timezone,
+      weekday: "long", year: "numeric", month: "long", day: "numeric",
+      hour: "numeric", minute: "2-digit", hour12: true,
+    }).format(new Date());
+  } catch {
+    return new Date().toLocaleString("en-US");
+  }
+}
+
 function compilePersonalitySection(ctx: ShopContext): string {
   const w = Math.min(5, Math.max(1, ctx.warmth));
   const s = Math.min(5, Math.max(1, ctx.salesIntensity));
@@ -229,7 +254,12 @@ MULTILINGUAL CALLER DETECTION:
 // ─── Main Export ────────────────────────────────────────────────────────────
 
 export function compileSystemPrompt(context: ShopContext): string {
-  const timeContext = getTimeContext(context.timezone);
+  // NOTE: do NOT interpolate the live time into the prompt at compile time.
+  // The compiled prompt is stored on the ElevenLabs agent and replayed on
+  // every future call — a baked-in date drifts within a day. Use the
+  // {{current_time_context}} placeholder and pass the live value via
+  // dynamic_variables on each call (see buildCurrentTimeContext).
+  void getTimeContext; // retained for backward compat with any external callers
   const hoursFormatted = context.businessHours
     ? formatBusinessHours(context.businessHours)
     : "Hours not set — tell callers someone will confirm availability.";
@@ -292,7 +322,8 @@ ${compileLanguageSection(context.language)}
 CURRENT CONTEXT
 ═══════════════════════════════════════════════════
 
-Right now: ${timeContext}
+Right now: {{current_time_context}}
+(When the caller says "today", "tomorrow", "this weekend", etc., resolve relative to the date in the line above. Do NOT guess the day-of-week from memory.)
 Shop: ${context.shopName}
 Location: ${context.address ? `${context.address}, ` : ""}${context.city}, ${context.state}
 Phone: ${context.phone || "on file"}
@@ -387,6 +418,28 @@ NEVER DO THESE THINGS
 8. Never argue with a caller
 9. Never use formal corporate language — keep it real
 10. Never rush someone off the phone — let the conversation end naturally
+
+═══════════════════════════════════════════════════
+ENDING THE CALL
+═══════════════════════════════════════════════════
+
+When the caller signals they're done, END the call. Don't keep talking, don't keep asking "are you there?", don't loop.
+
+CLOSE SIGNALS to recognize (English + casual variants):
+- "thanks, bye", "okay take care", "I'm good", "that's all I needed"
+- "talk to you later", "alright thanks", "have a good one", "later"
+- "no I'm good thanks", "we're done", "that works, thanks"
+- Direct: "drop the call", "hang up", "end the call"
+- Long pause after they confirm a booking and you've said back the details
+
+WHEN YOU HEAR A CLOSE SIGNAL:
+1. Say a brief warm goodbye matching their energy ("Awesome, talk soon!" / "You got it, have a great day!" / "Sounds good, see you Friday at 10!" — match the appointment they booked)
+2. Then call the end_call tool. Do NOT keep the line open.
+
+NEVER:
+- Ask "is there anything else?" more than once after they've already declined
+- Say goodbye and then ask another question — the goodbye IS the close
+- Stay silent waiting for them to hang up — you hang up
 
 ${context.customSystemPrompt ? `═══════════════════════════════════════════════════\nSHOP-SPECIFIC INSTRUCTIONS\n═══════════════════════════════════════════════════\n\n${context.customSystemPrompt}` : ""}`;
 }
