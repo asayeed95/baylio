@@ -209,7 +209,7 @@ function ShopDetailContent() {
                       </div>
                       <div>
                         <div className="flex items-center gap-2">
-                          <p className="font-medium">{call.callerNumber || "Unknown Number"}</p>
+                          <p className="font-medium">{call.callerName || call.callerPhone || "Unknown caller"}</p>
                           {call.status === "completed" ? (
                             <Badge variant="outline" className="text-xs bg-emerald-50 text-emerald-600 border-none">Completed</Badge>
                           ) : (
@@ -217,7 +217,7 @@ function ShopDetailContent() {
                           )}
                         </div>
                         <p className="text-sm text-muted-foreground mt-1">
-                          {call.startTime ? format(new Date(call.startTime), "MMM d, h:mm a") : "—"} • {Math.round(call.durationSeconds || 0)}s
+                          {call.callStartedAt ? format(new Date(call.callStartedAt), "MMM d, h:mm a") : "—"} • {Math.round(call.duration || 0)}s
                         </p>
                       </div>
                     </div>
