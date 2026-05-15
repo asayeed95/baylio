@@ -5493,6 +5493,40 @@ async function sendSMS(payload) {
     return { success: false, error: String(error) };
   }
 }
+async function sendPostCallRecap(recap) {
+  const duration = `${Math.floor(recap.callDuration / 60)}m ${recap.callDuration % 60}s`;
+  let body = `New Call | Baylio
+`;
+  body += `Caller: ${recap.callerPhone}`;
+  if (recap.callerName) body += ` - ${recap.callerName}`;
+  body += `
+`;
+  body += `Intent: ${recap.intent}
+`;
+  body += `Outcome: ${recap.outcome}
+`;
+  if (recap.appointmentBooked) {
+    body += `Appointment: Booked
+`;
+  }
+  if (recap.upsellOffered) {
+    body += `Upsell: ${recap.upsellOffered}`;
+    if (recap.upsellAccepted !== void 0) {
+      body += recap.upsellAccepted ? " (accepted)" : " (declined)";
+    }
+    body += `
+`;
+  }
+  if (recap.estimatedValue) {
+    body += `Est. value: $${recap.estimatedValue}
+`;
+  }
+  body += `Duration: ${duration}`;
+  return sendSMS({
+    to: recap.shopOwnerPhone,
+    body
+  });
+}
 
 // server/services/postCallPipeline.ts
 async function analyzeTranscription(transcription, shopName, serviceCatalog) {
@@ -5782,6 +5816,34 @@ async function runPostCallIntegrations(shopId, callLog, analysis) {
     }
   } catch (err) {
     console.error("[POST-CALL] SMS follow-up error:", err);
+  }
+  try {
+    const db = await getDb();
+    if (db) {
+      const ownerRow = await db.select({ phone: shops.phone }).from(shops).where(eq16(shops.id, shopId)).limit(1);
+      const ownerPhone = ownerRow[0]?.phone;
+      if (ownerPhone && callLog.duration && callLog.duration > 0) {
+        await sendPostCallRecap({
+          shopOwnerPhone: ownerPhone,
+          callerPhone: callLog.callerPhone || "Unknown",
+          callerName: callLog.callerName || void 0,
+          callDuration: callLog.duration || 0,
+          intent: analysis.serviceRequested || "general inquiry",
+          outcome: analysis.summary?.slice(0, 120) || "call completed",
+          appointmentBooked: analysis.appointmentBooked,
+          upsellOffered: analysis.upsellAttempted ? analysis.serviceRequested : void 0,
+          upsellAccepted: analysis.upsellAttempted ? analysis.upsellAccepted : void 0,
+          estimatedValue: analysis.estimatedRevenue || void 0
+        });
+        console.log(
+          `[POST-CALL] Owner recap SMS sent to ${ownerPhone} for shop ${shopId} (call ${callLog.id}, ${callLog.duration}s)`
+        );
+      } else if (!ownerPhone) {
+        console.log(`[POST-CALL] Owner recap skipped \u2014 no shop.phone on shop ${shopId}`);
+      }
+    }
+  } catch (err) {
+    console.error("[POST-CALL] Owner recap SMS error:", err);
   }
 }
 

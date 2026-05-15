@@ -28,7 +28,7 @@ import { createAppointment } from "./calendarService";
 import { syncCallToSheet } from "./sheetsService";
 import { syncCallerToHubspot } from "./hubspotService";
 import { createWorkOrder } from "./shopmonkeyService";
-import { sendSMS } from "./smsService";
+import { sendSMS, sendPostCallRecap } from "./smsService";
 import { callerProfiles } from "../../drizzle/schema";
 
 /**
@@ -454,6 +454,49 @@ async function runPostCallIntegrations(
     }
   } catch (err) {
     console.error("[POST-CALL] SMS follow-up error:", err);
+  }
+
+  // Owner SMS recap — Pro-tier feature per project_baylio_tiering_and_mnemix.md.
+  // The shop owner gets a structured summary text after every completed call:
+  // caller, intent, outcome, appointment status, upsell, est value, duration.
+  // High-value Autoblitz demo moment — owner sees their phone buzz the moment
+  // a call ends without them having to open the dashboard.
+  //
+  // TODO(tier-gating): currently fires for any shop with shop.phone set. Once
+  // the subscription-tier resolver is unified, gate on tier in {pro, elite}.
+  // TODO(opt-in): add a dedicated `ownerSmsRecapEnabled` shop column — using
+  // shop.phone as the implicit gate is fine for MVP but not granular enough.
+  try {
+    const db = await getDb();
+    if (db) {
+      const ownerRow = await db
+        .select({ phone: shops.phone })
+        .from(shops)
+        .where(eq(shops.id, shopId))
+        .limit(1);
+      const ownerPhone = ownerRow[0]?.phone;
+      if (ownerPhone && callLog.duration && callLog.duration > 0) {
+        await sendPostCallRecap({
+          shopOwnerPhone: ownerPhone,
+          callerPhone: callLog.callerPhone || "Unknown",
+          callerName: callLog.callerName || undefined,
+          callDuration: callLog.duration || 0,
+          intent: analysis.serviceRequested || "general inquiry",
+          outcome: analysis.summary?.slice(0, 120) || "call completed",
+          appointmentBooked: analysis.appointmentBooked,
+          upsellOffered: analysis.upsellAttempted ? analysis.serviceRequested : undefined,
+          upsellAccepted: analysis.upsellAttempted ? analysis.upsellAccepted : undefined,
+          estimatedValue: analysis.estimatedRevenue || undefined,
+        });
+        console.log(
+          `[POST-CALL] Owner recap SMS sent to ${ownerPhone} for shop ${shopId} (call ${callLog.id}, ${callLog.duration}s)`
+        );
+      } else if (!ownerPhone) {
+        console.log(`[POST-CALL] Owner recap skipped — no shop.phone on shop ${shopId}`);
+      }
+    }
+  } catch (err) {
+    console.error("[POST-CALL] Owner recap SMS error:", err);
   }
 }
 
