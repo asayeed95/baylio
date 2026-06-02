@@ -7,6 +7,24 @@
 
 ## Latest Deploy
 
+- **Date:** 2026-06-02
+- **Branch:** claude/supabase-cloud-local-comparison-buRBE (security: enable RLS)
+- **Prod URL:** https://baylio.io
+
+### What Changed (2026-06-02) — security: enable RLS on all public tables
+
+Supabase Security Advisor flagged 19 public tables with Row-Level Security disabled — fully readable/writable over the auto-generated Data API (PostgREST) by anyone with the project URL + public anon key. Exposed data included `caller_profiles` (PII), `call_logs` (transcripts), `subscriptions`, and `shop_integrations` (OAuth tokens).
+
+- **Fix:** `supabase/migrations/0002_enable_rls_on_public_tables.sql` — `ENABLE ROW LEVEL SECURITY` on all 19 tables. Applied to the live DB via the Supabase migration ledger.
+- **Why safe / no app breakage:** Baylio reaches Postgres only server-side (Express/tRPC → Drizzle over `DATABASE_URL`) using a `BYPASSRLS` role (`postgres`/`service_role`). RLS-with-no-policies denies the public `anon`/`authenticated` roles while leaving app access untouched. Supabase Auth (separate `auth` schema) is unaffected — login still works.
+- **Verified:** security advisor re-run — `rls_disabled_in_public` ERRORs cleared; only benign INFO `rls_enabled_no_policy` (the intended deny-all) + WARN hygiene remain.
+- **Regression guard:** `scripts/check-rls.mjs` + `.github/workflows/security-rls-guard.yml` fail CI if any public table loses RLS (requires `DATABASE_URL` repo secret to enforce).
+- **Note:** the `drizzle/` journal is stale MySQL/TiDB-era metadata; the live DB is Supabase Postgres, so this was tracked as a `supabase/migrations/` file rather than wired into the dead drizzle journal. No `api/index.js` rebuild needed (no bundled-code change).
+
+---
+
+## Previous Deploy
+
 - **Date:** 2026-04-20
 - **Branch:** claude/romantic-elbakyan-a37ee4 (LOOP-014 test coverage)
 - **Commit:** pending (LOOP-014 — 46 new tests across 4 files)
