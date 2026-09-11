@@ -9,9 +9,25 @@
 
 - **Date:** 2026-04-09
 - **Branch:** main
-- **Commit:** `2267644`
+- **Commit:** `de6e5e8`
 
 ### What Changed
+
+**fix: P1 cleanup — appointmentDateTime extraction + serviceCatalog types + auth audit**
+
+1. **Authorization audit** — Audited all 60+ tRPC procedures across 11 routers. All procedures verified secure. `notificationRouter.markRead` flagged by audit but confirmed secure at DB layer (`AND notifications.userId = userId` in WHERE clause). No changes needed.
+
+2. **setImmediate error boundaries** — Verified all 4 `setImmediate` callbacks in `twilioWebhooks.ts` already have proper `try/catch` with `console.error`. No changes needed.
+
+3. **appointmentDateTime extracted from LLM** — `analyzeTranscription` now returns `appointmentDateTime: string | null` from the LLM analysis. The JSON schema includes the field with ISO 8601 format hint. `runPostCallIntegrations` uses it for Google Calendar appointment creation, falling back to 24h only if LLM couldn't extract a specific time. Removes the hardcoded "tomorrow" hack.
+
+4. **serviceCatalog `as any` cast removed** — `postCallPipeline.ts` was casting `shop?.serviceCatalog as any`. Drizzle schema already types it correctly via `$type<Array<{ name: string; category: string; price?: number; description?: string }>>()`. Cast removed.
+
+5. **19/19 tests, 188 passing, 2 skipped (live-API)**
+
+### Previous Deploy (2026-04-09 — AI Agent Config)
+
+- **Commit:** `2267644`
 
 **feat: AI Agent Config — Voice Picker, Personality System, Language Guides**
 
