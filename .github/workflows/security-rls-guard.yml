@@ -1,0 +1,24 @@
+name: Security — RLS guard
+
+# Fails the build if any public table loses Row-Level Security, preventing a
+# regression of the 2026-06-02 Data API exposure. Runs only when the
+# DATABASE_URL secret is configured; otherwise the script skips and passes.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  rls-guard:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - name: Check RLS on all public tables
+        run: node scripts/check-rls.mjs
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
